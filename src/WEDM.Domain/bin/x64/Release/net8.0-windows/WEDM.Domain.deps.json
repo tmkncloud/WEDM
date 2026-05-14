@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "WEDM.Domain/1.0.0": {
+      "WEDM.Domain/1.1.0": {
         "dependencies": {
           "System.Text.Json": "8.0.5"
         },
@@ -18,7 +18,7 @@
     }
   },
   "libraries": {
-    "WEDM.Domain/1.0.0": {
+    "WEDM.Domain/1.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

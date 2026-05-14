@@ -6,13 +6,13 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "WEDM.Application.Tests/1.0.0": {
+      "WEDM.Application.Tests/1.1.0": {
         "dependencies": {
           "FluentAssertions": "6.12.1",
           "Microsoft.NET.Test.Sdk": "17.10.0",
           "Moq": "4.20.72",
-          "WEDM.Application": "1.0.0",
-          "WEDM.Domain": "1.0.0",
+          "WEDM.Application": "1.1.0",
+          "WEDM.Domain": "1.1.0",
           "xunit": "2.9.0",
           "xunit.runner.visualstudio": "2.8.2"
         },
@@ -2135,51 +2135,51 @@
           }
         }
       },
-      "WEDM.Application/1.0.0": {
+      "WEDM.Application/1.1.0": {
         "dependencies": {
           "CommunityToolkit.Mvvm": "8.3.2",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Logging.Abstractions": "8.0.2",
-          "WEDM.Domain": "1.0.0",
-          "WEDM.Engine": "1.0.0",
-          "WEDM.Infrastructure": "1.0.0"
+          "WEDM.Domain": "1.1.0",
+          "WEDM.Engine": "1.1.0",
+          "WEDM.Infrastructure": "1.1.0"
         },
         "runtime": {
           "WEDM.Application.dll": {
-            "assemblyVersion": "1.0.0",
-            "fileVersion": "1.0.0.0"
+            "assemblyVersion": "1.1.0",
+            "fileVersion": "1.1.0.0"
           }
         }
       },
-      "WEDM.Domain/1.0.0": {
+      "WEDM.Domain/1.1.0": {
         "dependencies": {
           "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "WEDM.Domain.dll": {
-            "assemblyVersion": "1.0.0",
-            "fileVersion": "1.0.0.0"
+            "assemblyVersion": "1.1.0",
+            "fileVersion": "1.1.0.0"
           }
         }
       },
-      "WEDM.Engine/1.0.0": {
+      "WEDM.Engine/1.1.0": {
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection": "8.0.1",
           "Microsoft.PowerShell.SDK": "7.4.6",
           "System.Management": "8.0.0",
           "System.Net.NetworkInformation": "4.3.0",
-          "WEDM.Domain": "1.0.0",
-          "WEDM.Infrastructure": "1.0.0",
+          "WEDM.Domain": "1.1.0",
+          "WEDM.Infrastructure": "1.1.0",
           "YamlDotNet": "16.1.3"
         },
         "runtime": {
           "WEDM.Engine.dll": {
-            "assemblyVersion": "1.0.0",
-            "fileVersion": "1.0.0.0"
+            "assemblyVersion": "1.1.0",
+            "fileVersion": "1.1.0.0"
           }
         }
       },
-      "WEDM.Infrastructure/1.0.0": {
+      "WEDM.Infrastructure/1.1.0": {
         "dependencies": {
           "Microsoft.Win32.Registry": "5.0.0",
           "Serilog": "4.0.2",
@@ -2188,20 +2188,21 @@
           "Serilog.Formatting.Compact": "3.0.0",
           "Serilog.Sinks.Console": "6.0.0",
           "Serilog.Sinks.File": "6.0.0",
+          "System.Security.Cryptography.ProtectedData": "8.0.0",
           "System.Text.Json": "8.0.5",
-          "WEDM.Domain": "1.0.0"
+          "WEDM.Domain": "1.1.0"
         },
         "runtime": {
           "WEDM.Infrastructure.dll": {
-            "assemblyVersion": "1.0.0",
-            "fileVersion": "1.0.0.0"
+            "assemblyVersion": "1.1.0",
+            "fileVersion": "1.1.0.0"
           }
         }
       }
     }
   },
   "libraries": {
-    "WEDM.Application.Tests/1.0.0": {
+    "WEDM.Application.Tests/1.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -3214,22 +3215,22 @@
       "path": "yamldotnet/16.1.3",
       "hashPath": "yamldotnet.16.1.3.nupkg.sha512"
     },
-    "WEDM.Application/1.0.0": {
+    "WEDM.Application/1.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "WEDM.Domain/1.0.0": {
+    "WEDM.Domain/1.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "WEDM.Engine/1.0.0": {
+    "WEDM.Engine/1.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "WEDM.Infrastructure/1.0.0": {
+    "WEDM.Infrastructure/1.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

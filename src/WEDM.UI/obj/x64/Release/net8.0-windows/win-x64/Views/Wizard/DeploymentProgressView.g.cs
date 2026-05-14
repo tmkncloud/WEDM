@@ -53,7 +53,7 @@ namespace WEDM.UI.Views.Wizard {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/WEDM;component/views/wizard/deploymentprogressview.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/WEDM;V1.1.0.0;component/views/wizard/deploymentprogressview.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\..\..\Views\Wizard\DeploymentProgressView.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

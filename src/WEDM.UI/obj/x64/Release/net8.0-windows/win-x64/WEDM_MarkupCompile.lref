@@ -1,12 +1,15 @@
-﻿D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\GeneratedInternalTypeHelper.g.cs
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\App.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\MainWindow.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\DatabaseConfigView.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\DeploymentProgressView.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\DeploymentSummaryView.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\DomainConfigView.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\PathConfigView.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\PrerequisiteView.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\VersionSelectionView.xaml;;
-FD:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\WelcomeView.xaml;;
+﻿d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\GeneratedInternalTypeHelper.g.cs
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\App.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\MainWindow.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\DatabaseConfigView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\DeploymentProgressView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\DeploymentSummaryView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\DomainConfigView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\PatchManagementView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\PathConfigView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\PrerequisiteView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\ProductSystemHealthView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\SecurityComplianceView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\VersionSelectionView.xaml;;
+Fd:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\Views\Wizard\WelcomeView.xaml;;
 

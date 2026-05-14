@@ -89,6 +89,13 @@
             Resume a failed deployment from the last successful step.
             </summary>
         </member>
+        <member name="T:WEDM.Domain.Interfaces.IDeploymentPlanAccessor">
+            <summary>
+            Holds the currently executing deployment step plan so late-stage executors
+            (for example report generation) can read live step status without threading
+            large objects through every method signature.
+            </summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.ILoggingService">
             <summary>
             Structured logging service contract for the WEDM platform.
@@ -123,6 +130,19 @@
         <member name="E:WEDM.Domain.Interfaces.ILoggingService.EntryWritten">
             <summary>Raised on each log write for real-time UI binding.</summary>
         </member>
+        <member name="T:WEDM.Domain.Interfaces.IOperationalTelemetrySink">
+            <summary>
+            Future hook for deployment analytics / metrics exporters. Default implementation is a no-op.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IPatchExecutionState">
+            <summary>
+            In-process state shared between OPatch workflow steps for reporting (singleton).
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IPatchReportWriter">
+            <summary>Persists OPatch compliance artefacts (HTML + JSON).</summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.IPowerShellExecutor">
             <summary>
             Contract for executing PowerShell scripts and inline commands from C# code.
@@ -130,22 +150,38 @@
             enabling easy testing and alternative executor implementations.
             </summary>
         </member>
-        <member name="M:WEDM.Domain.Interfaces.IPowerShellExecutor.ExecuteScriptAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.String,System.Boolean,System.Threading.CancellationToken)">
+        <member name="M:WEDM.Domain.Interfaces.IPowerShellExecutor.ExecuteScriptAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.String,System.Boolean,System.Threading.CancellationToken,System.Nullable{System.TimeSpan})">
             <summary>
             Execute a PowerShell script file with optional named parameters.
             Returns the structured execution result including stdout, stderr, exit code and duration.
             </summary>
+            <param name="scriptPath">Path to a .ps1 file.</param>
+            <param name="parameters">Optional named parameters passed into the runspace.</param>
+            <param name="workingDirectory">Initial working directory.</param>
+            <param name="runAsAdministrator">When true, runs via elevated helper process.</param>
+            <param name="cancellationToken">Cooperative cancellation.</param>
+            <param name="operationTimeout">Optional wall-clock timeout.</param>
         </member>
-        <member name="M:WEDM.Domain.Interfaces.IPowerShellExecutor.ExecuteCommandAsync(System.String,System.String,System.Boolean,System.Threading.CancellationToken)">
+        <member name="M:WEDM.Domain.Interfaces.IPowerShellExecutor.ExecuteCommandAsync(System.String,System.String,System.Boolean,System.Threading.CancellationToken,System.Nullable{System.TimeSpan})">
             <summary>
             Execute an inline PowerShell command string.
             Useful for short imperative operations (registry writes, dir creation, service install).
             </summary>
+            <param name="command">PowerShell script block as a string.</param>
+            <param name="workingDirectory">Initial location; null uses current directory.</param>
+            <param name="runAsAdministrator">When true, runs via elevated helper process.</param>
+            <param name="cancellationToken">Cooperative cancellation.</param>
+            <param name="operationTimeout">Hard cap on wall-clock runtime (independent of <paramref name="cancellationToken"/>).</param>
         </member>
-        <member name="M:WEDM.Domain.Interfaces.IPowerShellExecutor.ExecuteModuleFunctionAsync(System.String,System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.Threading.CancellationToken)">
+        <member name="M:WEDM.Domain.Interfaces.IPowerShellExecutor.ExecuteModuleFunctionAsync(System.String,System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.Threading.CancellationToken,System.Nullable{System.TimeSpan})">
             <summary>
             Execute a PowerShell module function by loading a .psm1 and calling a named function.
             </summary>
+            <param name="modulePath">Path to the .psm1 module file.</param>
+            <param name="functionName">Function to invoke after import.</param>
+            <param name="parameters">Optional named parameters.</param>
+            <param name="cancellationToken">Cooperative cancellation.</param>
+            <param name="operationTimeout">Optional wall-clock timeout.</param>
         </member>
         <member name="E:WEDM.Domain.Interfaces.IPowerShellExecutor.OutputReceived">
             <summary>
@@ -161,6 +197,24 @@
             <summary>
             Result returned by any PowerShell execution call.
             </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IProductInfoProvider">
+            <summary>Resolves build/version/channel metadata for the running WEDM host process.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.ISecurityComplianceEvaluator">
+            <summary>Builds a compliance / security audit from configuration (no secret emission).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.ILocalSecretVault">
+            <summary>Persists named secrets using DPAPI (machine-local).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.ICertificateMaterialValidator">
+            <summary>Validates PKCS#12 / PFX identity material (password never logged).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.ISecurityReportWriter">
+            <summary>HTML + JSON security / compliance artefacts.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IUpdateManifestReader">
+            <summary>Reads update manifests from local paths only (no network).</summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.IValidationEngine">
             <summary>
@@ -198,6 +252,11 @@
         <member name="M:WEDM.Domain.Interfaces.IValidationEngine.ValidateDatabaseConnectivityAsync(WEDM.Domain.Models.DeploymentConfiguration,System.Threading.CancellationToken)">
             <summary>Test Oracle DB connectivity (if RCU is required).</summary>
         </member>
+        <member name="M:WEDM.Domain.Interfaces.IValidationEngine.ValidateForPatchingAsync(WEDM.Domain.Models.DeploymentConfiguration,System.Threading.CancellationToken)">
+            <summary>
+            Reduced validation for OPatch-only workflows: admin, disk, Oracle Home, OPatch binary, staging path.
+            </summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.IWorkflowOrchestrator">
             <summary>
             Orchestrates the ordered execution of deployment steps.
@@ -217,12 +276,30 @@
         <member name="M:WEDM.Domain.Interfaces.IWorkflowOrchestrator.RollbackAsync(System.Collections.Generic.IReadOnlyList{WEDM.Domain.Models.DeploymentStep},WEDM.Domain.Models.DeploymentConfiguration,System.Threading.CancellationToken)">
             <summary>Attempt rollback of all steps that support it, in reverse order.</summary>
         </member>
+        <member name="T:WEDM.Domain.Models.CertificateValidationResult">
+            <summary>Outcome of keystore / certificate checks (passwords must never be echoed).</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentConfiguration">
             <summary>
             Root deployment configuration model.
             Represents a complete, serialisable deployment plan that drives the entire automation engine.
             Designed for external configuration (JSON/YAML), GUI-driven wizard, and silent deployment.
             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.JdkInstallerPath">
+            <summary>Absolute path to JDK Windows installer (.msi or vendor silent .exe).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.VcRedistX64InstallerPath">
+            <summary>Absolute path to VC++ x64 redistributable (e.g. vc_redist.x64.exe).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.OuiInstallTimeoutMinutes">
+            <summary>Maximum wall-clock time for Oracle OUI java -jar silent install before termination.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.Patches">
+            <summary>Oracle OPatch / PSU automation.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.DeploymentEnvironment">
+            <summary>DEV / SIT / UAT / PROD preset — drives defaults for hardening and online automation.</summary>
         </member>
         <member name="T:WEDM.Domain.Models.DeploymentReport">
             <summary>
@@ -246,6 +323,90 @@
             <summary>
             Represents the result of executing a step's action — returned by automation executors.
             </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.DeploymentEnvironmentKind">
+            <summary>Reusable lifecycle profile (DEV / SIT / UAT / PROD) for defaults.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.DomainHardeningConfiguration">
+            <summary>Production-oriented domain and Node Manager hardening options.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.DomainOnlineAutomationConfiguration">
+            <summary>WLST online automation after AdminServer is reachable (nmEnroll, hardening, validation).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.PatchConfiguration">
+            <summary>OPatch / PSU automation configuration.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.PatchConfiguration.Enabled">
+            <summary>When true, OPatch workflow steps are included in the deployment plan.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.PatchConfiguration.StandalonePatchWorkflow">
+            <summary>
+            When true, the workflow engine returns a patch-only step plan
+            (middleware home must already exist with OPatch).
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.PatchConfiguration.PatchStagingDirectory">
+            <summary>Directory containing patch folders (each with patch.xml) or a single patch directory.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.PatchConfiguration.UseNapply">
+            <summary>Use <c>opatch napply</c> for the staging directory; when false, applies each immediate child patch sequentially.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.PatchConfiguration.OpatchBatPathOverride">
+            <summary>Optional explicit path to opatch.bat; when empty, resolved under ORACLE_HOME.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.PatchReport">
+            <summary>Structured output for patch compliance reporting.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.PatchReadinessResult">
+            <summary>Result of patch-environment checks plus optional live <c>opatch version</c> output.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.WedmReleaseChannelKind">
+            <summary>Logical release train for future update feeds (no network transport in core).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.WedmProductSidecar">
+            <summary>Optional sidecar metadata shipped next to WEDM.exe (Resources/wedm-product.json).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.WedmUpdateManifest">
+            <summary>Portable update manifest (local file today; future HTTP feed consumer).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.WedmReleaseBundleManifest">
+            <summary>Enterprise release bundle descriptor (checksums produced by packaging scripts).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ProductVersionSnapshot">
+            <summary>Resolved product identity for UI and reports (no secrets).</summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.ProductVersionSnapshot.#ctor(System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>Resolved product identity for UI and reports (no secrets).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SecretsStorageMode">
+            <summary>Where operational secrets are persisted beyond in-process configuration.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretsStorageMode.ConfigOnlyRedactedLogging">
+            <summary>Secrets stay in configuration; logging/reporting must redact them.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretsStorageMode.DpapiLocalVault">
+            <summary>DPAPI-protected blobs under the local WEDM data directory (per machine user).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretsStorageMode.WindowsCredentialManager">
+            <summary>Reserved — Windows Credential Manager integration (enterprise follow-up).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SecretsManagementConfiguration">
+            <summary>Operational secret handling and optional DPAPI vault persistence.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretsManagementConfiguration.PersistToDpapiVaultAfterValidation">
+            <summary>When true, admin and DB passwords are also written to the DPAPI vault after validation (configuration retains copies for this session).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SslCertificateConfiguration">
+            <summary>Custom identity/trust material for Node Manager and server SSL preparation.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SslCertificateConfiguration.GenerateDevSelfSignedIfMissing">
+            <summary>When true and identity path is empty in DEV, deployment may generate a self-signed PFX under reports (non-prod only).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ComplianceFinding">
+            <summary>Single compliance or security checklist finding.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ComplianceReport">
+            <summary>Aggregated security / hardening / SSL readiness audit (no secret values).</summary>
         </member>
         <member name="T:WEDM.Domain.Models.ValidationFinding">
             <summary>

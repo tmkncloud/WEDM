@@ -834,3 +834,17 @@ D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\r
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\WEDM.pdb
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\WEDM.UI.genruntimeconfig.cache
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\ref\WEDM.dll
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\bin\x64\Release\net8.0-windows\win-x64\Resources\RELEASE_NOTES.md
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\bin\x64\Release\net8.0-windows\win-x64\Resources\wedm-product.json
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\bin\x64\Release\net8.0-windows\win-x64\Resources\wedm-update-feed.json
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\SplashWindow.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Dialogs\AboutWindow.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\SplashWindow.g.cs
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Dialogs\AboutWindow.g.cs
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Wizard\PatchManagementView.g.cs
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Wizard\ProductSystemHealthView.g.cs
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Wizard\SecurityComplianceView.g.cs
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Wizard\PatchManagementView.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Wizard\ProductSystemHealthView.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Wizard\SecurityComplianceView.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\WEDM.UI.sourcelink.json

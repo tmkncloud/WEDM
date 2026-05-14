@@ -18,7 +18,8 @@ namespace WEDM.UI.ViewModels;
 ///   MainWindow data-binds CurrentStep to a ContentPresenter with DataTemplate selectors.
 ///
 /// The configuration object is shared across all wizard steps via reference.
-/// Each step's ApplyToConfiguration() is called on forward navigation.
+/// Each step's ApplyToConfiguration() is called on forward navigation (Next or sidebar jumps).
+/// Sidebar forward jumps apply skipped intermediate steps so Configuration stays consistent.
 /// </summary>
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
@@ -167,19 +168,54 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void NavigateTo(int index)
+    private async Task NavigateTo(int index)
     {
         if (index < 0 || index >= _steps.Count) return;
-        // Only allow backward navigation to completed steps
-        if (index < CurrentStepIndex && _steps[index].IsCompleted)
+        if (DeploymentInProgress) return;
+
+        if (index == CurrentStepIndex)
         {
-            CurrentStep.IsActive    = false;
-            CurrentStepIndex        = index;
-            CurrentStep.IsActive    = true;
-            OnPropertyChanged(nameof(IsDeploymentReadyStep));
-            NextCommand.NotifyCanExecuteChanged();
-            BackCommand.NotifyCanExecuteChanged();
+            await CurrentStep.OnNavigatingToAsync(Configuration);
+            return;
         }
+
+        CurrentStep.IsActive = false;
+
+        if (index > CurrentStepIndex)
+        {
+            var canLeave = await CurrentStep.OnNavigatingFromAsync();
+            if (!canLeave)
+            {
+                CurrentStep.IsActive = true;
+                return;
+            }
+
+            CurrentStep.ApplyToConfiguration(Configuration);
+            CurrentStep.IsCompleted = true;
+
+            var from = CurrentStepIndex;
+            for (var i = from + 1; i < index; i++)
+            {
+                await _steps[i].OnNavigatingToAsync(Configuration);
+                _steps[i].ApplyToConfiguration(Configuration);
+                _steps[i].IsCompleted = true;
+            }
+
+            CurrentStepIndex = index;
+            CurrentStep.IsActive = true;
+        }
+        else
+        {
+            // Backward: same as BackAsync — do not persist the step we are leaving.
+            CurrentStepIndex = index;
+            CurrentStep.IsActive = true;
+        }
+
+        OnPropertyChanged(nameof(IsDeploymentReadyStep));
+        await CurrentStep.OnNavigatingToAsync(Configuration);
+
+        NextCommand.NotifyCanExecuteChanged();
+        BackCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
