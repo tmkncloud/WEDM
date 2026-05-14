@@ -96,7 +96,7 @@
                             BorderBrush="{StaticResource AccentPrimaryBrush}"
                             BorderThickness="1" CornerRadius="4"
                             Padding="6,2" Margin="10,0,0,0">
-                        <TextBlock Text="{Binding AppVersion}"
+                        <TextBlock Text="{Binding AppVersion, Mode=OneWay}"
                                    Style="{StaticResource TypeBadge}"
                                    Foreground="{StaticResource AccentPrimaryBrush}"/>
                     </Border>
@@ -170,9 +170,9 @@
                                        Margin="0,0,0,4"/>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Style="{StaticResource TypeCaption}">
-                                    <Run Text="{Binding CurrentStepIndex, StringFormat={}{0}}"/>
+                                    <Run Text="{Binding CurrentStepIndex, Mode=OneWay, StringFormat={}{0}}"/>
                                     <Run Text=" of "/>
-                                    <Run Text="{Binding Steps.Count, StringFormat={}{0}}"/>
+                                    <Run Text="{Binding Steps.Count, Mode=OneWay, StringFormat={}{0}}"/>
                                 </TextBlock>
                                 <TextBlock Text=" steps" Style="{StaticResource TypeCaption}"/>
                             </StackPanel>
@@ -181,7 +181,7 @@
 
                     <!-- Step List -->
                     <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding Steps}" Margin="0,8">
+                        <ItemsControl ItemsSource="{Binding Steps, Mode=OneWay}" Margin="0,8">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Button Command="{Binding DataContext.NavigateToCommand,
@@ -228,7 +228,7 @@
                                                         </Style>
                                                     </Border.Style>
                                                     <TextBlock x:Name="stepIcon"
-                                                               Text="{Binding StepIndex, StringFormat={}{0}}"
+                                                               Text="{Binding StepIndex, Mode=OneWay, StringFormat={}{0}}"
                                                                FontSize="11" FontWeight="Bold"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center">
@@ -251,7 +251,7 @@
 
                                                 <!-- Step text -->
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding StepTitle}"
+                                                    <TextBlock Text="{Binding StepTitle, Mode=OneWay}"
                                                                FontSize="13" FontWeight="SemiBold">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
@@ -264,7 +264,7 @@
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
-                                                    <TextBlock Text="{Binding StepDescription}"
+                                                    <TextBlock Text="{Binding StepDescription, Mode=OneWay}"
                                                                FontSize="10.5"
                                                                Foreground="{StaticResource TextMutedBrush}"
                                                                TextTrimming="CharacterEllipsis"
@@ -311,16 +311,16 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding CurrentStep.StepTitle}"
+                            <TextBlock Text="{Binding CurrentStep.StepTitle, Mode=OneWay}"
                                        Style="{StaticResource TypeH1}"/>
-                            <TextBlock Text="{Binding CurrentStep.StepDescription}"
+                            <TextBlock Text="{Binding CurrentStep.StepDescription, Mode=OneWay}"
                                        Style="{StaticResource TypeBody}"
                                        Foreground="{StaticResource TextSecondaryBrush}"
                                        Margin="0,4,0,0"/>
                         </StackPanel>
                         <!-- Step icon -->
                         <TextBlock Grid.Column="1"
-                                   Text="{Binding CurrentStep.StepIcon}"
+                                   Text="{Binding CurrentStep.StepIcon, Mode=OneWay}"
                                    FontSize="36"
                                    VerticalAlignment="Center"
                                    Margin="0,0,8,0"/>
@@ -332,7 +332,7 @@
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               Padding="0">
-                    <ContentControl Content="{Binding CurrentStep}">
+                    <ContentControl Content="{Binding CurrentStep, Mode=OneWay}">
                         <ContentControl.RenderTransform>
                             <TranslateTransform x:Name="ContentTranslate"/>
                         </ContentControl.RenderTransform>
@@ -352,8 +352,8 @@
                                     <MultiBinding.Converter>
                                         <converters:PercentToWidthMultiConverter/>
                                     </MultiBinding.Converter>
-                                    <Binding Path="ProgressPercent"/>
-                                    <Binding RelativeSource="{RelativeSource AncestorType=Grid}" Path="ActualWidth"/>
+                                    <Binding Path="ProgressPercent" Mode="OneWay"/>
+                                    <Binding RelativeSource="{RelativeSource AncestorType=Grid}" Path="ActualWidth" Mode="OneWay"/>
                                 </MultiBinding>
                             </Rectangle.Width>
                         </Rectangle>
@@ -421,7 +421,7 @@
 
         <!-- ── Global Busy Overlay ──────────────────────────────────────────── -->
         <Grid Grid.RowSpan="3"
-              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+              Visibility="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
               Background="#80000000">
             <Border Background="{StaticResource BackgroundCardBrush}"
                     BorderBrush="{StaticResource BorderDefaultBrush}"
@@ -448,7 +448,7 @@
                             </EventTrigger>
                         </TextBlock.Triggers>
                     </TextBlock>
-                    <TextBlock Text="{Binding BusyMessage}"
+                    <TextBlock Text="{Binding BusyMessage, Mode=OneWay}"
                                Style="{StaticResource TypeBody}"
                                HorizontalAlignment="Center"
                                Margin="0,16,0,0"/>

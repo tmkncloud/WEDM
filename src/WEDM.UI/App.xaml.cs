@@ -72,6 +72,8 @@ public partial class App : System.Windows.Application
             ShutdownMode = ShutdownMode.OnMainWindowClose;
 
             StartupDiagnostics.Trace("UI", "MainWindow.Show");
+            mainWindow.Loaded += (_, _) =>
+                StartupDiagnostics.Trace("UI", "MainWindow.Loaded — shell visual tree ready");
             mainWindow.Show();
 
             splash.Close();

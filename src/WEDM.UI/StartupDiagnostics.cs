@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -41,6 +42,7 @@ internal static class StartupDiagnostics
         }
 
         Trace("StartupDiagnostics", "Global handlers installed");
+        TryEnableBindingTrace();
 
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
@@ -126,6 +128,23 @@ internal static class StartupDiagnostics
         _ = services.GetRequiredService<MainWindow>();
 
         Trace("DI", "Critical service graph OK");
+    }
+
+    private static void TryEnableBindingTrace()
+    {
+        try
+        {
+            PresentationTraceSources.DataBindingSource.Switch.Level =
+                SourceLevels.Error | SourceLevels.Warning;
+            var path = Path.Combine(LogsDirectory, "startup-databinding.log");
+            var sw = new StreamWriter(path, append: true, Encoding.UTF8) { AutoFlush = true };
+            PresentationTraceSources.DataBindingSource.Listeners.Add(new TextWriterTraceListener(sw));
+            Trace("Diagnostics", "WPF DataBinding trace → startup-databinding.log");
+        }
+        catch (Exception ex)
+        {
+            Trace("Diagnostics", $"WPF DataBinding trace not enabled: {ex.Message}");
+        }
     }
 
     private static void TryWriteStartupError(string title, Exception? ex)
