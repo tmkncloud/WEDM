@@ -32,8 +32,23 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
         _log = log;
         var iss = InitialSessionState.CreateDefault2();
         iss.ExecutionPolicy = Microsoft.PowerShell.ExecutionPolicy.Bypass;
-        _pool = RunspaceFactory.CreateRunspacePool(1, Environment.ProcessorCount, iss, null);
-        _pool.Open();
+
+        // WPF has no PSHost. Overload (min, max, iss, host) requires a non-null host. Use the factory overload
+        // that binds only InitialSessionState (pool min/max are both 1 — sufficient for this host tool).
+        _pool = RunspaceFactory.CreateRunspacePool(iss);
+        try
+        {
+            _pool.Open();
+            _log.Info(
+                "PowerShell in-process runspace pool ready (InitialSessionState, single runspace capacity).",
+                "PowerShell");
+        }
+        catch (Exception ex)
+        {
+            _log.Error("PowerShell runspace pool initialization failed.", ex, "PowerShell");
+            try { _pool.Dispose(); } catch { /* ignore */ }
+            throw;
+        }
     }
 
     public async Task<PowerShellResult> ExecuteScriptAsync(
