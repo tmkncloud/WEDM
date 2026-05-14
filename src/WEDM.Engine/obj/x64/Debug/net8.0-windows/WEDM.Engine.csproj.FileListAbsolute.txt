@@ -197,3 +197,4 @@ D:\Tmkn\weblogic tools\WEDM\src\WEDM.Engine\obj\x64\Debug\net8.0-windows\WEDM.En
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Engine\obj\x64\Debug\net8.0-windows\refint\WEDM.Engine.dll
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Engine\obj\x64\Debug\net8.0-windows\WEDM.Engine.pdb
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Engine\obj\x64\Debug\net8.0-windows\ref\WEDM.Engine.dll
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Engine\obj\x64\Debug\net8.0-windows\WEDM.Engine.sourcelink.json

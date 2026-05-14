@@ -12,3 +12,4 @@ d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\w
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrap.pdb
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrapper.genruntimeconfig.cache
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\ref\WEDM.Bootstrap.dll
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrapper.sourcelink.json

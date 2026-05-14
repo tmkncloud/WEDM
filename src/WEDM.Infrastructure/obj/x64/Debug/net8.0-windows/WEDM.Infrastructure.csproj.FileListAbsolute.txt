@@ -14,3 +14,4 @@ D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Debug\net8.0-windows
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Debug\net8.0-windows\refint\WEDM.Infrastructure.dll
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Debug\net8.0-windows\WEDM.Infrastructure.pdb
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Debug\net8.0-windows\ref\WEDM.Infrastructure.dll
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Debug\net8.0-windows\WEDM.Infrastructure.sourcelink.json

@@ -486,3 +486,4 @@ D:\Tmkn\weblogic tools\WEDM\tests\WEDM.Engine.Tests\obj\x64\Debug\net8.0-windows
 D:\Tmkn\weblogic tools\WEDM\tests\WEDM.Engine.Tests\obj\x64\Debug\net8.0-windows\WEDM.Engine.Tests.pdb
 D:\Tmkn\weblogic tools\WEDM\tests\WEDM.Engine.Tests\obj\x64\Debug\net8.0-windows\WEDM.Engine.Tests.genruntimeconfig.cache
 D:\Tmkn\weblogic tools\WEDM\tests\WEDM.Engine.Tests\obj\x64\Debug\net8.0-windows\ref\WEDM.Engine.Tests.dll
+d:\Tmkn\weblogic tools\WEDM\tests\WEDM.Engine.Tests\obj\x64\Debug\net8.0-windows\WEDM.Engine.Tests.sourcelink.json

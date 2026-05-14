@@ -847,3 +847,4 @@ d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\bin\x64\Debug\net8.0-windows\win-x64\Res
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\bin\x64\Debug\net8.0-windows\win-x64\Resources\wedm-product.json
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\bin\x64\Debug\net8.0-windows\win-x64\Resources\wedm-update-feed.json
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Wizard\ProductSystemHealthView.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\WEDM.UI.sourcelink.json

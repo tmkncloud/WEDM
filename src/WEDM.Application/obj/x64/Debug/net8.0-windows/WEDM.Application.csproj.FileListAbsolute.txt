@@ -199,3 +199,4 @@ D:\Tmkn\weblogic tools\WEDM\src\WEDM.Application\obj\x64\Debug\net8.0-windows\WE
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Application\obj\x64\Debug\net8.0-windows\refint\WEDM.Application.dll
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Application\obj\x64\Debug\net8.0-windows\WEDM.Application.pdb
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.Application\obj\x64\Debug\net8.0-windows\ref\WEDM.Application.dll
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Application\obj\x64\Debug\net8.0-windows\WEDM.Application.sourcelink.json
