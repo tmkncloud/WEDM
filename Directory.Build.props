@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <!-- Single source of truth for product versioning (installer, about box, manifests). -->
+    <WedmProductVersion>1.1.0</WedmProductVersion>
+    <WedmReleaseChannel>Stable</WedmReleaseChannel>
+    <WedmProductName>WebLogic Enterprise Deployment Manager</WedmProductName>
+    <Company>WEDM</Company>
+    <Copyright>Copyright © WEDM</Copyright>
+    <Version>$(WedmProductVersion)</Version>
+    <AssemblyVersion>$(WedmProductVersion).0</AssemblyVersion>
+    <FileVersion>$(WedmProductVersion).0</FileVersion>
+    <InformationalVersion>$(WedmProductVersion) $(WedmReleaseChannel)</InformationalVersion>
+  </PropertyGroup>
+</Project>

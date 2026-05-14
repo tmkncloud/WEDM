@@ -1,0 +1,378 @@
+{
+  "files": [
+    {
+      "fileName": "./Powershell_black_64.png",
+      "SPDXID": "SPDXRef-File--Powershell-black-64.png-3E7621054477F67F81CB0F131ACA0586B3199E98",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1b350d2e93fb415ea1b98e8af025e62157f23d1d1e16db111d2c8d91f402566b"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "3e7621054477f67f81cb0f131aca0586b3199e98"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./Microsoft.PowerShell.Native.nuspec",
+      "SPDXID": "SPDXRef-File--Microsoft.PowerShell.Native.nuspec-C5AE1CA280B8E39E0574197CB6828AD980C71D44",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f48dde692c7e596727cc8350e21dfffd24a76f88ad51afd9404d7351d4a75577"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c5ae1ca280b8e39e0574197cb6828ad980c71d44"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/linux-arm64/native/libpsl-native.so",
+      "SPDXID": "SPDXRef-File--runtimes-linux-arm64-native-libpsl-native.so-17AE401B27A7ACD46FCA9775978E7C6AA5596CA7",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f9dced191966145ffba62d6125ece2400152dcc883984123519534147baceb5d"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "17ae401b27a7acd46fca9775978e7c6aa5596ca7"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/linux-musl-x64/native/libpsl-native.so",
+      "SPDXID": "SPDXRef-File--runtimes-linux-musl-x64-native-libpsl-native.so-442F5A165B0DE82BD7ACA9778E683AB7413105CF",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "08e7febb920a857083607bba3c884b49169ac9b3bf3d3792d66481c7d4514de2"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "442f5a165b0de82bd7aca9778e683ab7413105cf"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x64/native/pwrshplugin.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x64-native-pwrshplugin.dll-FA0D33FC73FC7352CFB16EADDCF4183CD8A89826",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "66d33f8070456d0a04c2a7a4a711a1df2f036baedd2305a37be5835091ff4c5d"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "fa0d33fc73fc7352cfb16eaddcf4183cd8a89826"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/linux-arm/native/libpsl-native.so",
+      "SPDXID": "SPDXRef-File--runtimes-linux-arm-native-libpsl-native.so-A88E0C6CB54C4CF129B5CFC0552C3CB7F9E26E61",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4cc08a9f03e5b33abc00ab208c7bb3cc5780dd1060081fb6f319138cc7b67a1d"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "a88e0c6cb54c4cf129b5cfc0552c3cb7f9e26e61"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-arm64/native/pwrshplugin.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm64-native-pwrshplugin.dll-C1384E599A012071192B83CF23E075ECF0CCC380",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "cc92d8fef5229e174eb4dcb71bea84d773462fa0be6b11aa1cbd83c5e98a7577"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c1384e599a012071192b83cf23e075ecf0ccc380"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/osx/native/libpsl-native.dylib",
+      "SPDXID": "SPDXRef-File--runtimes-osx-native-libpsl-native.dylib-C9202061DA4DB90283E2552535ED1F35C1491462",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "128c0d7b08324709740e4d49f5c0639fb994a1ae216873c7b3a8f6050e9fe461"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "c9202061da4db90283e2552535ed1f35c1491462"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/linux-x64/native/libpsl-native.so",
+      "SPDXID": "SPDXRef-File--runtimes-linux-x64-native-libpsl-native.so-72FBC41A193312139EECA163A5BAC2D2CA824F56",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "75a01481c693f778b27c5fd2527d0134d51c46b08f95a5bcd01ca2d3edaae5dc"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "72fbc41a193312139eeca163a5bac2d2ca824f56"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x86/native/PowerShell.Core.Instrumentation.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x86-native-PowerShell.Core.Instrumentation.dll-2BC958E2CE62D0C06C1E1AF38FD447A4933A384A",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "068aba676f7152dc25e9a805131b7f12b214bdcd69a29fc2ffb1a19351f90040"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "2bc958e2ce62d0c06c1e1af38fd447a4933a384a"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-arm/native/PowerShell.Core.Instrumentation.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm-native-PowerShell.Core.Instrumentation.dll-6084243222FE6620AFFBB126E9340467390AA59F",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "fa065d99cf351f56d992fd06cc6d4b9d17ed674f877a138d329ba0d11b6ea782"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6084243222fe6620affbb126e9340467390aa59f"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-arm64/native/PowerShell.Core.Instrumentation.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm64-native-PowerShell.Core.Instrumentation.dll-45E62E4AF9854FFE1C1680EC1061E6F103541DFA",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8b369202a35156fdfc30c0694a353db9ae04c117b04046157568415dc5ae2e58"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "45e62e4af9854ffe1c1680ec1061e6f103541dfa"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x86/native/pwrshplugin.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x86-native-pwrshplugin.dll-6E6AE05263FB3BCE8793893CCBD37C51323A19D4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d61d92d28745a2d14331c58c6d54d06b48ad9f511dfa4145c669d0190feff67e"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "6e6ae05263fb3bce8793893ccbd37c51323a19d4"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x64/native/PowerShell.Core.Instrumentation.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x64-native-PowerShell.Core.Instrumentation.dll-AE6B43E07A33EC2DA4446B7D94FC8E2F34E8D110",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "55f15c6843f883522fac922d949d08c04270be5f0e30aa2de33c730b5874f55b"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ae6b43e07a33ec2da4446b7d94fc8e2f34e8d110"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-arm/native/pwrshplugin.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm-native-pwrshplugin.dll-145C7ADE65350DB775AC3A3C41197D2913301DEB",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e992f99bbe9ceef5308430618b7b6cb5a20b1721fe49993df0fc47e412fed831"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "145c7ade65350db775ac3a3c41197d2913301deb"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    }
+  ],
+  "packages": [
+    {
+      "name": "PowerShell.Core.Instrumentation",
+      "SPDXID": "SPDXRef-Package-7F603072C9FE282266A62E18D5A5356968D1E6329768446AF892A9CCE21C3786",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "6.0.0-beta.10",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:nuget/PowerShell.Core.Instrumentation@6.0.0-beta.10"
+        }
+      ],
+      "supplier": "Organization: Microsoft"
+    },
+    {
+      "name": "Microsoft.PowerShell.Native",
+      "SPDXID": "SPDXRef-RootPackage",
+      "downloadLocation": "NOASSERTION",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "2fb71bf34aefeb0aa58bc6efc7a4797659753900"
+      },
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoFromFiles": [
+        "NOASSERTION"
+      ],
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "7.4.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:swid/Microsoft/sbom.microsoft/Microsoft.PowerShell.Native@7.4.0?tag_id=f429fdc4-a73a-456c-b2a1-a754f0d55bce"
+        }
+      ],
+      "supplier": "Organization: Microsoft",
+      "hasFiles": [
+        "SPDXRef-File--runtimes-win-arm-native-pwrshplugin.dll-145C7ADE65350DB775AC3A3C41197D2913301DEB",
+        "SPDXRef-File--runtimes-win-x64-native-PowerShell.Core.Instrumentation.dll-AE6B43E07A33EC2DA4446B7D94FC8E2F34E8D110",
+        "SPDXRef-File--runtimes-win-arm64-native-PowerShell.Core.Instrumentation.dll-45E62E4AF9854FFE1C1680EC1061E6F103541DFA",
+        "SPDXRef-File--runtimes-win-x86-native-pwrshplugin.dll-6E6AE05263FB3BCE8793893CCBD37C51323A19D4",
+        "SPDXRef-File--runtimes-win-arm-native-PowerShell.Core.Instrumentation.dll-6084243222FE6620AFFBB126E9340467390AA59F",
+        "SPDXRef-File--runtimes-win-x86-native-PowerShell.Core.Instrumentation.dll-2BC958E2CE62D0C06C1E1AF38FD447A4933A384A",
+        "SPDXRef-File--runtimes-linux-x64-native-libpsl-native.so-72FBC41A193312139EECA163A5BAC2D2CA824F56",
+        "SPDXRef-File--runtimes-osx-native-libpsl-native.dylib-C9202061DA4DB90283E2552535ED1F35C1491462",
+        "SPDXRef-File--runtimes-win-arm64-native-pwrshplugin.dll-C1384E599A012071192B83CF23E075ECF0CCC380",
+        "SPDXRef-File--runtimes-linux-arm-native-libpsl-native.so-A88E0C6CB54C4CF129B5CFC0552C3CB7F9E26E61",
+        "SPDXRef-File--runtimes-win-x64-native-pwrshplugin.dll-FA0D33FC73FC7352CFB16EADDCF4183CD8A89826",
+        "SPDXRef-File--runtimes-linux-musl-x64-native-libpsl-native.so-442F5A165B0DE82BD7ACA9778E683AB7413105CF",
+        "SPDXRef-File--runtimes-linux-arm64-native-libpsl-native.so-17AE401B27A7ACD46FCA9775978E7C6AA5596CA7",
+        "SPDXRef-File--Microsoft.PowerShell.Native.nuspec-C5AE1CA280B8E39E0574197CB6828AD980C71D44",
+        "SPDXRef-File--Powershell-black-64.png-3E7621054477F67F81CB0F131ACA0586B3199E98"
+      ]
+    }
+  ],
+  "externalDocumentRefs": [],
+  "relationships": [
+    {
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-RootPackage",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-7F603072C9FE282266A62E18D5A5356968D1E6329768446AF892A9CCE21C3786",
+      "spdxElementId": "SPDXRef-RootPackage"
+    }
+  ],
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "Microsoft.PowerShell.Native 7.4.0",
+  "documentNamespace": "https://sbom.microsoft/1:2QSF7qZlbE-F7QrUJlEo7g:pHp_nUFvDUijZ4LrJ4RhoQ/1099:422190/Microsoft.PowerShell.Native:7.4.0:FDrILmvs2UennbLtoCy2rw",
+  "creationInfo": {
+    "created": "2023-10-31T23:50:15Z",
+    "creators": [
+      "Organization: Microsoft",
+      "Tool: Microsoft.SBOMTool-1.8.1"
+    ]
+  },
+  "documentDescribes": [
+    "SPDXRef-RootPackage"
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "name": "WLS12C-Windows-MVP",
+  "description": "Baseline WebLogic 12c Windows deployment profile for WEDM MVP validation.",
+  "environment": "Production",
+  "webLogicVersion": "WLS_12c",
+  "platform": "WindowsServer",
+  "mode": "Interactive",
+  "components": "JDK, VCRedist, Infrastructure, FormsReports, OHSWebTier",
+  "payloadBasePath": ".\\payload",
+  "paths": {
+    "OracleRoot": "C:\\Oracle",
+    "MiddlewareHome": "C:\\Oracle\\Oracle_MW",
+    "DomainBase": "C:\\Oracle\\Oracle_MW\\user_projects\\domains",
+    "OracleInventory": "C:\\Oracle\\oraInventory",
+    "TempDirectory": "C:\\Oracle\\Temp",
+    "LogDirectory": "C:\\Oracle\\WEDM\\logs",
+    "ReportsDirectory": "C:\\Oracle\\WEDM\\reports",
+    "SnapshotDirectory": "C:\\Oracle\\WEDM\\snapshots"
+  },
+  "java": {
+    "InstallDirectory": "C:\\Program Files\\Java",
+    "JdkVersion": "1.8.0_202",
+    "JavaHome": "",
+    "HeapSizeMb": 2048,
+    "AutoDetectExisting": true
+  },
+  "database": {
+    "Host": "localhost",
+    "Port": 1521,
+    "ServiceName": "orcl",
+    "SysUsername": "system",
+    "SysPassword": "",
+    "SchemaPrefix": "DEV",
+    "SchemaPassword": "",
+    "RunRcu": true,
+    "NlsCharset": "AL32UTF8"
+  },
+  "domain": {
+    "DomainName": "wls_domain",
+    "Topology": "Standard",
+    "AdminServerName": "AdminServer",
+    "AdminPort": 7001,
+    "AdminSslPort": 7002,
+    "AdminUsername": "weblogic",
+    "AdminPassword": "",
+    "ManagedServers": [
+      {
+        "Name": "WLS_FORMS",
+        "Type": "ManagedServer",
+        "Port": 9001,
+        "SslPort": 9002,
+        "RegisterService": true,
+        "JvmHeapMb": 512,
+        "JvmMaxHeapMb": 1024
+      },
+      {
+        "Name": "WLS_REPORTS",
+        "Type": "ManagedServer",
+        "Port": 9003,
+        "SslPort": 9004,
+        "RegisterService": true,
+        "JvmHeapMb": 512,
+        "JvmMaxHeapMb": 1024
+      }
+    ],
+    "NodeManager": {
+      "Port": 5556,
+      "ListenAddress": "localhost",
+      "Type": "Plain",
+      "RegisterService": true,
+      "ServiceName": "WLS NodeManager"
+    }
+  },
+  "registerWindowsServices": true,
+  "configureFormsReports": true,
+  "enableRollback": true
+}

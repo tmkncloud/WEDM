@@ -1,0 +1,16 @@
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\bin\x64\Release\net8.0-windows\WEDM.Infrastructure.deps.json
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\bin\x64\Release\net8.0-windows\WEDM.Infrastructure.dll
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\bin\x64\Release\net8.0-windows\WEDM.Infrastructure.pdb
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\bin\x64\Release\net8.0-windows\WEDM.Domain.dll
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\bin\x64\Release\net8.0-windows\WEDM.Domain.pdb
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\bin\x64\Release\net8.0-windows\WEDM.Domain.xml
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\WEDM.Infrastructure.csproj.AssemblyReference.cache
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\WEDM.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\WEDM.Infrastructure.AssemblyInfoInputs.cache
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\WEDM.Infrastructure.AssemblyInfo.cs
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\WEDM.Infrastructure.csproj.CoreCompileInputs.cache
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\WEDM.Inf.47E4F79A.Up2Date
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\WEDM.Infrastructure.dll
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\refint\WEDM.Infrastructure.dll
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\WEDM.Infrastructure.pdb
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Infrastructure\obj\x64\Release\net8.0-windows\ref\WEDM.Infrastructure.dll

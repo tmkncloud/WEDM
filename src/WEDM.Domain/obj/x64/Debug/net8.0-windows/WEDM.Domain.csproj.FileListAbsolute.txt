@@ -1,0 +1,17 @@
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\50d87b420d778102\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\50d87b420d778102\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.AssemblyInfoInputs.cache
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\50d87b420d778102\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.AssemblyInfo.cs
+C:\Users\CodexSandboxOffline\.codex\.sandbox\cwd\50d87b420d778102\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.csproj.CoreCompileInputs.cache
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\bin\x64\Debug\net8.0-windows\WEDM.Domain.deps.json
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\bin\x64\Debug\net8.0-windows\WEDM.Domain.dll
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\bin\x64\Debug\net8.0-windows\WEDM.Domain.pdb
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\bin\x64\Debug\net8.0-windows\WEDM.Domain.xml
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.AssemblyInfoInputs.cache
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.AssemblyInfo.cs
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.csproj.CoreCompileInputs.cache
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.dll
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\refint\WEDM.Domain.dll
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.xml
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\WEDM.Domain.pdb
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.Domain\obj\x64\Debug\net8.0-windows\ref\WEDM.Domain.dll

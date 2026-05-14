@@ -1,0 +1,14 @@
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\bin\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrap.exe
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\bin\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrap.deps.json
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\bin\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrap.runtimeconfig.json
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\bin\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrap.dll
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\bin\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrap.pdb
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrapper.GeneratedMSBuildEditorConfig.editorconfig
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrapper.AssemblyInfoInputs.cache
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrapper.AssemblyInfo.cs
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrapper.csproj.CoreCompileInputs.cache
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrap.dll
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\refint\WEDM.Bootstrap.dll
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrap.pdb
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\WEDM.Bootstrapper.genruntimeconfig.cache
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.Bootstrapper\obj\x64\Debug\net8.0-windows\win-x64\ref\WEDM.Bootstrap.dll

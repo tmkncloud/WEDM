@@ -1,0 +1,78 @@
+<UserControl x:Class="WEDM.UI.Views.Wizard.DatabaseConfigView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:DatabaseConfigViewModel, IsDesignTimeCreatable=False}">
+    <StackPanel>
+        <Border CornerRadius="6" Padding="14,10" Margin="0,0,0,20"
+                Background="{StaticResource AccentSubtleBrush}">
+            <CheckBox Content="Run Repository Creation Utility (RCU) for Fusion Middleware schemas"
+                      Style="{StaticResource CheckBoxStyle}"
+                      IsChecked="{Binding RunRcu}"/>
+        </Border>
+
+        <UniformGrid Columns="3" Margin="0,0,0,14">
+            <StackPanel Margin="0,0,8,0">
+                <TextBlock Text="Database Host" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding DbHost, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+            <StackPanel Margin="4,0,8,0">
+                <TextBlock Text="Port" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding DbPort, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+            <StackPanel Margin="4,0,0,0">
+                <TextBlock Text="Service Name" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding ServiceName, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+        </UniformGrid>
+
+        <UniformGrid Columns="2" Margin="0,0,0,14">
+            <StackPanel Margin="0,0,8,0">
+                <TextBlock Text="SYS / SYSTEM Username" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding SysUsername, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+            <StackPanel Margin="8,0,0,0">
+                <TextBlock Text="SYS / SYSTEM Password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding SysPassword, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+        </UniformGrid>
+
+        <UniformGrid Columns="3" Margin="0,0,0,20">
+            <StackPanel Margin="0,0,8,0">
+                <TextBlock Text="Schema Prefix" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding SchemaPrefix, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+            <StackPanel Margin="4,0,8,0">
+                <TextBlock Text="Schema Password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding SchemaPassword, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+            <StackPanel Margin="4,0,0,0">
+                <TextBlock Text="NLS Charset" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <ComboBox Style="{StaticResource ComboBoxStyle}"
+                          ItemsSource="{Binding NlsCharsets}"
+                          SelectedItem="{Binding NlsCharset}"/>
+            </StackPanel>
+        </UniformGrid>
+
+        <Border CornerRadius="6" Padding="14" Background="{StaticResource BackgroundPanelBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Connectivity Validation" Style="{StaticResource TypeH3}" Margin="0,0,0,4"/>
+                    <TextBlock Text="{Binding ConnectivityStatus}" Style="{StaticResource TypeCaption}"
+                               Foreground="{StaticResource TextMutedBrush}"/>
+                </StackPanel>
+                <Button Grid.Column="1" Content="Test Connection"
+                        Style="{StaticResource BtnSecondary}"
+                        Command="{Binding TestConnectionCommand}"
+                        Width="150"/>
+            </Grid>
+        </Border>
+    </StackPanel>
+</UserControl>

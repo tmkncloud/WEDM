@@ -1,0 +1,6 @@
+{
+  "productName": "WebLogic Enterprise Deployment Manager",
+  "releaseChannel": "Stable",
+  "releaseNotesRelativePath": "RELEASE_NOTES.md",
+  "updateFeedRelativePath": "wedm-update-feed.json"
+}

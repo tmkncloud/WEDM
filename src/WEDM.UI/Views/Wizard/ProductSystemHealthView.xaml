@@ -1,0 +1,36 @@
+<UserControl x:Class="WEDM.UI.Views.Wizard.ProductSystemHealthView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:ProductSystemHealthViewModel, IsDesignTimeCreatable=False}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+        <StackPanel MaxWidth="920">
+            <Border CornerRadius="6" Padding="14,10" Margin="0,0,0,16"
+                    Background="{StaticResource AccentSubtleBrush}">
+                <TextBlock Style="{StaticResource TypeBody}" TextWrapping="Wrap"
+                           Text="Use this step before a long deployment to confirm the WEDM host runtime, Visual C++ prerequisites, and your packaged WebLogic media folder. Optional local update manifests are read from disk only (no outbound update checks)."/>
+            </Border>
+
+            <Button Content="Refresh status" Style="{StaticResource BtnSecondary}" HorizontalAlignment="Left"
+                    Command="{Binding RefreshStatusCommand}" Padding="16,6" Margin="0,0,0,12"/>
+
+            <TextBlock Text="{Binding HealthSummary}" Style="{StaticResource TypeBody}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+
+            <TextBlock Text="Detail" Style="{StaticResource TypeLabel}" Margin="0,0,0,6"/>
+            <Border Background="{StaticResource BackgroundElevatedBrush}" CornerRadius="6" Padding="10" MinHeight="200">
+                <ItemsControl ItemsSource="{Binding HealthLines}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Style="{StaticResource TypeCaption}"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap" Margin="0,2"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

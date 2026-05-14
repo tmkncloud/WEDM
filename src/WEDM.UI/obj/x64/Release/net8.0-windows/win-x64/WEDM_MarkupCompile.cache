@@ -1,0 +1,20 @@
+﻿WEDM
+
+
+winexe
+C#
+.cs
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\
+WEDM.UI
+none
+false
+TRACE;RELEASE;NET;NET8_0;NETCOREAPP
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\App.xaml
+14-505461743
+
+26-1270249062
+286743416993
+MainWindow.xaml;Styles\Animations.xaml;Styles\Buttons.xaml;Styles\Colors.xaml;Styles\Inputs.xaml;Styles\Typography.xaml;Views\Wizard\DatabaseConfigView.xaml;Views\Wizard\DeploymentProgressView.xaml;Views\Wizard\DeploymentSummaryView.xaml;Views\Wizard\DomainConfigView.xaml;Views\Wizard\PathConfigView.xaml;Views\Wizard\PrerequisiteView.xaml;Views\Wizard\VersionSelectionView.xaml;Views\Wizard\WelcomeView.xaml;
+
+False
+

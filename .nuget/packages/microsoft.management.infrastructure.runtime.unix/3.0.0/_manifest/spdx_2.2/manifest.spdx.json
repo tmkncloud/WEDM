@@ -1,0 +1,121 @@
+{
+  "files": [
+    {
+      "fileName": "./runtimes/unix/lib/netstandard1.6/Microsoft.Management.Infrastructure.dll",
+      "SPDXID": "SPDXRef-File--runtimes-unix-lib-netstandard1.6-Microsoft.Management.Infrastructure.dll-E7FCA34C1C2E239B49CF511894AA4B0840831EB7",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e600e2473e2404859789c76529671c5ea12b66dca552cb3f43e960bda13b9434"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "e7fca34c1c2e239b49cf511894aa4b0840831eb7"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    }
+  ],
+  "packages": [
+    {
+      "name": "Microsoft.Management.Infrastructure.Native",
+      "SPDXID": "SPDXRef-Package-CBBBC1D5DCDE72606807D537FA75E07B20970AA426A551EE663B9C7DE102C615",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "1.0.0-rc5",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:nuget/Microsoft.Management.Infrastructure.Native@1.0.0-rc5"
+        }
+      ],
+      "supplier": "Organization: Microsoft"
+    },
+    {
+      "name": "Microsoft.Management.Infrastructure",
+      "SPDXID": "SPDXRef-Package-7D64AC659262AC8EFB6365ECAD2C146CF4AB6872A34A41F093AFBCDB508B122E",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "1.0.0-rc2",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:nuget/Microsoft.Management.Infrastructure@1.0.0-rc2"
+        }
+      ],
+      "supplier": "Organization: Microsoft"
+    },
+    {
+      "name": "Microsoft.Management.Instrumentation",
+      "SPDXID": "SPDXRef-RootPackage",
+      "downloadLocation": "NOASSERTION",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "c7e8404a52e1b2da8cdaf1242a3fe547eb9519f3"
+      },
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoFromFiles": [
+        "NOASSERTION"
+      ],
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "3.0.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:swid/Microsoft/sbom.microsoft/Microsoft.Management.Instrumentation@3.0.0?tag_id=0e34cfbb-e646-44e4-8cbd-90997a27379e"
+        }
+      ],
+      "supplier": "Organization: Microsoft",
+      "hasFiles": [
+        "SPDXRef-File--runtimes-unix-lib-netstandard1.6-Microsoft.Management.Infrastructure.dll-E7FCA34C1C2E239B49CF511894AA4B0840831EB7"
+      ]
+    }
+  ],
+  "externalDocumentRefs": [],
+  "relationships": [
+    {
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-7D64AC659262AC8EFB6365ECAD2C146CF4AB6872A34A41F093AFBCDB508B122E",
+      "spdxElementId": "SPDXRef-RootPackage"
+    },
+    {
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-RootPackage",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-CBBBC1D5DCDE72606807D537FA75E07B20970AA426A551EE663B9C7DE102C615",
+      "spdxElementId": "SPDXRef-RootPackage"
+    }
+  ],
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "Microsoft.Management.Instrumentation 3.0.0",
+  "documentNamespace": "https://sbom.microsoft/1:2QSF7qZlbE-F7QrUJlEo7g:pHp_nUFvDUijZ4LrJ4RhoQ/2412:423346/Microsoft.Management.Instrumentation:3.0.0:QuKyYs0qx0-_BeVff1eHDg",
+  "creationInfo": {
+    "created": "2023-11-03T19:59:43Z",
+    "creators": [
+      "Organization: Microsoft",
+      "Tool: Microsoft.SBOMTool-1.8.1"
+    ]
+  },
+  "documentDescribes": [
+    "SPDXRef-RootPackage"
+  ]
+}

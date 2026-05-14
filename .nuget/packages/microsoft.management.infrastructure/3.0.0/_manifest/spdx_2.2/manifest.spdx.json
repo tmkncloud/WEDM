@@ -1,0 +1,181 @@
+{
+  "files": [
+    {
+      "fileName": "./ref/netstandard1.6/Microsoft.Management.Infrastructure.dll",
+      "SPDXID": "SPDXRef-File--ref-netstandard1.6-Microsoft.Management.Infrastructure.dll-F99FA5FF8CA5DEEC6D756D025D23F9EB616E0B81",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8e155f17045477ac3c78eedabcb0eee9d45e6f23c2ccc20ab1cd99fea4f3930a"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "f99fa5ff8ca5deec6d756d025d23f9eb616e0b81"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./ref/netstandard1.6/Microsoft.Management.Infrastructure.Native.dll",
+      "SPDXID": "SPDXRef-File--ref-netstandard1.6-Microsoft.Management.Infrastructure.Native.dll-67EBFCAC0D22BC9AC545F59C97FADF966C934A0C",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1e7ddc535182a60304153622809bdedde38c597c713a658206fef30edd30ead8"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "67ebfcac0d22bc9ac545f59c97fadf966c934a0c"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./ref/net451/Microsoft.Management.Infrastructure.dll",
+      "SPDXID": "SPDXRef-File--ref-net451-Microsoft.Management.Infrastructure.dll-7A54918F58028EE32FFDEDB03C0977AF5D1DFAF8",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d2de190e7669e36fcab8a85484c95bc4b759f53b802b08a6d232664241c9cb1e"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "7a54918f58028ee32ffdedb03c0977af5d1dfaf8"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./ref/net451/Microsoft.Management.Infrastructure.Native.dll",
+      "SPDXID": "SPDXRef-File--ref-net451-Microsoft.Management.Infrastructure.Native.dll-3600998F05A9E3B916DD4F4FB0DACBF3A1E5CAE6",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "d6fcca7710bb2527f94a52d8d291b3d29ae94e736d18e4bccc1ed43b4bc9ff8c"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "3600998f05a9e3b916dd4f4fb0dacbf3a1e5cae6"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    }
+  ],
+  "packages": [
+    {
+      "name": "Microsoft.Management.Infrastructure.Native",
+      "SPDXID": "SPDXRef-Package-CBBBC1D5DCDE72606807D537FA75E07B20970AA426A551EE663B9C7DE102C615",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "1.0.0-rc5",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:nuget/Microsoft.Management.Infrastructure.Native@1.0.0-rc5"
+        }
+      ],
+      "supplier": "Organization: Microsoft"
+    },
+    {
+      "name": "Microsoft.Management.Infrastructure",
+      "SPDXID": "SPDXRef-Package-7D64AC659262AC8EFB6365ECAD2C146CF4AB6872A34A41F093AFBCDB508B122E",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "1.0.0-rc2",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:nuget/Microsoft.Management.Infrastructure@1.0.0-rc2"
+        }
+      ],
+      "supplier": "Organization: Microsoft"
+    },
+    {
+      "name": "Microsoft.Management.Instrumentation",
+      "SPDXID": "SPDXRef-RootPackage",
+      "downloadLocation": "NOASSERTION",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "c270d11b1404982adc7015c8ae852731d3696c49"
+      },
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoFromFiles": [
+        "NOASSERTION"
+      ],
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "3.0.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:swid/Microsoft/sbom.microsoft/Microsoft.Management.Instrumentation@3.0.0?tag_id=5b87a399-dcef-407e-9630-6213069d6ad8"
+        }
+      ],
+      "supplier": "Organization: Microsoft",
+      "hasFiles": [
+        "SPDXRef-File--ref-netstandard1.6-Microsoft.Management.Infrastructure.dll-F99FA5FF8CA5DEEC6D756D025D23F9EB616E0B81",
+        "SPDXRef-File--ref-netstandard1.6-Microsoft.Management.Infrastructure.Native.dll-67EBFCAC0D22BC9AC545F59C97FADF966C934A0C",
+        "SPDXRef-File--ref-net451-Microsoft.Management.Infrastructure.dll-7A54918F58028EE32FFDEDB03C0977AF5D1DFAF8",
+        "SPDXRef-File--ref-net451-Microsoft.Management.Infrastructure.Native.dll-3600998F05A9E3B916DD4F4FB0DACBF3A1E5CAE6"
+      ]
+    }
+  ],
+  "externalDocumentRefs": [],
+  "relationships": [
+    {
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-RootPackage",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-CBBBC1D5DCDE72606807D537FA75E07B20970AA426A551EE663B9C7DE102C615",
+      "spdxElementId": "SPDXRef-RootPackage"
+    },
+    {
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-7D64AC659262AC8EFB6365ECAD2C146CF4AB6872A34A41F093AFBCDB508B122E",
+      "spdxElementId": "SPDXRef-RootPackage"
+    }
+  ],
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "Microsoft.Management.Instrumentation 3.0.0",
+  "documentNamespace": "https://sbom.microsoft/1:2QSF7qZlbE-F7QrUJlEo7g:pHp_nUFvDUijZ4LrJ4RhoQ/2412:423346/Microsoft.Management.Instrumentation:3.0.0:5bq80BxM4EeRoRJ7_DxNEw",
+  "creationInfo": {
+    "created": "2023-11-03T20:01:31Z",
+    "creators": [
+      "Organization: Microsoft",
+      "Tool: Microsoft.SBOMTool-1.8.1"
+    ]
+  },
+  "documentDescribes": [
+    "SPDXRef-RootPackage"
+  ]
+}

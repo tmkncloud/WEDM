@@ -1,0 +1,157 @@
+<UserControl x:Class="WEDM.UI.Views.Wizard.VersionSelectionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             xmlns:enums="clr-namespace:WEDM.Domain.Enums;assembly=WEDM.Domain"
+             xmlns:converters="clr-namespace:WEDM.UI.Converters"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:VersionSelectionViewModel, IsDesignTimeCreatable=False}">
+
+    <UserControl.Resources>
+        <converters:EnumToBoolConverter x:Key="EnumToBool"/>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+
+            <!-- Version cards -->
+            <TextBlock Text="Select WebLogic Version"
+                       Style="{StaticResource TypeH2}"
+                       Margin="0,0,0,16"/>
+
+            <UniformGrid Columns="3" Margin="0,0,0,24">
+
+                <!-- WLS 11g -->
+                <ToggleButton Style="{StaticResource BtnVersionCard}"
+                              Margin="0,0,8,0"
+                              IsChecked="{Binding SelectedVersion,
+                                  Converter={StaticResource EnumToBool},
+                                  ConverterParameter={x:Static enums:WebLogicVersion.WLS_11g}}">
+                    <StackPanel>
+                        <TextBlock Text="11g" Style="{StaticResource TypeH1}" TextAlignment="Center"/>
+                        <TextBlock Text="WebLogic 10.3.6" Style="{StaticResource TypeCaption}"
+                                   TextAlignment="Center" Opacity="0.7" Margin="0,4,0,0"/>
+                        <TextBlock Text="JDK 7 / 8" Style="{StaticResource TypeCaption}"
+                                   TextAlignment="Center" Opacity="0.5" Margin="0,2,0,0"/>
+                        <Border CornerRadius="3" Padding="6,2" Margin="0,8,0,0"
+                                HorizontalAlignment="Center"
+                                Background="{StaticResource WarningSubtleBrush}">
+                            <TextBlock Text="Legacy" Style="{StaticResource TypeCaption}"
+                                       Foreground="{StaticResource WarningBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </ToggleButton>
+
+                <!-- WLS 12c (default) -->
+                <ToggleButton Style="{StaticResource BtnVersionCard}"
+                              Margin="4,0,4,0"
+                              IsChecked="{Binding SelectedVersion,
+                                  Converter={StaticResource EnumToBool},
+                                  ConverterParameter={x:Static enums:WebLogicVersion.WLS_12c}}">
+                    <StackPanel>
+                        <TextBlock Text="12c" Style="{StaticResource TypeH1}" TextAlignment="Center"/>
+                        <TextBlock Text="Fusion Middleware 12.2.1.4" Style="{StaticResource TypeCaption}"
+                                   TextAlignment="Center" Opacity="0.7" Margin="0,4,0,0"/>
+                        <TextBlock Text="JDK 8u202+" Style="{StaticResource TypeCaption}"
+                                   TextAlignment="Center" Opacity="0.5" Margin="0,2,0,0"/>
+                        <Border CornerRadius="3" Padding="6,2" Margin="0,8,0,0"
+                                HorizontalAlignment="Center"
+                                Background="{StaticResource AccentSubtleBrush}">
+                            <TextBlock Text="Recommended" Style="{StaticResource TypeCaption}"
+                                       Foreground="{StaticResource AccentPrimaryBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </ToggleButton>
+
+                <!-- WLS 14c -->
+                <ToggleButton Style="{StaticResource BtnVersionCard}"
+                              Margin="8,0,0,0"
+                              IsChecked="{Binding SelectedVersion,
+                                  Converter={StaticResource EnumToBool},
+                                  ConverterParameter={x:Static enums:WebLogicVersion.WLS_14c}}">
+                    <StackPanel>
+                        <TextBlock Text="14c" Style="{StaticResource TypeH1}" TextAlignment="Center"/>
+                        <TextBlock Text="Fusion Middleware 14.1.2" Style="{StaticResource TypeCaption}"
+                                   TextAlignment="Center" Opacity="0.7" Margin="0,4,0,0"/>
+                        <TextBlock Text="JDK 21 LTS" Style="{StaticResource TypeCaption}"
+                                   TextAlignment="Center" Opacity="0.5" Margin="0,2,0,0"/>
+                        <Border CornerRadius="3" Padding="6,2" Margin="0,8,0,0"
+                                HorizontalAlignment="Center"
+                                Background="{StaticResource SuccessSubtleBrush}">
+                            <TextBlock Text="Latest" Style="{StaticResource TypeCaption}"
+                                       Foreground="{StaticResource SuccessBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </ToggleButton>
+            </UniformGrid>
+
+            <!-- Version details panel -->
+            <Border CornerRadius="8" Padding="16"
+                    Background="{StaticResource BackgroundPanelBrush}"
+                    Margin="0,0,0,24">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{Binding SelectedVersionDescription}"
+                                   Style="{StaticResource TypeBody}"
+                                   TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="24,0,0,0" MinWidth="160">
+                        <TextBlock Text="Requirements" Style="{StaticResource TypeLabel}"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding RequiredJdk}"
+                                   Style="{StaticResource TypeCaption}"
+                                   Foreground="{StaticResource AccentPrimaryBrush}"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding MinimumRam}"
+                                   Style="{StaticResource TypeCaption}"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Component toggles -->
+            <TextBlock Text="Components to Install"
+                       Style="{StaticResource TypeH2}"
+                       Margin="0,0,0,12"/>
+
+            <UniformGrid Columns="2">
+                <CheckBox Content="Oracle Fusion Middleware Infrastructure"
+                          Style="{StaticResource CheckBoxStyle}"
+                          IsChecked="{Binding InstallInfrastructure}"
+                          Margin="0,0,8,8"/>
+                <CheckBox Content="Oracle Forms &amp; Reports"
+                          Style="{StaticResource CheckBoxStyle}"
+                          IsChecked="{Binding InstallFormsReports}"
+                          Margin="8,0,0,8"/>
+                <CheckBox Content="Oracle HTTP Server (Web Tier)"
+                          Style="{StaticResource CheckBoxStyle}"
+                          IsChecked="{Binding InstallOhsWebTier}"
+                          Margin="0,0,8,8"/>
+                <CheckBox Content="Install / Update JDK automatically"
+                          Style="{StaticResource CheckBoxStyle}"
+                          IsChecked="{Binding InstallJdk}"
+                          Margin="8,0,0,8"/>
+                <CheckBox Content="Install Visual C++ Redistributable"
+                          Style="{StaticResource CheckBoxStyle}"
+                          IsChecked="{Binding InstallVcRedist}"
+                          Margin="0,0,8,0"/>
+            </UniformGrid>
+
+            <!-- Environment selector -->
+            <TextBlock Text="Target Environment"
+                       Style="{StaticResource TypeH2}"
+                       Margin="0,24,0,12"/>
+            <ComboBox Style="{StaticResource ComboBoxStyle}"
+                      ItemsSource="{Binding Environments}"
+                      SelectedItem="{Binding Environment}"
+                      Width="240" HorizontalAlignment="Left"/>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,98 @@
+<UserControl x:Class="WEDM.UI.Views.Wizard.SecurityComplianceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:SecurityComplianceViewModel, IsDesignTimeCreatable=False}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+        <StackPanel MaxWidth="920">
+
+            <Border CornerRadius="6" Padding="14,10" Margin="0,0,0,16"
+                    Background="{StaticResource AccentSubtleBrush}">
+                <TextBlock Style="{StaticResource TypeBody}" TextWrapping="Wrap"
+                           Text="Configure how secrets are stored, attach PKCS#12 identity/trust material for Node Manager and servers, and preview compliance before deployment. Reports (HTML + JSON) are written under your reports folder when the deployment workflow runs."/>
+            </Border>
+
+            <TextBlock Text="Compliance preview" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+            <UniformGrid Columns="2" Margin="0,0,0,12">
+                <StackPanel Margin="0,0,12,8">
+                    <TextBlock Text="Overall" Style="{StaticResource TypeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                    <ProgressBar Value="{Binding OverallScore}" Maximum="100" Height="8" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding OverallScore, StringFormat={}{0}%}" Style="{StaticResource TypeCaption}" Margin="0,2,0,0"/>
+                </StackPanel>
+                <StackPanel Margin="12,0,0,8">
+                    <TextBlock Text="Secrets" Style="{StaticResource TypeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                    <ProgressBar Value="{Binding SecretsScore}" Maximum="100" Height="8" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding SecretsScore, StringFormat={}{0}%}" Style="{StaticResource TypeCaption}" Margin="0,2,0,0"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,12,8">
+                    <TextBlock Text="SSL readiness" Style="{StaticResource TypeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                    <ProgressBar Value="{Binding SslScore}" Maximum="100" Height="8" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding SslScore, StringFormat={}{0}%}" Style="{StaticResource TypeCaption}" Margin="0,2,0,0"/>
+                </StackPanel>
+                <StackPanel Margin="12,0,0,8">
+                    <TextBlock Text="Hardening" Style="{StaticResource TypeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                    <ProgressBar Value="{Binding HardeningScore}" Maximum="100" Height="8" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding HardeningScore, StringFormat={}{0}%}" Style="{StaticResource TypeCaption}" Margin="0,2,0,0"/>
+                </StackPanel>
+            </UniformGrid>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="Refresh compliance preview" Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
+                        Command="{Binding RefreshCompliancePreviewCommand}" Padding="16,6"/>
+                <Button Content="Validate identity keystore" Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
+                        Command="{Binding ValidateIdentityKeystoreCommand}" Padding="16,6"/>
+                <Button Content="Generate DEV self-signed PFX" Style="{StaticResource BtnGhost}"
+                        Command="{Binding GenerateDevSelfSignedPfxCommand}" Padding="16,6"
+                        ToolTip="Non-PROD only. Writes a PFX under the reports directory."/>
+            </StackPanel>
+
+            <TextBlock Text="{Binding PreviewStatus}" Style="{StaticResource TypeBody}" TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+            <TextBlock Text="Secrets storage" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+            <TextBlock Text="Preferred storage mode" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <ComboBox Margin="0,0,0,8" Padding="8,4"
+                      ItemsSource="{Binding SecretsStorageModes}"
+                      SelectedItem="{Binding SecretsStorageMode}"/>
+            <CheckBox Content="After validation, mirror admin / DB passwords to the DPAPI vault (session config unchanged)"
+                      Style="{StaticResource CheckBoxStyle}"
+                      IsChecked="{Binding PersistSecretsToDpapiVault}"
+                      Margin="0,0,0,16"/>
+
+            <TextBlock Text="SSL keystores (PKCS#12 / PFX)" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+            <TextBlock Text="Identity keystore path" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                     Text="{Binding IdentityKeystorePath, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="Identity keystore password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                     Text="{Binding IdentityKeystorePassword, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <TextBlock Text="Trust keystore path (optional)" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                     Text="{Binding TrustKeystorePath, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Text="Trust keystore password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                     Text="{Binding TrustKeystorePassword, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <TextBlock Text="Private key alias" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBox Width="220" HorizontalAlignment="Left" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                     Text="{Binding IdentityKeyAlias, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <TextBlock Text="Minimum certificate validity (days)" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBox Width="120" HorizontalAlignment="Left" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                     Text="{Binding MinimumCertValidityDays, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <CheckBox Content="Generate DEV self-signed identity if path is empty (deployment step; non-PROD)"
+                      Style="{StaticResource CheckBoxStyle}"
+                      IsChecked="{Binding GenerateDevSelfSignedIfMissing}"
+                      Margin="0,0,0,16"/>
+
+            <Border Background="{StaticResource BackgroundElevatedBrush}" CornerRadius="6" Padding="12" Margin="0,0,0,8">
+                <TextBlock Style="{StaticResource TypeCaption}" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap"
+                           Text="Keystore passwords are not written to nodemanager.properties or generated WLST. Logging applies redaction; do not paste secrets into ticket systems."/>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

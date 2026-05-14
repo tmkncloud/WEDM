@@ -1,0 +1,107 @@
+<UserControl x:Class="WEDM.UI.Views.Wizard.PatchManagementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:PatchManagementViewModel, IsDesignTimeCreatable=False}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+        <StackPanel MaxWidth="920">
+
+            <Border CornerRadius="6" Padding="14,10" Margin="0,0,0,16"
+                    Background="{StaticResource AccentSubtleBrush}">
+                <CheckBox Content="Include OPatch in full deployment (after WebLogic software install)"
+                          Style="{StaticResource CheckBoxStyle}"
+                          IsChecked="{Binding IncludePatchesInDeployment}"/>
+            </Border>
+
+            <TextBlock Text="Patch staging directory" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" Style="{StaticResource TextBoxStyle}"
+                         Text="{Binding PatchStagingDirectory, UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Grid.Column="1" Content="Browse…" Margin="8,0,0,0" Padding="12,0"
+                        Style="{StaticResource BtnSecondary}"
+                        Command="{Binding BrowsePatchStagingCommand}"/>
+            </Grid>
+
+            <TextBlock Text="Optional: explicit path to opatch.bat" Style="{StaticResource TypeLabel}" Margin="0,8,0,4"/>
+            <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                     Text="{Binding OpatchBatPathOverride, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <UniformGrid Columns="2" Margin="0,0,0,12">
+                <CheckBox Margin="0,4" Style="{StaticResource CheckBoxStyle}"
+                          Content="Use opatch napply (uncheck for sequential apply per folder)"
+                          IsChecked="{Binding UseNapply}"/>
+                <CheckBox Margin="0,4" Style="{StaticResource CheckBoxStyle}"
+                          Content="Run conflict prerequisites"
+                          IsChecked="{Binding RunConflictPrerequisites}"/>
+                <CheckBox Margin="0,4" Style="{StaticResource CheckBoxStyle}"
+                          Content="Capture lsinventory snapshots"
+                          IsChecked="{Binding CaptureInventorySnapshots}"/>
+                <CheckBox Margin="0,4" Style="{StaticResource CheckBoxStyle}"
+                          Content="Block if WebLogic Java processes detected"
+                          IsChecked="{Binding CheckForRunningMiddlewareProcesses}"/>
+            </UniformGrid>
+
+            <TextBlock Text="OPatch timeout (minutes)" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBox Width="120" HorizontalAlignment="Left" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,16"
+                     Text="{Binding OpatchTimeoutMinutes, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <Button Content="Validate readiness" Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
+                        Command="{Binding ValidateReadinessCommand}" Padding="16,6"/>
+                <Button Content="Refresh inventory" Style="{StaticResource BtnSecondary}" Margin="0,0,8,0"
+                        Command="{Binding RefreshInventoryCommand}" Padding="16,6"/>
+                <Button Content="Run patch-only workflow" Style="{StaticResource BtnPrimary}" Margin="0,0,8,0"
+                        Command="{Binding RunPatchOnlyCommand}" Padding="16,6"/>
+                <Button Content="Open patch report" Style="{StaticResource BtnGhost}"
+                        Command="{Binding OpenPatchReportCommand}" Padding="12,6"/>
+            </StackPanel>
+
+            <TextBlock Text="Validation summary" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBlock Text="{Binding ReadinessSummary}" Style="{StaticResource TypeBody}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+            <TextBlock Text="OPatch version output" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <Border Background="{StaticResource BackgroundElevatedBrush}" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+                <TextBox Text="{Binding OpatchVersionText, Mode=OneWay}"
+                         IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                         MinHeight="80" BorderThickness="0" Background="Transparent"
+                         Foreground="{StaticResource TextSecondaryBrush}"/>
+            </Border>
+
+            <TextBlock Text="Last patch workflow" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <TextBlock Text="{Binding LastRunStatus}" Style="{StaticResource TypeBody}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+            <TextBlock Style="{StaticResource TypeCaption}" Foreground="{StaticResource TextMutedBrush}"
+                       Text="{Binding PatchReportHtmlPath}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+
+            <TextBlock Text="Parsed inventory (patches)" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <DataGrid ItemsSource="{Binding ParsedInventoryPatches}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      HeadersVisibility="Column"
+                      Margin="0,0,0,12"
+                      MinHeight="120"
+                      Background="{StaticResource BackgroundElevatedBrush}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Patch ID" Binding="{Binding PatchId}" Width="*"/>
+                    <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="2*"/>
+                    <DataGridTextColumn Header="Applied" Binding="{Binding AppliedOn}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <TextBlock Text="Raw lsinventory output" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+            <Border Background="{StaticResource BackgroundElevatedBrush}" CornerRadius="6" Padding="10">
+                <TextBox Text="{Binding InventoryRawText, Mode=OneWay}"
+                         IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                         MinHeight="160" BorderThickness="0" Background="Transparent"
+                         VerticalScrollBarVisibility="Auto"
+                         Foreground="{StaticResource TextSecondaryBrush}"/>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
