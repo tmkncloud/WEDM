@@ -67,7 +67,8 @@ public sealed partial class VersionSelectionViewModel : WizardStepViewModel
 
     public override bool CanProceed => SelectedVersion != WebLogicVersion.Unknown;
 
-    public IReadOnlyList<string> Environments { get; } = ["Development", "UAT", "Pre-Production", "Production"];
+    public IReadOnlyList<string> Environments { get; } =
+        ["Development", "SIT", "UAT", "Pre-Production", "Production"];
 
     public VersionSelectionViewModel()
     {

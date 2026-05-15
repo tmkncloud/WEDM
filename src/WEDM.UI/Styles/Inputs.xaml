@@ -7,6 +7,8 @@
     <Setter Property="Padding" Value="10,8"/>
     <Setter Property="BorderThickness" Value="0"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Style.Triggers>
       <Trigger Property="IsHighlighted" Value="True">
         <Setter Property="Background" Value="{DynamicResource BackgroundHoverBrush}"/>
@@ -18,6 +20,11 @@
       </Trigger>
     </Style.Triggers>
   </Style>
+
+  <!-- Transparent chrome: receives all pointer/keyboard open gestures -->
+  <ControlTemplate x:Key="ComboBoxToggleButtonTemplate" TargetType="ToggleButton">
+    <Border Background="Transparent" BorderThickness="0"/>
+  </ControlTemplate>
 
   <Style TargetType="TextBox">
     <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}"/>
@@ -123,10 +130,12 @@
     <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="MinHeight" Value="32"/>
-    <Setter Property="Padding" Value="8,4,28,4"/>
+    <Setter Property="Padding" Value="8,6,28,6"/>
     <Setter Property="FontFamily" Value="Segoe UI"/>
     <Setter Property="FontSize" Value="13"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="IsTabStop" Value="True"/>
+    <Setter Property="Focusable" Value="True"/>
     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
     <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
     <Setter Property="ItemContainerStyle" Value="{StaticResource ComboBoxItemStyle}"/>
@@ -134,58 +143,63 @@
       <Setter.Value>
         <ControlTemplate TargetType="ComboBox">
           <Grid SnapsToDevicePixels="True">
-            <ToggleButton x:Name="toggle"
-                          Focusable="False"
-                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                          ClickMode="Press"
-                          Background="Transparent"
-                          BorderThickness="0">
-              <ToggleButton.Template>
-                <ControlTemplate TargetType="ToggleButton">
-                  <Border Background="Transparent"/>
-                </ControlTemplate>
-              </ToggleButton.Template>
-            </ToggleButton>
-            <Border x:Name="border"
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="22"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Visual chrome (non-interactive) -->
+            <Border x:Name="border" Grid.ColumnSpan="2"
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="4">
+                    CornerRadius="4"
+                    IsHitTestVisible="False">
               <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="22"/>
-                </Grid.ColumnDefinitions>
-                <ContentPresenter x:Name="content"
+                <ContentPresenter x:Name="ContentSite"
                                   Margin="{TemplateBinding Padding}"
-                                  VerticalAlignment="Center"
                                   HorizontalAlignment="Left"
+                                  VerticalAlignment="Center"
                                   Content="{TemplateBinding SelectionBoxItem}"
                                   ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                   ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                   ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                   TextElement.Foreground="{TemplateBinding Foreground}"
-                                  IsHitTestVisible="False"/>
+                                  RecognizesAccessKey="True"/>
                 <Path Grid.Column="1" Data="M0,0 L4,4 L8,0"
                       Stroke="{DynamicResource TextSecondaryBrush}"
                       StrokeThickness="1.5"
-                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                      HorizontalAlignment="Right" VerticalAlignment="Center"
+                      Margin="0,0,10,0"/>
               </Grid>
             </Border>
-            <Popup x:Name="popup"
+
+            <!-- Hit-test layer: MUST be above chrome to receive clicks -->
+            <ToggleButton x:Name="ToggleButton" Grid.ColumnSpan="2"
+                          Focusable="False"
+                          ClickMode="Press"
+                          Template="{StaticResource ComboBoxToggleButtonTemplate}"
+                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+
+            <Popup x:Name="PART_Popup"
                    Placement="Bottom"
+                   PlacementTarget="{Binding ElementName=border}"
                    IsOpen="{TemplateBinding IsDropDownOpen}"
                    AllowsTransparency="True"
                    Focusable="False"
                    PopupAnimation="Fade">
-              <Border Background="{DynamicResource BackgroundPanelBrush}"
+              <Border x:Name="DropDownBorder"
+                      Background="{DynamicResource BackgroundPanelBrush}"
                       BorderBrush="{DynamicResource BorderDefaultBrush}"
                       BorderThickness="1"
                       CornerRadius="4"
                       MinWidth="{Binding ActualWidth, ElementName=border}"
-                      MaxHeight="260"
+                      MaxHeight="{TemplateBinding MaxDropDownHeight}"
                       Margin="0,2,0,0">
-                <ScrollViewer SnapsToDevicePixels="True">
+                <ScrollViewer SnapsToDevicePixels="True"
+                              CanContentScroll="True"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
                   <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
                 </ScrollViewer>
               </Border>

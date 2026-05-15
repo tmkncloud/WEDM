@@ -69,7 +69,21 @@ public sealed partial class DatabaseConfigViewModel : WizardStepViewModel
     [ObservableProperty] private string _schemaPrefixError = string.Empty;
     [ObservableProperty] private string _schemaPasswordError = string.Empty;
 
-    public IReadOnlyList<string> NlsCharsets { get; } = ["AL32UTF8", "WE8MSWIN1252", "AR8MSWIN1256", "EE8MSWIN1250"];
+    public IReadOnlyList<string> NlsCharsets { get; } =
+    [
+        "AL32UTF8",
+        "UTF8",
+        "WE8MSWIN1252",
+        "AR8MSWIN1256",
+        "AL16UTF16",
+        "EE8ISO8859P2",
+        "EE8MSWIN1250",
+        "JA16SJIS",
+        "ZHS16GBK",
+        "KO16MSWIN949",
+        "TH8TISASCII",
+        "CL8ISO8859P1",
+    ];
 
     public override bool CanProceed =>
         !RunRcu ||
