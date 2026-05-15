@@ -16,3 +16,8 @@ artifacts/
 .vscode/
 
 publish/
+
+.appdata/
+.dotnet/
+.nuget/
+logs/
