@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © WEDM")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0 Stable+c3ea039e16b3ded0d96e3efa3372e9ceddb41d96")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0 Stable+5b189f0e37721c970e7ad0fe98a11a3593142e3b")]
 [assembly: System.Reflection.AssemblyProductAttribute("WEDM.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WEDM.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.1.0.0")]

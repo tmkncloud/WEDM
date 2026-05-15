@@ -37,9 +37,10 @@
         </UniformGrid>
         <Border CornerRadius="6" Padding="14,12" Background="{StaticResource BackgroundPanelBrush}"
                 BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
-            <TextBlock>
-                <Run Text="Selected: " Style="{StaticResource TypeCaption}"/>
-                <Run Text="{Binding SelectedSourceDisplay, Mode=OneWay}" FontWeight="SemiBold"/>
+            <TextBlock Style="{StaticResource TypeCaption}">
+                <Run Text="Selected: "/>
+                <Run Text="{Binding SelectedSourceDisplay, Mode=OneWay}" FontWeight="SemiBold"
+                     Foreground="{StaticResource TextPrimaryBrush}"/>
             </TextBlock>
         </Border>
     </StackPanel>
