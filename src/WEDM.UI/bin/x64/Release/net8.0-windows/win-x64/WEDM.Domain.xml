@@ -533,5 +533,8 @@
         <member name="M:WEDM.Domain.Models.PrerequisiteValidationResult.New(System.Guid)">
             <summary>Factory — create an empty result associated with a deployment.</summary>
         </member>
+        <member name="T:WEDM.Domain.Models.WlstExecutionEnvironment">
+            <summary>Oracle environment variables injected into WLST PowerShell execution.</summary>
+        </member>
     </members>
 </doc>

@@ -1,5 +1,6 @@
 using System.Text;
 using WEDM.Domain.Models;
+using WEDM.Engine.Wlst;
 
 namespace WEDM.Engine.Automation;
 
@@ -46,14 +47,7 @@ public static class WlstDomainScriptBuilder
     }
 
     public static string ResolveWlstCmd(DeploymentConfiguration config)
-    {
-        var candidates = new[]
-        {
-            Path.Combine(config.Paths.MiddlewareHome, "oracle_common", "common", "bin", "wlst.cmd"),
-            Path.Combine(config.Paths.MiddlewareHome, "wlserver", "common", "bin", "wlst.cmd")
-        };
-        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
-    }
+        => WlstPathResolver.Resolve(config.Paths.MiddlewareHome);
 
     private static string PyRaw(string path)
         => "r'" + path.Replace("'", "\\'", StringComparison.Ordinal) + "'";

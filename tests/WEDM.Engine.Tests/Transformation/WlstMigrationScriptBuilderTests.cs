@@ -14,10 +14,25 @@ public sealed class WlstMigrationScriptBuilderTests
         var ctx = WlstMigrationScriptBuilder.BuildContext(config, @"D:\target\domains\base_domain");
         var script = WlstMigrationScriptBuilder.BuildCreateDomain(ctx);
 
-        Assert.Contains("base_domain", script);
         Assert.Contains("writeDomain", script);
         Assert.Contains("exit()", script);
-        Assert.Contains("DO NOT execute automatically", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("startEdit", script);
+    }
+
+    [Fact]
+    public void BuildCreateMachines_OnlineScript_PersistsEditSession()
+    {
+        var config = SampleConfig();
+        var ctx = WlstMigrationScriptBuilder.BuildContext(config, @"D:\target\domains\base_domain");
+        var script = WlstMigrationScriptBuilder.BuildCreateMachines(config, ctx);
+
+        Assert.Contains("connect(", script);
+        Assert.Contains("edit()", script);
+        Assert.Contains("startEdit()", script);
+        Assert.Contains("save()", script);
+        Assert.Contains("activate(block='true')", script);
+        Assert.Contains("disconnect()", script);
+        Assert.Contains("exit()", script);
     }
 
     [Fact]
@@ -30,6 +45,11 @@ public sealed class WlstMigrationScriptBuilderTests
         Assert.True(scripts.Count >= 6);
         Assert.All(scripts.Values, s => Assert.Contains("exit()", s));
         Assert.Contains("01-create-domain.py", scripts.Keys);
+
+        var online = scripts["04-create-managed-servers.py"];
+        Assert.Contains("startEdit()", online);
+        Assert.Contains("save()", online);
+        Assert.Contains("activate(block='true')", online);
     }
 
     private static MigrationConfiguration SampleConfig() => new()
@@ -46,6 +66,6 @@ public sealed class WlstMigrationScriptBuilderTests
             ],
             Clusters = [new ClusterDescriptor { Name = "ClusterA" }],
         },
-        DomainAnalysis = new DomainAnalysisSnapshot { AdminServerName = "AdminServer", AdminListenPort = 7001 },
+        DomainAnalysis = new DomainAnalysisSnapshot { AdminServerName = "AdminServer", AdminListenPort = 7001, MachineCount = 1 },
     };
 }

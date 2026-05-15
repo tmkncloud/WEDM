@@ -45,4 +45,20 @@ public sealed class WebLogicDomainConfigParserTests
 
         Directory.Delete(temp, true);
     }
+
+    [Fact]
+    public void Parse_MalformedXml_SurfacesWarning()
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "wedm-domain-bad-" + Guid.NewGuid().ToString("N"));
+        var configDir = Path.Combine(temp, "config");
+        Directory.CreateDirectory(configDir);
+        File.WriteAllText(Path.Combine(configDir, "config.xml"), "<domain><unclosed>");
+
+        var analysis = WebLogicDomainConfigParser.Parse(temp);
+
+        Assert.False(analysis.ParseHealthy);
+        Assert.NotEmpty(analysis.ParseWarnings);
+
+        Directory.Delete(temp, true);
+    }
 }

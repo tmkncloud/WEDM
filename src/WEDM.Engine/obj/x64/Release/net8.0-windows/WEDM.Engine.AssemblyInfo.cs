@@ -14,10 +14,11 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © WEDM")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0 Stable+295bccb919ddf3581a86bdbff3483e39d19a7a71")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0 Stable+2bc9d05da4a7e483f30cc5b514e7d927eede1649")]
 [assembly: System.Reflection.AssemblyProductAttribute("WEDM.Engine")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WEDM.Engine")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.1.0.0")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("WEDM.Engine.Tests")]
 [assembly: System.Runtime.Versioning.TargetPlatformAttribute("Windows7.0")]
 [assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("Windows7.0")]
 

@@ -24,7 +24,6 @@ public static class WlstMigrationScriptBuilder
 
     public static string BuildCreateDomain(MigrationContext ctx)
     {
-        var mw   = WlstScriptHelpers.PyRaw(ctx.TargetMiddlewareHome);
         var dom  = WlstScriptHelpers.PyRaw(ctx.TargetDomainHome);
         var tmpl = WlstScriptHelpers.PyRaw(Path.Combine(ctx.TargetMiddlewareHome, "wlserver", "common", "templates", "wls", "wls.jar"));
 
@@ -48,17 +47,16 @@ public static class WlstMigrationScriptBuilder
     {
         var sb = new StringBuilder();
         sb.AppendLine(WlstScriptHelpers.Header("Machine creation (online)", ctx));
-        sb.AppendLine("connect('weblogic', '***CHANGE_PASSWORD***', 't3://" + WlstScriptHelpers.EscapePy(ctx.HostName) + ":" + ctx.AdminListenPort + "')");
+        WlstScriptHelpers.AppendOnlineConnect(sb, ctx);
+        WlstScriptHelpers.AppendOnlineEditBegin(sb);
         var machineCount = Math.Max(1, config.DomainAnalysis.MachineCount);
         for (var i = 1; i <= machineCount; i++)
         {
             var name = $"Machine_{i}";
-            sb.AppendLine($"# create machine {name}");
             sb.AppendLine($"cd('/')");
             sb.AppendLine($"create('{WlstScriptHelpers.EscapePy(name)}','Machine')");
         }
-        sb.AppendLine("disconnect()");
-        sb.AppendLine("exit()");
+        WlstScriptHelpers.AppendOnlineScriptFooter(sb, usedEditSession: true);
         return sb.ToString();
     }
 
@@ -66,18 +64,16 @@ public static class WlstMigrationScriptBuilder
     {
         var sb = new StringBuilder();
         sb.AppendLine(WlstScriptHelpers.Header("Cluster recreation (online)", ctx));
-        sb.AppendLine("connect('weblogic', '***CHANGE_PASSWORD***', 't3://" + WlstScriptHelpers.EscapePy(ctx.HostName) + ":" + ctx.AdminListenPort + "')");
+        WlstScriptHelpers.AppendOnlineConnect(sb, ctx);
+        WlstScriptHelpers.AppendOnlineEditBegin(sb);
         foreach (var cluster in config.Topology.Clusters)
-        {
             sb.AppendLine($"create('{WlstScriptHelpers.EscapePy(cluster.Name)}','Cluster')");
-        }
         if (config.Topology.Clusters.Count == 0 && config.Topology.ClusterCount > 0)
         {
             for (var i = 0; i < config.Topology.ClusterCount; i++)
                 sb.AppendLine($"create('Cluster_{i + 1}','Cluster')");
         }
-        sb.AppendLine("disconnect()");
-        sb.AppendLine("exit()");
+        WlstScriptHelpers.AppendOnlineScriptFooter(sb, usedEditSession: true);
         return sb.ToString();
     }
 
@@ -85,7 +81,8 @@ public static class WlstMigrationScriptBuilder
     {
         var sb = new StringBuilder();
         sb.AppendLine(WlstScriptHelpers.Header("Managed server recreation (online)", ctx));
-        sb.AppendLine("connect('weblogic', '***CHANGE_PASSWORD***', 't3://" + WlstScriptHelpers.EscapePy(ctx.HostName) + ":" + ctx.AdminListenPort + "')");
+        WlstScriptHelpers.AppendOnlineConnect(sb, ctx);
+        WlstScriptHelpers.AppendOnlineEditBegin(sb);
         foreach (var ms in config.Topology.ManagedServers)
         {
             sb.AppendLine($"create('{WlstScriptHelpers.EscapePy(ms.Name)}','Server')");
@@ -95,8 +92,7 @@ public static class WlstMigrationScriptBuilder
             if (!string.IsNullOrWhiteSpace(ms.Cluster))
                 sb.AppendLine($"set('Cluster','{WlstScriptHelpers.EscapePy(ms.Cluster)}')");
         }
-        sb.AppendLine("disconnect()");
-        sb.AppendLine("exit()");
+        WlstScriptHelpers.AppendOnlineScriptFooter(sb, usedEditSession: true);
         return sb.ToString();
     }
 
@@ -104,18 +100,18 @@ public static class WlstMigrationScriptBuilder
     {
         var sb = new StringBuilder();
         sb.AppendLine(WlstScriptHelpers.Header("JDBC resource recreation (online)", ctx));
-        sb.AppendLine("connect('weblogic', '***CHANGE_PASSWORD***', 't3://" + WlstScriptHelpers.EscapePy(ctx.HostName) + ":" + ctx.AdminListenPort + "')");
+        WlstScriptHelpers.AppendOnlineConnect(sb, ctx);
+        WlstScriptHelpers.AppendOnlineEditBegin(sb);
         var count = Math.Max(0, config.DomainAnalysis.JdbcResourceCount);
         for (var i = 1; i <= count; i++)
         {
             sb.AppendLine($"# Recreate JDBC data source DS_Migration_{i}");
-            sb.AppendLine($"# cd('/')");
-            sb.AppendLine($"# create('DS_Migration_{i}','JDBCSystemResource')");
+            sb.AppendLine($"cd('/')");
+            sb.AppendLine($"create('DS_Migration_{i}','JDBCSystemResource')");
         }
         if (count == 0)
-            sb.AppendLine("# No JDBC resources detected in source domain analysis — add data sources manually.");
-        sb.AppendLine("disconnect()");
-        sb.AppendLine("exit()");
+            sb.AppendLine("# No JDBC resources detected in source domain analysis — operator review required.");
+        WlstScriptHelpers.AppendOnlineScriptFooter(sb, usedEditSession: true);
         return sb.ToString();
     }
 
@@ -123,10 +119,9 @@ public static class WlstMigrationScriptBuilder
     {
         var sb = new StringBuilder();
         sb.AppendLine(WlstScriptHelpers.Header("Node Manager enrollment (online)", ctx));
-        sb.AppendLine("connect('weblogic', '***CHANGE_PASSWORD***', 't3://" + WlstScriptHelpers.EscapePy(ctx.HostName) + ":" + ctx.AdminListenPort + "')");
+        WlstScriptHelpers.AppendOnlineConnect(sb, ctx);
         sb.AppendLine("nmEnroll(" + WlstScriptHelpers.PyRaw(ctx.TargetDomainHome) + ", " + WlstScriptHelpers.PyRaw(ctx.TargetMiddlewareHome) + ")");
-        sb.AppendLine("disconnect()");
-        sb.AppendLine("exit()");
+        WlstScriptHelpers.AppendOnlineDisconnect(sb);
         return sb.ToString();
     }
 
@@ -135,11 +130,13 @@ public static class WlstMigrationScriptBuilder
         var sb = new StringBuilder();
         sb.AppendLine(WlstScriptHelpers.Header("SSL/TLS preparation (online)", ctx));
         sb.AppendLine("# Configure identity/keystore and enable TLS on admin and managed server channels.");
-        sb.AppendLine("connect('weblogic', '***CHANGE_PASSWORD***', 't3://" + WlstScriptHelpers.EscapePy(ctx.HostName) + ":" + ctx.AdminListenPort + "')");
+        WlstScriptHelpers.AppendOnlineConnect(sb, ctx);
+        WlstScriptHelpers.AppendOnlineEditBegin(sb);
         if (!config.Topology.SslEnabled)
-            sb.AppendLine("# Source domain did not have SSL enabled — plan certificate provisioning before cutover.");
-        sb.AppendLine("disconnect()");
-        sb.AppendLine("exit()");
+            sb.AppendLine("# Source domain did not have active SSL listeners — plan certificate provisioning before cutover.");
+        else
+            sb.AppendLine("# Source domain had SSL enabled — mirror keystore/trust configuration during cutover.");
+        WlstScriptHelpers.AppendOnlineScriptFooter(sb, usedEditSession: true);
         return sb.ToString();
     }
 

@@ -14,7 +14,7 @@ public static class JvmStartupAnalyzer
         "PermSize", "MaxPermSize", "UseConcMarkSweepGC", "CMSPermGenSweepingEnabled",
     ];
 
-    public static List<string> ExtractJvmArguments(string domainHome, string? adminServerName = null)
+    public static List<string> ExtractJvmArguments(string domainHome, string? adminServerName = null, ICollection<string>? warnings = null)
     {
         var args = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         adminServerName ??= "AdminServer";
@@ -34,7 +34,10 @@ public static class JvmStartupAnalyzer
                 foreach (Match m in ArgPattern.Matches(text))
                     args.Add(m.Value);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                warnings?.Add($"JVM startup script parse failed ({script}): {ex.Message}");
+            }
         }
 
         return args.OrderBy(a => a, StringComparer.OrdinalIgnoreCase).ToList();

@@ -1,14 +1,10 @@
-using System.Text;
-using System.Text.RegularExpressions;
 using WEDM.Domain.Models;
 
 namespace WEDM.Engine.Discovery.Scanners;
 
-/// <summary>Metadata-level Forms environment scanner (read-only, no binary parsing).</summary>
+/// <summary>Metadata-level Forms environment scanner (read-only, binary-safe .fmb analysis).</summary>
 public static class FormsMetadataScanner
 {
-    private static readonly Regex WebUtilPattern = new(@"webutil|WEBUTIL", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
     public static FormsReportsMetadataSnapshot Scan(string? formsHome, string? middlewareHome)
     {
         var snapshot = new FormsReportsMetadataSnapshot();
@@ -37,13 +33,9 @@ public static class FormsMetadataScanner
 
             if (ext.Equals(".fmb", StringComparison.OrdinalIgnoreCase) && File.Exists(file))
             {
-                try
-                {
-                    var head = File.ReadAllText(file, Encoding.UTF8).AsSpan(0, Math.Min(4096, (int)new FileInfo(file).Length));
-                    if (WebUtilPattern.IsMatch(head.ToString()))
-                        webUtilModules.Add(Path.GetFileNameWithoutExtension(file));
-                }
-                catch { }
+                var deps = FormsBinaryScanner.DetectDependencies(file);
+                if (deps.Any(d => d.Contains("WEBUTIL", StringComparison.OrdinalIgnoreCase)))
+                    webUtilModules.Add(Path.GetFileNameWithoutExtension(file));
             }
         }
 
@@ -72,7 +64,7 @@ public static class FormsMetadataScanner
         if (formsweb is not null)
         {
             var text = SafeDiscoveryIO.ReadAllTextSafe(formsweb, 512_000);
-            if (text is not null && WebUtilPattern.IsMatch(text))
+            if (text is not null && text.Contains("webutil", StringComparison.OrdinalIgnoreCase))
                 snapshot.UsesWebUtil = true;
         }
 
@@ -87,7 +79,7 @@ public static class FormsMetadataScanner
         {
             return Directory.EnumerateFiles(root, fileName, SearchOption.AllDirectories).FirstOrDefault();
         }
-        catch
+        catch (Exception)
         {
             return null;
         }

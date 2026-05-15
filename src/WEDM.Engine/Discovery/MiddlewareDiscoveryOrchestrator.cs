@@ -99,13 +99,17 @@ public sealed class MiddlewareDiscoveryOrchestrator : IMiddlewareDiscoveryOrches
                     NodeManagerConfigParser.ApplyNodeManagerSettings(domainAnalysis, domainHome!);
 
                     var adminName = domainAnalysis.AdminServerName ?? "AdminServer";
-                    var servers   = WebLogicDomainConfigParser.ParseManagedServers(domainHome!, adminName);
-                    var clusters  = WebLogicDomainConfigParser.ParseClusters(domainHome!);
-                    var jvmArgs   = JvmStartupAnalyzer.ExtractJvmArguments(domainHome!, adminName);
+                    var servers   = WebLogicDomainConfigParser.ParseManagedServers(domainHome!, adminName, domainAnalysis);
+                    var clusters  = WebLogicDomainConfigParser.ParseClusters(domainHome!, domainAnalysis);
+                    var jvmArgs   = JvmStartupAnalyzer.ExtractJvmArguments(domainHome!, adminName, domainAnalysis.ParseWarnings);
+                    warnings.AddRange(domainAnalysis.ParseWarnings);
                     domainAnalysis.DeprecatedJvmFlags = JvmStartupAnalyzer
                         .AnalyzeDeprecatedArgs(jvmArgs)
                         .Select(f => f.Title.Replace("Deprecated JVM flag: ", "", StringComparison.Ordinal))
                         .ToList();
+
+                    var ssl = WebLogicSslDetector.Analyze(domainHome!);
+                    warnings.AddRange(ssl.Warnings);
 
                     topology = new MiddlewareTopologySnapshot
                     {
@@ -118,8 +122,8 @@ public sealed class MiddlewareDiscoveryOrchestrator : IMiddlewareDiscoveryOrches
                         NodeManagerConfigured = domainAnalysis.NodeManagerPropertiesPath is not null,
                         NodeManagerType       = domainAnalysis.NodeManagerSecure == true ? "SSL" : "Plain",
                         JvmArguments          = jvmArgs,
-                        SslEnabled            = DetectSsl(domainHome!),
-                        SslProtocolSummary    = DetectSsl(domainHome!) ? "SSL configuration detected in domain" : "Plain",
+                        SslEnabled            = ssl.AnySslEnabled,
+                        SslProtocolSummary    = ssl.Summary,
                         ScanStatus            = DiscoveryScanStatus.InProgress,
                         DiscoveredAtUtc       = DateTimeOffset.UtcNow,
                     };
@@ -325,10 +329,4 @@ public sealed class MiddlewareDiscoveryOrchestrator : IMiddlewareDiscoveryOrches
         return $"t3://localhost:{domain.AdminListenPort}";
     }
 
-    private static bool DetectSsl(string domainHome)
-    {
-        var config = Path.Combine(domainHome, "config", "config.xml");
-        var text = SafeDiscoveryIO.ReadAllTextSafe(config, 512_000);
-        return text?.Contains("ssl", StringComparison.OrdinalIgnoreCase) == true;
-    }
 }

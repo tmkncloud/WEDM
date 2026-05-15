@@ -4,7 +4,7 @@ using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Transformation;
-using WEDM.Engine.Transformation.Wlst;
+using WEDM.Engine.Wlst;
 
 namespace WEDM.Engine.Execution;
 
@@ -29,7 +29,7 @@ public sealed class MigrationPreflightValidator : IMigrationPreflightValidator
             checks.Add(Blocker("MiddlewareHome", "Target middleware home is required."));
         else
         {
-            var wlst = ResolveWlst(mw);
+            var wlst = WlstPathResolver.Resolve(mw);
             if (!File.Exists(wlst))
                 checks.Add(Blocker("WLST", $"WLST not found at '{wlst}'."));
             else
@@ -82,16 +82,6 @@ public sealed class MigrationPreflightValidator : IMigrationPreflightValidator
         result.WarningCount = checks.Count(c => c.Severity == PreflightSeverity.Warning);
         result.Passed = result.BlockerCount == 0;
         return result;
-    }
-
-    private static string ResolveWlst(string middlewareHome)
-    {
-        var candidates = new[]
-        {
-            Path.Combine(middlewareHome, "oracle_common", "common", "bin", "wlst.cmd"),
-            Path.Combine(middlewareHome, "wlserver", "common", "bin", "wlst.cmd"),
-        };
-        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
     }
 
     private static bool IsPortInUse(int port)

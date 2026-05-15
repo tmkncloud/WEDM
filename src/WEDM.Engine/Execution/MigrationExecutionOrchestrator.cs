@@ -3,6 +3,7 @@ using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Transformation;
+using WEDM.Engine.Wlst;
 
 namespace WEDM.Engine.Execution;
 
@@ -151,7 +152,12 @@ public sealed class MigrationExecutionOrchestrator : IMigrationExecutionOrchestr
                 throw new InvalidOperationException("No WLST scripts found in workspace.");
 
             var mw = configuration.Target.MiddlewareHome ?? configuration.Source.MiddlewareHome!;
-            var wlstCmd = ResolveWlst(mw);
+            var wlstCmd = WlstPathResolver.Resolve(mw);
+            var wlstEnv = new WlstExecutionEnvironment
+            {
+                OracleHome = mw,
+                JavaHome   = configuration.Target.JavaHome ?? configuration.Source.JavaHome,
+            };
             var logDir  = Path.Combine(result.WorkspacePath, MigrationExecutionStateStore.ExecutionDir, "logs");
             Directory.CreateDirectory(logDir);
 
@@ -163,7 +169,7 @@ public sealed class MigrationExecutionOrchestrator : IMigrationExecutionOrchestr
                     {
                         foreach (var script in scripts)
                         {
-                            var rec = await _wlst.ExecuteScriptAsync(wlstCmd, script, options.Credentials, dryRun: true, logDir, linked.Token);
+                            var rec = await _wlst.ExecuteScriptAsync(wlstCmd, script, options.Credentials, dryRun: true, logDir, linked.Token, environment: wlstEnv);
                             result.WlstExecutions.Add(rec);
                             session.AppendLog($"[DRY-RUN] {rec.ScriptName}");
                         }
@@ -187,7 +193,7 @@ public sealed class MigrationExecutionOrchestrator : IMigrationExecutionOrchestr
                         {
                             linked.Token.ThrowIfCancellationRequested();
                             session.AppendLog($"Executing {Path.GetFileName(script)}…");
-                            var rec = await _wlst.ExecuteScriptAsync(wlstCmd, script, options.Credentials, dryRun: false, logDir, linked.Token, timeout);
+                            var rec = await _wlst.ExecuteScriptAsync(wlstCmd, script, options.Credentials, dryRun: false, logDir, linked.Token, timeout, wlstEnv);
                             result.WlstExecutions.Add(rec);
                             result.RollbackManifest.ExecutedScripts.Add(Path.GetFileName(script));
                             if (!rec.Success)
@@ -347,13 +353,4 @@ public sealed class MigrationExecutionOrchestrator : IMigrationExecutionOrchestr
         });
     }
 
-    private static string ResolveWlst(string middlewareHome)
-    {
-        var candidates = new[]
-        {
-            Path.Combine(middlewareHome, "oracle_common", "common", "bin", "wlst.cmd"),
-            Path.Combine(middlewareHome, "wlserver", "common", "bin", "wlst.cmd"),
-        };
-        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
-    }
 }

@@ -43,7 +43,8 @@ public interface IWlstExecutionService
         bool dryRun,
         string logDirectory,
         CancellationToken cancellationToken = default,
-        TimeSpan? timeout = null);
+        TimeSpan? timeout = null,
+        WlstExecutionEnvironment? environment = null);
 }
 
 public interface IMigrationExecutionValidationEngine

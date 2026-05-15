@@ -17,4 +17,7 @@
     <ProjectReference Include="..\WEDM.Domain\WEDM.Domain.csproj" />
     <ProjectReference Include="..\WEDM.Infrastructure\WEDM.Infrastructure.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="WEDM.Engine.Tests" />
+  </ItemGroup>
 </Project>

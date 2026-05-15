@@ -49,6 +49,7 @@ public static class WlstOnlineScriptBuilder
             sb.AppendLine("    set('Machine', machineName)");
         }
 
+        sb.AppendLine("    save()");
         sb.AppendLine("    activate(block='true')");
         sb.AppendLine("finally:");
         sb.AppendLine("  try:");

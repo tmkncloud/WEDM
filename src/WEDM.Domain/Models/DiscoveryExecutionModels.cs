@@ -155,6 +155,12 @@ public sealed class DomainAnalysisSnapshot
 
     [JsonPropertyName("deprecatedJvmFlags")]
     public List<string> DeprecatedJvmFlags { get; set; } = [];
+
+    [JsonPropertyName("parseWarnings")]
+    public List<string> ParseWarnings { get; set; } = [];
+
+    [JsonPropertyName("parseHealthy")]
+    public bool ParseHealthy { get; set; } = true;
 }
 
 public sealed class DiscoveryScanOptions
