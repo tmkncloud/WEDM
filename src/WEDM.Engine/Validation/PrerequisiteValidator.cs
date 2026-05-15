@@ -31,6 +31,7 @@ public sealed class PrerequisiteValidator : IValidationEngine
 {
     private readonly ILoggingService _log;
     private readonly Infrastructure.Registry.WindowsRegistryService _registry;
+    private readonly IPayloadAcquisitionService _payloads;
 
     // Minimum hardware requirements per version
     private static readonly Dictionary<WebLogicVersion, (long MinRamMb, int MinCores, long MinDiskGb)> HwRequirements = new()
@@ -50,10 +51,12 @@ public sealed class PrerequisiteValidator : IValidationEngine
 
     public PrerequisiteValidator(
         ILoggingService log,
-        Infrastructure.Registry.WindowsRegistryService registry)
+        Infrastructure.Registry.WindowsRegistryService registry,
+        IPayloadAcquisitionService payloads)
     {
         _log      = log;
         _registry = registry;
+        _payloads = payloads;
     }
 
     // ── Full validation suite ─────────────────────────────────────────────────
@@ -356,36 +359,7 @@ public sealed class PrerequisiteValidator : IValidationEngine
 
     public Task<PrerequisiteValidationResult> ValidatePayloadIntegrityAsync(
         DeploymentConfiguration config, CancellationToken ct = default)
-    {
-        var result = new PrerequisiteValidationResult();
-        var version = config.WebLogicVersion.ToString().Replace("WLS_", "");
-        var payloadDir = Path.Combine(config.PayloadBasePath, version.ToLower());
-
-        if (!Directory.Exists(payloadDir))
-        {
-            result.Warn("Payload", $"Payload directory not found: {payloadDir}",
-                "Ensure installer binaries are placed in the payload folder.");
-            return Task.FromResult(result);
-        }
-
-        result.Pass("Payload", $"Payload directory found: {payloadDir} ✔");
-
-        // Check minimum file size (non-zero files indicate complete downloads)
-        var files = Directory.GetFiles(payloadDir, "*", SearchOption.AllDirectories);
-        foreach (var file in files.Where(f => f.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)
-                                            || f.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-                                            || f.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)))
-        {
-            var fi = new FileInfo(file);
-            if (fi.Length < 1024)
-                result.Warn($"Payload.{fi.Name}", $"File appears too small: {fi.Name} ({fi.Length} bytes)",
-                    "Re-download the installer binary.");
-            else
-                result.Pass($"Payload.{fi.Name}", $"{fi.Name}: {fi.Length / 1024 / 1024:N0} MB ✔");
-        }
-
-        return Task.FromResult(result);
-    }
+        => _payloads.ValidateAndPrepareAsync(config, ct);
 
     // ── Database Connectivity ─────────────────────────────────────────────────
 

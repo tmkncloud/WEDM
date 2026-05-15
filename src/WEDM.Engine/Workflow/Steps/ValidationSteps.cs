@@ -61,11 +61,16 @@ public sealed class ValidatePayloadIntegrityStep : IStepExecutor
         var result = await _validator.ValidatePayloadIntegrityAsync(config, cancellationToken);
         sw.Stop();
 
-        var summary = $"{result.PassCount} payload checks passed, {result.ErrorCount} errors";
+        var summary = $"{result.PassCount} passed, {result.FatalCount} fatal, {result.ErrorCount} error(s), {result.WarnCount} warning(s)";
         _log.Info($"Payload validation completed: {summary}", "Validation");
 
-        return result.CanProceed
-            ? StepExecutionResult.Ok(summary, sw.Elapsed)
-            : StepExecutionResult.Fail($"Payload validation failed: {summary}", 11);
+        if (!result.CanProceed)
+        {
+            var blockers = string.Join("; ", result.Errors.Concat(result.Findings.Where(f => f.Severity == Domain.Enums.ValidationSeverity.Fatal))
+                .Select(f => f.Message));
+            return StepExecutionResult.Fail($"Payload validation blocked deployment: {blockers}", 11);
+        }
+
+        return StepExecutionResult.Ok(summary, sw.Elapsed);
     }
 }

@@ -205,6 +205,9 @@
         <member name="T:WEDM.Domain.Interfaces.IPatchReportWriter">
             <summary>Persists OPatch compliance artefacts (HTML + JSON).</summary>
         </member>
+        <member name="T:WEDM.Domain.Interfaces.IPayloadAcquisitionService">
+            <summary>Detects, downloads, and resolves JDK / VC++ installer payloads for deployment.</summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.IPowerShellExecutor">
             <summary>
             Contract for executing PowerShell scripts and inline commands from C# code.
@@ -369,6 +372,9 @@
         <member name="P:WEDM.Domain.Models.DeploymentConfiguration.DeploymentEnvironment">
             <summary>DEV / SIT / UAT / PROD preset — drives defaults for hardening and online automation.</summary>
         </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.PayloadAcquisition">
+            <summary>JDK/VC++ detection, download cache, and middleware payload rules.</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentReport">
             <summary>
             Complete deployment report generated at the end of a deployment session.
@@ -450,6 +456,9 @@
         </member>
         <member name="T:WEDM.Domain.Models.PatchReadinessResult">
             <summary>Result of patch-environment checks plus optional live <c>opatch version</c> output.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.PayloadAcquisitionConfiguration">
+            <summary>Controls prerequisite installer detection, download, and caching.</summary>
         </member>
         <member name="T:WEDM.Domain.Models.WedmReleaseChannelKind">
             <summary>Logical release train for future update feeds (no network transport in core).</summary>

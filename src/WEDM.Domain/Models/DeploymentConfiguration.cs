@@ -124,6 +124,10 @@ public sealed class DeploymentConfiguration
 
     [JsonPropertyName("domainOnlineAutomation")]
     public DomainOnlineAutomationConfiguration DomainOnlineAutomation { get; set; } = new();
+
+    /// <summary>JDK/VC++ detection, download cache, and middleware payload rules.</summary>
+    [JsonPropertyName("payloadAcquisition")]
+    public PayloadAcquisitionConfiguration PayloadAcquisition { get; set; } = new();
 }
 
 // ── Sub-models ─────────────────────────────────────────────────────────────────

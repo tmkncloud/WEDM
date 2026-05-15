@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             xmlns:behaviors="clr-namespace:WEDM.UI.Behaviors"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:SecurityComplianceViewModel, IsDesignTimeCreatable=False}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
@@ -66,15 +67,17 @@
             <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
                      Text="{Binding IdentityKeystorePath, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Text="Identity keystore password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-            <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
-                     Text="{Binding IdentityKeystorePassword, UpdateSourceTrigger=PropertyChanged}"/>
+            <PasswordBox Style="{StaticResource PasswordBoxStyle}" Margin="0,0,0,8"
+                         behaviors:PasswordBoxBinding.BindPassword="True"
+                         behaviors:PasswordBoxBinding.BoundPassword="{Binding IdentityKeystorePassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"/>
 
             <TextBlock Text="Trust keystore path (optional)" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
             <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
                      Text="{Binding TrustKeystorePath, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Text="Trust keystore password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-            <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
-                     Text="{Binding TrustKeystorePassword, UpdateSourceTrigger=PropertyChanged}"/>
+            <PasswordBox Style="{StaticResource PasswordBoxStyle}" Margin="0,0,0,8"
+                         behaviors:PasswordBoxBinding.BindPassword="True"
+                         behaviors:PasswordBoxBinding.BoundPassword="{Binding TrustKeystorePassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"/>
 
             <TextBlock Text="Private key alias" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
             <TextBox Width="220" HorizontalAlignment="Left" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"

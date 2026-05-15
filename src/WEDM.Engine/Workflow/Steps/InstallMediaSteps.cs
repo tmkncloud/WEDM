@@ -1,7 +1,7 @@
-using System.Xml.Linq;
+using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
-using WEDM.Engine.Automation;
+using WEDM.Engine.Payload;
 using WEDM.Infrastructure.Registry;
 
 namespace WEDM.Engine.Workflow.Steps;
@@ -10,12 +10,17 @@ namespace WEDM.Engine.Workflow.Steps;
 public sealed class InstallJdkStep : IStepExecutor
 {
     private readonly IPowerShellExecutor _ps;
-    private readonly ILoggingService     _log;
+    private readonly ILoggingService _log;
+    private readonly IPayloadAcquisitionService _payloads;
 
-    public InstallJdkStep(IPowerShellExecutor ps, ILoggingService log)
+    public InstallJdkStep(
+        IPowerShellExecutor ps,
+        ILoggingService log,
+        IPayloadAcquisitionService payloads)
     {
-        _ps  = ps;
-        _log = log;
+        _ps       = ps;
+        _log      = log;
+        _payloads = payloads;
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -24,18 +29,29 @@ public sealed class InstallJdkStep : IStepExecutor
         CancellationToken cancellationToken = default)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        if (string.IsNullOrWhiteSpace(config.JdkInstallerPath) || !File.Exists(config.JdkInstallerPath))
+        if (!config.Components.HasFlag(InstallationComponents.JDK))
+            return StepExecutionResult.Ok("JDK installation not selected — skipped.", sw.Elapsed);
+
+        if (config.PayloadAcquisition.SkipInstallWhenPresent && _payloads.TryDetectCompatibleJdk(config, out var existing))
         {
-            return StepExecutionResult.Fail(
-                "jdkInstallerPath must be set to an existing JDK .msi or silent-setup .exe (see deployment JSON / wizard).");
+            config.Java.JavaHome = existing!;
+            _log.Info($"JDK already installed at {existing} — skipped.", "Install.JDK");
+            return StepExecutionResult.Ok($"Already Installed — JDK at {existing}", sw.Elapsed);
         }
 
+        var resolved = await _payloads.EnsureJdkInstallerAsync(config, cancellationToken).ConfigureAwait(false);
+        if (resolved.Status == PayloadResolutionStatus.AlreadyInstalled)
+            return StepExecutionResult.Ok(resolved.Message, sw.Elapsed);
+        if (!resolved.Success || string.IsNullOrWhiteSpace(resolved.InstallerPath))
+            return StepExecutionResult.Fail(resolved.Message);
+
+        var installer = resolved.InstallerPath;
         Directory.CreateDirectory(config.Java.InstallDirectory);
-        var inst = PsSingleQuote(Path.GetFullPath(config.Java.InstallDirectory));
-        var media = PsSingleQuote(Path.GetFullPath(config.JdkInstallerPath));
+        var inst  = PsSingleQuote(Path.GetFullPath(config.Java.InstallDirectory));
+        var media = PsSingleQuote(Path.GetFullPath(installer));
 
         string body;
-        if (config.JdkInstallerPath.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
+        if (installer.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
         {
             body = $@"
 $msi = {media}
@@ -55,7 +71,7 @@ exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
 ";
         }
 
-        _log.Info("Starting JDK silent installation (elevated).", "Install.JDK");
+        _log.Info($"Starting JDK silent installation ({resolved.Status}): {installer}", "Install.JDK");
         var result = await _ps.ExecuteCommandAsync(
             body.Trim(),
             workingDirectory: config.Paths.TempDirectory,
@@ -66,10 +82,7 @@ exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
         sw.Stop();
         if (result.TimedOut)
             return StepExecutionResult.Fail("JDK installer timed out.", -2);
-        if (result.ExitCode != 0)
-            return StepExecutionResult.Fail($"JDK install failed (exit {result.ExitCode}): {result.Errors}", result.ExitCode);
-
-        return StepExecutionResult.Ok($"JDK installed under {config.Java.InstallDirectory}", sw.Elapsed);
+        return InstallerExitCodes.ToStepResult(result.ExitCode, "JDK", sw.Elapsed, config.Java.InstallDirectory);
     }
 
     private static string PsSingleQuote(string s) => "'" + s.Replace("'", "''", StringComparison.Ordinal) + "'";
@@ -79,12 +92,17 @@ exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
 public sealed class InstallVcRedistStep : IStepExecutor
 {
     private readonly IPowerShellExecutor _ps;
-    private readonly ILoggingService     _log;
+    private readonly ILoggingService _log;
+    private readonly IPayloadAcquisitionService _payloads;
 
-    public InstallVcRedistStep(IPowerShellExecutor ps, ILoggingService log)
+    public InstallVcRedistStep(
+        IPowerShellExecutor ps,
+        ILoggingService log,
+        IPayloadAcquisitionService payloads)
     {
-        _ps  = ps;
-        _log = log;
+        _ps       = ps;
+        _log      = log;
+        _payloads = payloads;
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -93,20 +111,28 @@ public sealed class InstallVcRedistStep : IStepExecutor
         CancellationToken cancellationToken = default)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        if (string.IsNullOrWhiteSpace(config.VcRedistX64InstallerPath) ||
-            !File.Exists(config.VcRedistX64InstallerPath))
+        if (!config.Components.HasFlag(InstallationComponents.VCRedist))
+            return StepExecutionResult.Ok("VC++ installation not selected — skipped.", sw.Elapsed);
+
+        if (config.PayloadAcquisition.SkipInstallWhenPresent && _payloads.IsVcRedistInstalled())
         {
-            return StepExecutionResult.Fail(
-                "vcRedistX64InstallerPath must point to Microsoft vc_redist.x64.exe (offline installer).");
+            _log.Info("VC++ Redistributable already installed — skipped.", "Install.VC");
+            return StepExecutionResult.Ok("Already Installed — Visual C++ Redistributable", sw.Elapsed);
         }
 
-        var exe = PsSingleQuote(Path.GetFullPath(config.VcRedistX64InstallerPath));
+        var resolved = await _payloads.EnsureVcRedistInstallerAsync(config, cancellationToken).ConfigureAwait(false);
+        if (resolved.Status == PayloadResolutionStatus.AlreadyInstalled)
+            return StepExecutionResult.Ok(resolved.Message, sw.Elapsed);
+        if (!resolved.Success || string.IsNullOrWhiteSpace(resolved.InstallerPath))
+            return StepExecutionResult.Fail(resolved.Message);
+
+        var exe = PsSingleQuote(Path.GetFullPath(resolved.InstallerPath));
         var body = $@"
 $p = Start-Process -FilePath {exe} -ArgumentList @('/install', '/quiet', '/norestart') -Wait -PassThru -NoNewWindow
 exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
 ";
 
-        _log.Info("Installing VC++ Redistributable x64 (elevated).", "Install.VC");
+        _log.Info($"Installing VC++ Redistributable ({resolved.Status}).", "Install.VC");
         var result = await _ps.ExecuteCommandAsync(
             body.Trim(),
             workingDirectory: config.Paths.TempDirectory,
@@ -117,10 +143,7 @@ exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
         sw.Stop();
         if (result.TimedOut)
             return StepExecutionResult.Fail("VC++ installer timed out.", -2);
-        if (result.ExitCode != 0)
-            return StepExecutionResult.Fail($"VC++ install failed (exit {result.ExitCode}): {result.Errors}", result.ExitCode);
-
-        return StepExecutionResult.Ok("VC++ x64 redistributable installed.", sw.Elapsed);
+        return InstallerExitCodes.ToStepResult(result.ExitCode, "VC++", sw.Elapsed);
     }
 
     private static string PsSingleQuote(string s) => "'" + s.Replace("'", "''", StringComparison.Ordinal) + "'";
@@ -130,12 +153,17 @@ exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
 public sealed class ConfigureJavaHomeStep : IStepExecutor
 {
     private readonly WindowsRegistryService _registry;
-    private readonly ILoggingService        _log;
+    private readonly ILoggingService _log;
+    private readonly IPayloadAcquisitionService _payloads;
 
-    public ConfigureJavaHomeStep(WindowsRegistryService registry, ILoggingService log)
+    public ConfigureJavaHomeStep(
+        WindowsRegistryService registry,
+        ILoggingService log,
+        IPayloadAcquisitionService payloads)
     {
         _registry = registry;
         _log      = log;
+        _payloads = payloads;
     }
 
     public Task<StepExecutionResult> ExecuteAsync(
@@ -144,10 +172,20 @@ public sealed class ConfigureJavaHomeStep : IStepExecutor
         CancellationToken cancellationToken = default)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        if (!config.Components.HasFlag(InstallationComponents.JDK))
+            return Task.FromResult(StepExecutionResult.Ok("JAVA_HOME configuration skipped (JDK not selected).", sw.Elapsed));
+
         var javaHome = ResolveJavaHome(config);
+        if (javaHome is null || !Directory.Exists(javaHome))
+        {
+            if (_payloads.TryDetectCompatibleJdk(config, out var detected))
+                javaHome = detected;
+        }
+
         if (javaHome is null || !Directory.Exists(javaHome))
             return Task.FromResult(StepExecutionResult.Fail("Could not resolve JAVA_HOME after JDK install."));
 
+        config.Java.JavaHome = javaHome;
         _registry.SetSystemEnvironmentVariable("JAVA_HOME", javaHome);
         _registry.AppendToSystemPath(Path.Combine(javaHome, "bin"));
         sw.Stop();

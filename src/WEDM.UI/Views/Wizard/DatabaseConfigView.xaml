@@ -4,6 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             xmlns:behaviors="clr-namespace:WEDM.UI.Behaviors"
+             xmlns:val="clr-namespace:WEDM.UI.Validation"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:DatabaseConfigViewModel, IsDesignTimeCreatable=False}">
     <StackPanel>
@@ -36,7 +38,12 @@
             </StackPanel>
             <StackPanel Margin="8,0,0,0">
                 <TextBlock Text="SYS / SYSTEM Password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding SysPassword, UpdateSourceTrigger=PropertyChanged}"/>
+                <PasswordBox Style="{StaticResource PasswordBoxStyle}"
+                             behaviors:PasswordBoxBinding.BindPassword="True"
+                             behaviors:PasswordBoxBinding.BoundPassword="{Binding SysPassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                             val:ValidationProperties.HasError="{Binding SysPasswordError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Text="{Binding SysPasswordError}" Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding SysPasswordError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
         </UniformGrid>
 
@@ -47,7 +54,12 @@
             </StackPanel>
             <StackPanel Margin="4,0,8,0">
                 <TextBlock Text="Schema Password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding SchemaPassword, UpdateSourceTrigger=PropertyChanged}"/>
+                <PasswordBox Style="{StaticResource PasswordBoxStyle}"
+                             behaviors:PasswordBoxBinding.BindPassword="True"
+                             behaviors:PasswordBoxBinding.BoundPassword="{Binding SchemaPassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                             val:ValidationProperties.HasError="{Binding SchemaPasswordError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Text="{Binding SchemaPasswordError}" Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding SchemaPasswordError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
             <StackPanel Margin="4,0,0,0">
                 <TextBlock Text="NLS Charset" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>

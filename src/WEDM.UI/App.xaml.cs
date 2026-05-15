@@ -10,6 +10,7 @@ using WEDM.Engine.Transformation;
 using WEDM.Engine.Opatch;
 using WEDM.Engine.PowerShell;
 using WEDM.Engine.ResponseFiles;
+using WEDM.Engine.Payload;
 using WEDM.Engine.Validation;
 using WEDM.Engine.Workflow;
 using WEDM.Engine.Workflow.Steps;
@@ -148,6 +149,7 @@ public partial class App : System.Windows.Application
 
         // ── Engine ────────────────────────────────────────────────────────────
         services.AddSingleton<ResponseFileGenerator>();
+        services.AddSingleton<IPayloadAcquisitionService, DeploymentPayloadService>();
         services.AddSingleton<IValidationEngine, PrerequisiteValidator>();
 
         // Step executors (transient — stateless automation workers)

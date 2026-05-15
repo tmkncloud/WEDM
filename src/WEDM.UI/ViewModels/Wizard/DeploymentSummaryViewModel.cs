@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.IO;
-using System.Text.Json;
 using WEDM.Domain.Models;
+using WEDM.Infrastructure.Security;
 using WEDM.UI.ViewModels.Base;
 
 namespace WEDM.UI.ViewModels.Wizard;
@@ -63,8 +63,7 @@ public sealed partial class DeploymentSummaryViewModel : WizardStepViewModel
         };
         if (dlg.ShowDialog() != true) return;
 
-        var json = JsonSerializer.Serialize(_config, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(dlg.FileName, json);
+        await File.WriteAllTextAsync(dlg.FileName, DeploymentConfigurationSanitizer.ToSafeJson(_config));
     }
 
     private void PopulateSummary(DeploymentConfiguration config)
@@ -76,9 +75,10 @@ public sealed partial class DeploymentSummaryViewModel : WizardStepViewModel
                 : $"OPatch: enabled after install — staging: {config.Patches.PatchStagingDirectory}";
 
         VersionSummary = $"""
-            Version    : {config.WebLogicVersion}
-            Environment: {config.Environment}
-            Components : {config.Components}
+            Version           : {config.WebLogicVersion}
+            Environment label : {config.Environment}
+            Deployment profile: {config.DeploymentEnvironment}
+            Components        : {config.Components}
             {patchMode}
             """;
 
@@ -109,7 +109,7 @@ public sealed partial class DeploymentSummaryViewModel : WizardStepViewModel
         ComponentSummary = $"Components: {flags}";
 
         SecurityHardeningSummary = $"""
-            Environment profile : {config.DeploymentEnvironment}
+            Deployment profile  : {config.DeploymentEnvironment} ({config.Environment})
             Production domain   : {(config.DomainHardening.ProductionMode ? "yes" : "no")}
             Online WLST / nmEnroll: {(config.DomainOnlineAutomation.Enabled ? "enabled" : "disabled")}
             Admin SSL port       : {config.Domain.AdminSslPort}
@@ -118,7 +118,7 @@ public sealed partial class DeploymentSummaryViewModel : WizardStepViewModel
             Strict post-validation: {(config.DomainHardening.StrictPostValidation ? "yes" : "no")}
             """;
 
-        ConfigJson = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+        ConfigJson = DeploymentConfigurationSanitizer.ToSafeJson(config);
     }
 
     public override void ApplyToConfiguration(DeploymentConfiguration config)

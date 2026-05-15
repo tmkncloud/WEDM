@@ -12,13 +12,17 @@ namespace WEDM.Engine.Tests.Validation;
 public sealed class PrerequisiteValidatorTests
 {
     private readonly Mock<ILoggingService> _logMock = new();
+    private readonly Mock<IPayloadAcquisitionService> _payloadMock = new();
     private readonly WindowsRegistryService _registry;
     private readonly PrerequisiteValidator _sut;
 
     public PrerequisiteValidatorTests()
     {
         _registry = new WindowsRegistryService(_logMock.Object);
-        _sut      = new PrerequisiteValidator(_logMock.Object, _registry);
+        _payloadMock
+            .Setup(p => p.ValidateAndPrepareAsync(It.IsAny<DeploymentConfiguration>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PrerequisiteValidationResult());
+        _sut = new PrerequisiteValidator(_logMock.Object, _registry, _payloadMock.Object);
     }
 
     [Fact]

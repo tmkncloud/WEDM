@@ -6,6 +6,7 @@
              xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
              xmlns:converters="clr-namespace:WEDM.UI.Converters"
              xmlns:val="clr-namespace:WEDM.UI.Validation"
+             xmlns:behaviors="clr-namespace:WEDM.UI.Behaviors"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:DomainConfigViewModel, IsDesignTimeCreatable=False}">
     <StackPanel>
@@ -89,15 +90,19 @@
             </StackPanel>
             <StackPanel Margin="4,0,8,0">
                 <TextBlock Text="Password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminPassword, UpdateSourceTrigger=PropertyChanged}"
-                         val:ValidationProperties.HasError="{Binding AdminPasswordError, Converter={StaticResource StringToBool}}"/>
+                <PasswordBox Style="{StaticResource PasswordBoxStyle}"
+                             behaviors:PasswordBoxBinding.BindPassword="True"
+                             behaviors:PasswordBoxBinding.BoundPassword="{Binding AdminPassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                             val:ValidationProperties.HasError="{Binding AdminPasswordError, Converter={StaticResource StringToBool}}"/>
                 <TextBlock Text="{Binding AdminPasswordError}" Style="{StaticResource ValidationErrorText}"
                            Visibility="{Binding AdminPasswordError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
             <StackPanel Margin="4,0,0,0">
                 <TextBlock Text="Confirm Password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding ConfirmPassword, UpdateSourceTrigger=PropertyChanged}"
-                         val:ValidationProperties.HasError="{Binding ConfirmPasswordError, Converter={StaticResource StringToBool}}"/>
+                <PasswordBox Style="{StaticResource PasswordBoxStyle}"
+                             behaviors:PasswordBoxBinding.BindPassword="True"
+                             behaviors:PasswordBoxBinding.BoundPassword="{Binding ConfirmPassword, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                             val:ValidationProperties.HasError="{Binding ConfirmPasswordError, Converter={StaticResource StringToBool}}"/>
                 <TextBlock Text="{Binding ConfirmPasswordError}" Style="{StaticResource ValidationErrorText}"
                            Visibility="{Binding ConfirmPasswordError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>

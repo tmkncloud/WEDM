@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using WEDM.Domain.Enums;
 using WEDM.Domain.Models;
+using WEDM.Engine.Automation;
 using WEDM.UI.ViewModels.Base;
 
 namespace WEDM.UI.ViewModels.Wizard;
@@ -77,10 +78,25 @@ public sealed partial class VersionSelectionViewModel : WizardStepViewModel
         StepIcon        = "⚡";
     }
 
+    public override Task OnNavigatingToAsync(DeploymentConfiguration config)
+    {
+        SelectedVersion = config.WebLogicVersion;
+        Environment     = string.IsNullOrWhiteSpace(config.Environment)
+            ? ToEnvironmentLabel(config.DeploymentEnvironment)
+            : config.Environment;
+        InstallJdk              = config.Components.HasFlag(InstallationComponents.JDK);
+        InstallVcRedist         = config.Components.HasFlag(InstallationComponents.VCRedist);
+        InstallInfrastructure   = config.Components.HasFlag(InstallationComponents.Infrastructure);
+        InstallFormsReports     = config.Components.HasFlag(InstallationComponents.FormsReports);
+        InstallOhsWebTier       = config.Components.HasFlag(InstallationComponents.OHSWebTier);
+        return Task.CompletedTask;
+    }
+
     public override void ApplyToConfiguration(DeploymentConfiguration config)
     {
         config.WebLogicVersion = SelectedVersion;
         config.Environment     = Environment;
+        EnvironmentProfilePresets.Apply(config, ToDeploymentEnvironmentKind(Environment));
 
         var components = InstallationComponents.None;
         if (InstallJdk)          components |= InstallationComponents.JDK;
@@ -93,4 +109,23 @@ public sealed partial class VersionSelectionViewModel : WizardStepViewModel
         config.Components = components;
         config.ConfigureFormsReports = InstallFormsReports;
     }
+
+    private static DeploymentEnvironmentKind ToDeploymentEnvironmentKind(string env) => env switch
+    {
+        "Development"    => DeploymentEnvironmentKind.Dev,
+        "SIT"            => DeploymentEnvironmentKind.Sit,
+        "UAT"            => DeploymentEnvironmentKind.Uat,
+        "Pre-Production" => DeploymentEnvironmentKind.Uat,
+        "Production"     => DeploymentEnvironmentKind.Prod,
+        _                => DeploymentEnvironmentKind.Dev
+    };
+
+    private static string ToEnvironmentLabel(DeploymentEnvironmentKind kind) => kind switch
+    {
+        DeploymentEnvironmentKind.Dev  => "Development",
+        DeploymentEnvironmentKind.Sit  => "SIT",
+        DeploymentEnvironmentKind.Uat  => "UAT",
+        DeploymentEnvironmentKind.Prod => "Production",
+        _                              => "Development"
+    };
 }
