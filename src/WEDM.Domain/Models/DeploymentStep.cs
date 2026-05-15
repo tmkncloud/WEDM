@@ -80,12 +80,30 @@ public sealed class StepExecutionResult
     public int      ExitCode   { get; init; }
     public string   Output     { get; init; } = string.Empty;
     public string   Error      { get; init; } = string.Empty;
+    public string   Notes      { get; init; } = string.Empty;
+    public bool     RetryRecommended { get; init; } = true;
     public TimeSpan Duration   { get; init; }
     public Exception? Exception { get; init; }
+    public PrerequisiteValidationResult? ValidationSnapshot { get; init; }
 
     public static StepExecutionResult Ok(string output = "", TimeSpan duration = default)
         => new() { Success = true, ExitCode = 0, Output = output, Duration = duration };
 
-    public static StepExecutionResult Fail(string error, int exitCode = 1, Exception? ex = null)
-        => new() { Success = false, ExitCode = exitCode, Error = error, Exception = ex };
+    public static StepExecutionResult Fail(
+        string error,
+        int exitCode = 1,
+        Exception? ex = null,
+        string? notes = null,
+        bool retryRecommended = true,
+        PrerequisiteValidationResult? validation = null)
+        => new()
+        {
+            Success            = false,
+            ExitCode           = exitCode,
+            Error              = error,
+            Exception          = ex,
+            Notes              = notes ?? string.Empty,
+            RetryRecommended   = retryRecommended,
+            ValidationSnapshot = validation
+        };
 }

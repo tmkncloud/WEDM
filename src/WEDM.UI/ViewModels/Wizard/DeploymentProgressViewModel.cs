@@ -119,7 +119,7 @@ public sealed partial class DeploymentProgressViewModel : WizardStepViewModel
             CanRetry     = IsFailed;
             FinalStatusMessage = IsCompleted
                 ? $"✔  Deployment completed successfully in {report.TotalDuration?.ToString(@"hh\:mm\:ss")}"
-                : $"✘  Deployment failed — {report.StepsFailed} step(s) failed. Check logs below.";
+                : BuildFailureMessage(report);
 
             if (!string.IsNullOrWhiteSpace(report.DomainHome))
                 ReportPath = Path.Combine(
@@ -216,6 +216,23 @@ public sealed partial class DeploymentProgressViewModel : WizardStepViewModel
         _elapsedTimer?.Stop();
         _elapsedTimer?.Dispose();
         _elapsedTimer = null;
+    }
+
+    private static string BuildFailureMessage(DeploymentReport report)
+    {
+        var msg = $"✘  Deployment failed — {report.StepsFailed} step(s) failed.";
+        if (report.Validation is null)
+            return msg + " Check logs below.";
+
+        var blockers = report.Validation.Findings
+            .Where(f => !f.Passed && f.Severity >= Domain.Enums.ValidationSeverity.Error)
+            .Select(f => f.CheckName)
+            .Take(4)
+            .ToList();
+
+        return blockers.Count == 0
+            ? msg + " Check logs below."
+            : $"{msg} Failed checks: {string.Join(", ", blockers)}. See log for remediation.";
     }
 }
 

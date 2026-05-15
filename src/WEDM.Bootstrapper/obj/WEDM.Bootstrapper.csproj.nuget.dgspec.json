@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\WEDM.Bootstrapper.csproj": {}
+    "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\WEDM.Bootstrapper.csproj": {}
   },
   "projects": {
-    "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\WEDM.Bootstrapper.csproj": {
+    "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\WEDM.Bootstrapper.csproj": {
       "version": "1.1.0",
       "restore": {
-        "projectUniqueName": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\WEDM.Bootstrapper.csproj",
+        "projectUniqueName": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\WEDM.Bootstrapper.csproj",
         "projectName": "WEDM.Bootstrap",
-        "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\WEDM.Bootstrapper.csproj",
-        "packagesPath": "d:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
-        "outputPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\obj\\",
+        "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\WEDM.Bootstrapper.csproj",
+        "packagesPath": "D:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
+        "outputPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Bootstrapper\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "d:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
+          "D:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
           "C:\\Users\\mostafa\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [

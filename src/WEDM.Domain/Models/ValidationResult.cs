@@ -66,9 +66,10 @@ public sealed class PrerequisiteValidationResult
         return f;
     }
 
-    public ValidationFinding Fatal(string checkName, string message, string? remediation = null)
+    public ValidationFinding Fatal(string checkName, string message, string? remediation = null,
+        object? actual = null, object? expected = null)
     {
-        var f = new ValidationFinding(checkName, ValidationSeverity.Fatal, false, message, remediation);
+        var f = new ValidationFinding(checkName, ValidationSeverity.Fatal, false, message, remediation, actual, expected);
         _findings.Add(f);
         return f;
     }

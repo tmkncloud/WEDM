@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\WEDM.Application.csproj": {}
+    "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\WEDM.Application.csproj": {}
   },
   "projects": {
-    "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\WEDM.Application.csproj": {
+    "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\WEDM.Application.csproj": {
       "version": "1.1.0",
       "restore": {
-        "projectUniqueName": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\WEDM.Application.csproj",
+        "projectUniqueName": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\WEDM.Application.csproj",
         "projectName": "WEDM.Application",
-        "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\WEDM.Application.csproj",
-        "packagesPath": "d:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
-        "outputPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\obj\\",
+        "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\WEDM.Application.csproj",
+        "packagesPath": "D:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
+        "outputPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Application\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "d:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
+          "D:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
           "C:\\Users\\mostafa\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
@@ -27,14 +27,14 @@
           "net8.0-windows7.0": {
             "targetAlias": "net8.0-windows",
             "projectReferences": {
-              "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj": {
-                "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj"
+              "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj": {
+                "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj"
               },
-              "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj": {
-                "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj"
+              "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj": {
+                "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj"
               },
-              "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj": {
-                "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj"
+              "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj": {
+                "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj"
               }
             }
           }
@@ -87,17 +87,17 @@
         }
       }
     },
-    "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj": {
+    "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj": {
       "version": "1.1.0",
       "restore": {
-        "projectUniqueName": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj",
+        "projectUniqueName": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj",
         "projectName": "WEDM.Domain",
-        "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj",
-        "packagesPath": "d:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
-        "outputPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\obj\\",
+        "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj",
+        "packagesPath": "D:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
+        "outputPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "d:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
+          "D:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
           "C:\\Users\\mostafa\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
@@ -152,17 +152,17 @@
         }
       }
     },
-    "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj": {
+    "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj": {
       "version": "1.1.0",
       "restore": {
-        "projectUniqueName": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj",
+        "projectUniqueName": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj",
         "projectName": "WEDM.Engine",
-        "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj",
-        "packagesPath": "d:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
-        "outputPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\obj\\",
+        "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\WEDM.Engine.csproj",
+        "packagesPath": "D:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
+        "outputPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Engine\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "d:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
+          "D:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
           "C:\\Users\\mostafa\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
@@ -175,11 +175,11 @@
           "net8.0-windows7.0": {
             "targetAlias": "net8.0-windows",
             "projectReferences": {
-              "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj": {
-                "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj"
+              "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj": {
+                "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj"
               },
-              "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj": {
-                "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj"
+              "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj": {
+                "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj"
               }
             }
           }
@@ -240,17 +240,17 @@
         }
       }
     },
-    "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj": {
+    "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj": {
       "version": "1.1.0",
       "restore": {
-        "projectUniqueName": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj",
+        "projectUniqueName": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj",
         "projectName": "WEDM.Infrastructure",
-        "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj",
-        "packagesPath": "d:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
-        "outputPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\obj\\",
+        "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\WEDM.Infrastructure.csproj",
+        "packagesPath": "D:\\Tmkn\\weblogic tools\\WEDM\\.nuget\\packages",
+        "outputPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "d:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
+          "D:\\Tmkn\\weblogic tools\\WEDM\\NuGet.Config",
           "C:\\Users\\mostafa\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
@@ -263,8 +263,8 @@
           "net8.0-windows7.0": {
             "targetAlias": "net8.0-windows",
             "projectReferences": {
-              "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj": {
-                "projectPath": "d:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj"
+              "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj": {
+                "projectPath": "D:\\Tmkn\\weblogic tools\\WEDM\\src\\WEDM.Domain\\WEDM.Domain.csproj"
               }
             }
           }

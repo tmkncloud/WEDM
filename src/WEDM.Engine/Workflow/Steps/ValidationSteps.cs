@@ -1,5 +1,6 @@
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
+using WEDM.Engine.Validation;
 
 namespace WEDM.Engine.Workflow.Steps;
 
@@ -27,12 +28,20 @@ public sealed class ValidatePrerequisitesStep : IStepExecutor
         var result = await _validator.ValidateAllAsync(config, cancellationToken);
         sw.Stop();
 
-        var summary = $"{result.PassCount} passed, {result.WarnCount} warnings, {result.ErrorCount} errors, {result.Fatals} fatal";
+        var summary = PrerequisiteValidationReporter.FormatSummary(result);
         _log.Info($"Prerequisite validation completed: {summary}", "Validation");
 
-        return result.CanProceed
-            ? StepExecutionResult.Ok(summary, sw.Elapsed)
-            : StepExecutionResult.Fail($"Prerequisite validation failed: {summary}", 10);
+        if (result.CanProceed)
+            return StepExecutionResult.Ok(summary, sw.Elapsed);
+
+        var details = PrerequisiteValidationReporter.FormatDetailedBlockers(result);
+
+        return StepExecutionResult.Fail(
+            $"Prerequisite validation failed: {summary}",
+            exitCode: 10,
+            notes: details,
+            retryRecommended: PrerequisiteValidationReporter.IsRetryRecommended(result),
+            validation: result);
     }
 }
 
@@ -61,16 +70,19 @@ public sealed class ValidatePayloadIntegrityStep : IStepExecutor
         var result = await _validator.ValidatePayloadIntegrityAsync(config, cancellationToken);
         sw.Stop();
 
-        var summary = $"{result.PassCount} passed, {result.FatalCount} fatal, {result.ErrorCount} error(s), {result.WarnCount} warning(s)";
+        var summary = PrerequisiteValidationReporter.FormatSummary(result);
         _log.Info($"Payload validation completed: {summary}", "Validation");
 
-        if (!result.CanProceed)
-        {
-            var blockers = string.Join("; ", result.Errors.Concat(result.Findings.Where(f => f.Severity == Domain.Enums.ValidationSeverity.Fatal))
-                .Select(f => f.Message));
-            return StepExecutionResult.Fail($"Payload validation blocked deployment: {blockers}", 11);
-        }
+        if (result.CanProceed)
+            return StepExecutionResult.Ok(summary, sw.Elapsed);
 
-        return StepExecutionResult.Ok(summary, sw.Elapsed);
+        var details = PrerequisiteValidationReporter.FormatDetailedBlockers(result);
+
+        return StepExecutionResult.Fail(
+            $"Payload validation blocked deployment: {summary}",
+            exitCode: 11,
+            notes: details,
+            retryRecommended: PrerequisiteValidationReporter.IsRetryRecommended(result),
+            validation: result);
     }
 }

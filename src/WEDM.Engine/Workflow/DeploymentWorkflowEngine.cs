@@ -1,6 +1,7 @@
 using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
+using WEDM.Engine.Validation;
 using WEDM.Engine.Workflow.Steps;
 
 namespace WEDM.Engine.Workflow;
@@ -47,7 +48,7 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
         var steps = new List<DeploymentStep>();
         int seq = 1;
 
-        void Add(string name, string desc, string cat, bool canRollback = true, string? rollback = null)
+        void Add(string name, string desc, string cat, bool canRollback = true, string? rollback = null, int maxRetries = 2)
             => steps.Add(new DeploymentStep
             {
                 Sequence       = seq++,
@@ -57,7 +58,7 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
                 IsRequired     = true,
                 CanRollback    = canRollback,
                 RollbackAction = rollback,
-                MaxRetries     = 2
+                MaxRetries     = maxRetries
             });
 
         void AppendOpatchBlock()
@@ -82,8 +83,8 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
         }
 
         // ── 1. Prerequisite Validation ─────────────────────────────────────────
-        Add("ValidatePrerequisites",      "Run full prerequisite validation suite",              "Validation",    canRollback: false);
-        Add("ValidatePayloadIntegrity",   "Verify installer binary file integrity",              "Validation",    canRollback: false);
+        Add("ValidatePrerequisites",      "Run full prerequisite validation suite",              "Validation",    canRollback: false, maxRetries: 0);
+        Add("ValidatePayloadIntegrity",   "Verify installer binary file integrity",              "Validation",    canRollback: false, maxRetries: 0);
 
         // ── 2. System Preparation ──────────────────────────────────────────────
         Add("CreateOracleFolders",        "Create Oracle directory structure",                   "Preparation",   rollback: "Remove-OracleFolders");
@@ -234,10 +235,15 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
                     break;
                 }
 
-                _log.StepFailed(step.Name, result.Error, result.ExitCode, result.Exception);
+                _log.StepFailed(step.Name, result.Error, result.ExitCode, result.Exception, result.Notes);
                 step.MarkFailed(result.Error, result.ExitCode);
+                if (!string.IsNullOrWhiteSpace(result.Notes))
+                    step.OutputLog = result.Notes;
 
-                if (!step.CanRetry) break;
+                if (result.ValidationSnapshot is not null)
+                    report.Validation = result.ValidationSnapshot;
+
+                if (!result.RetryRecommended || !step.CanRetry) break;
             }
 
             StepCompleted?.Invoke(this, step);
@@ -249,6 +255,9 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
                 _log.Error($"Required step '{step.Name}' failed after {step.AttemptCount} attempt(s). Aborting.", category: "Workflow");
                 report.FinalStatus = DeploymentStatus.Failed;
                 report.CompletedAt = DateTimeOffset.UtcNow;
+
+                if (report.Validation is not null && !report.Validation.CanProceed)
+                    PrerequisiteValidationReporter.LogBlockingFindings(_log, report.Validation, "Rollback");
 
                 if (config.EnableRollback)
                     await RollbackAsync(steps, config, cancellationToken);

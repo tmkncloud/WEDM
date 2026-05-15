@@ -88,6 +88,10 @@ public sealed class PrerequisiteValidator : IValidationEngine
 
         _log.Info($"Validation complete: {result.PassedCount}/{result.TotalChecks} passed, " +
                   $"{result.FailedCount} errors, {result.WarningCount} warnings", "Validation");
+
+        if (!result.CanProceed)
+            PrerequisiteValidationReporter.LogBlockingFindings(_log, result);
+
         return result;
     }
 
@@ -289,8 +293,11 @@ public sealed class PrerequisiteValidator : IValidationEngine
             if (config.Components.HasFlag(Domain.Enums.InstallationComponents.JDK))
                 result.Pass("JDK", "JDK not yet installed — will be installed automatically by WEDM ✔");
             else
-                result.Fatal("JDK", "JDK not found and JDK installation is disabled.",
-                    "Enable JDK installation or manually install the correct JDK version.");
+                result.Fatal("JDKVersionValidation",
+                    "JDK not found and JDK installation is disabled.",
+                    "Enable JDK installation in the wizard, or install Temurin/OpenJDK manually and set JAVA_HOME.",
+                    actual: "Not installed",
+                    expected: $"JDK {req.MinMajor}");
             return Task.FromResult(result);
         }
 

@@ -30,7 +30,7 @@ public interface ILoggingService
     void StepSucceeded(string stepName, TimeSpan duration, string? output = null);
 
     /// <summary>Log failure of a step.</summary>
-    void StepFailed(string stepName, string error, int exitCode, Exception? ex = null);
+    void StepFailed(string stepName, string error, int exitCode, Exception? ex = null, string? details = null);
 
     /// <summary>Log a single line of script output (stdout/stderr).</summary>
     void ScriptOutput(string line, bool isError = false);

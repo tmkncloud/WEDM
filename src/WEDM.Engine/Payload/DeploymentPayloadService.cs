@@ -45,7 +45,9 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
                     result.Fatal("Payload.JDK", jdk.Message,
                         config.PayloadAcquisition.AutoDownloadMissing
                             ? "Check network connectivity and payload cache permissions."
-                            : "Set jdkInstallerPath or enable auto-download in payloadAcquisition.");
+                            : "Set jdkInstallerPath or enable auto-download in payloadAcquisition.",
+                        actual: "Missing",
+                        expected: $"JDK {RequiredJdkMajor(config.WebLogicVersion)} installer (Temurin/OpenJDK)");
             }
         }
 
@@ -209,9 +211,11 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
         var payloadDir = Path.Combine(config.PayloadBasePath, version.ToLowerInvariant());
         if (!Directory.Exists(payloadDir))
         {
-            result.Fatal("Payload.Middleware",
+            result.Fatal("MiddlewarePayloadValidation",
                 $"Middleware payload directory not found: {payloadDir}",
-                "Place Oracle installer media under the versioned payload folder before deployment.");
+                $"Place Oracle installer media in payloads/{version.ToLowerInvariant()}/ before deployment.",
+                actual: "Missing",
+                expected: payloadDir);
             return;
         }
 
@@ -224,9 +228,11 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
 
         if (files.Count == 0)
         {
-            result.Fatal("Payload.Middleware",
+            result.Fatal("MiddlewarePayloadValidation",
                 $"No installer binaries found under {payloadDir}",
-                "Add infrastructure.jar, wls.jar, or Forms/Reports media to the payload folder.");
+                "Add fmw_11g_infra.jar, wls.jar, or Forms/Reports media to the payload folder.",
+                actual: "Missing",
+                expected: "Installer JAR/EXE/ZIP under payload directory");
             return;
         }
 

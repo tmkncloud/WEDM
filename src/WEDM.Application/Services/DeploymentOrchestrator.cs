@@ -114,6 +114,7 @@ public sealed class DeploymentOrchestrator : IDisposable
 
                 if (!prereqs.CanProceed)
                 {
+                    Engine.Validation.PrerequisiteValidationReporter.LogBlockingFindings(_log, prereqs, "DeploymentOrchestrator");
                     var fatalMsg = $"Prerequisite validation failed — {prereqs.Fatals} fatal error(s). Deployment aborted.";
                     _log.Error(fatalMsg, category: "DeploymentOrchestrator");
                     RaiseStepSynthetic("Prerequisites", fatalMsg, StepStatus.Failed, 100);
@@ -140,7 +141,7 @@ public sealed class DeploymentOrchestrator : IDisposable
             // ── Phase 2: Workflow Execution ─────────────────────────────────
             var steps = _workflow.BuildStepPlan(config);
             var report = await _workflow.RunAsync(config, steps, ct);
-            report.Validation = prereqs;
+            report.Validation ??= prereqs;
 
             // ── Phase 3: Post-deployment report ────────────────────────────
             if (!string.IsNullOrWhiteSpace(config.Paths.ReportsDirectory))
@@ -333,6 +334,12 @@ public sealed class DeploymentOrchestrator : IDisposable
             var dbResult = await _validator.ValidateDatabaseConnectivityAsync(config, ct);
             result.Merge(dbResult);
         }
+
+        var payloadResult = await _validator.ValidatePayloadIntegrityAsync(config, ct);
+        result.Merge(payloadResult);
+
+        if (!result.CanProceed)
+            Engine.Validation.PrerequisiteValidationReporter.LogBlockingFindings(_log, result, "DeploymentOrchestrator");
 
         _log.Info(
             $"Prerequisites: {result.PassCount} passed, {result.WarnCount} warnings, " +

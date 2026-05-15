@@ -108,10 +108,18 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
         Write(LogLevel.Info, msg, "Workflow", details: output);
     }
 
-    public void StepFailed(string stepName, string error, int exitCode, Exception? ex = null)
+    public void StepFailed(string stepName, string error, int exitCode, Exception? ex = null, string? details = null)
     {
         var msg = $"✘  Step FAILED: {stepName}  [exit={exitCode}]  {error}";
-        Write(LogLevel.Error, msg, "Workflow", ex);
+        Write(LogLevel.Error, msg, "Workflow", ex, details: details);
+
+        if (string.IsNullOrWhiteSpace(details)) return;
+
+        foreach (var line in details.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var level = line.StartsWith("•", StringComparison.Ordinal) ? LogLevel.Error : LogLevel.Info;
+            Write(level, line, "Validation");
+        }
     }
 
     public void ScriptOutput(string line, bool isError = false)
@@ -212,6 +220,9 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
         sb.AppendLine(".ok{color:#3FB950}.fail{color:#F85149}.warn{color:#D29922}.skip{color:#8B949E}");
         sb.AppendLine(".progress-bar{background:#21262D;border-radius:4px;height:8px}");
         sb.AppendLine(".progress-fill{height:8px;border-radius:4px;background:#2F81F7}");
+        sb.AppendLine(".finding{margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #21262D}");
+        sb.AppendLine(".finding h3{color:#F85149;font-size:1rem;margin-bottom:6px}");
+        sb.AppendLine(".finding p{margin:4px 0;font-size:.9rem;color:#C9D1D9}");
         sb.AppendLine("</style></head><body>");
 
         // Header
@@ -239,6 +250,8 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
         KvRow(sb, "Middleware Home", report.MiddlewareHome);
         sb.AppendLine("</div></div>");
 
+        AppendFailedPrerequisitesSection(sb, report);
+
         // Steps table
         sb.AppendLine("<div class='card'><h2>Deployment Steps</h2><table>");
         sb.AppendLine("<tr><th>#</th><th>Step</th><th>Status</th><th>Duration</th><th>Exit Code</th><th>Notes</th></tr>");
@@ -258,8 +271,11 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
                 Domain.Enums.StepStatus.Skipped   => "⊘",
                 _                                  => "⏳"
             };
-            var note = string.IsNullOrWhiteSpace(step.ErrorMessage) ? step.OutputLog : step.ErrorMessage;
-            if (note?.Length > 80) note = note[..80] + "…";
+            var note = step.Status == Domain.Enums.StepStatus.Failed && !string.IsNullOrWhiteSpace(step.OutputLog)
+                ? step.OutputLog
+                : string.IsNullOrWhiteSpace(step.ErrorMessage) ? step.OutputLog : step.ErrorMessage;
+            note = note?.Replace('\r', ' ').Replace('\n', ' ');
+            if (note?.Length > 200) note = note[..200] + "…";
             note = SecretRedactor.Redact(note ?? string.Empty);
             sb.AppendLine($"<tr><td>{step.Sequence}</td><td>{step.Name}</td>" +
                           $"<td class='{cls}'>{icon} {step.Status}</td>" +
@@ -275,6 +291,37 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
 
         static void KvRow(StringBuilder sb, string k, string v)
             => sb.AppendLine($"<div class='kv'><span class='k'>{k}</span><span class='v'>{v}</span></div>");
+
+        static void AppendFailedPrerequisitesSection(StringBuilder sb, DeploymentReport report)
+        {
+            if (report.Validation is null) return;
+
+            var blockers = report.Validation.Findings
+                .Where(f => !f.Passed && f.Severity >= ValidationSeverity.Error)
+                .OrderByDescending(f => f.Severity)
+                .ThenBy(f => f.CheckName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (blockers.Count == 0) return;
+
+            sb.AppendLine("<div class='card'><h2>Failed Prerequisites</h2>");
+            foreach (var f in blockers)
+            {
+                sb.AppendLine($"<div class='finding'><h3>{HtmlEncode(f.CheckName)}</h3>");
+                sb.AppendLine($"<p>{HtmlEncode(f.Message)}</p>");
+                if (f.ExpectedValue is not null)
+                    sb.AppendLine($"<p><strong>Expected:</strong> {HtmlEncode(f.ExpectedValue)}</p>");
+                if (f.ActualValue is not null)
+                    sb.AppendLine($"<p><strong>Actual:</strong> {HtmlEncode(f.ActualValue)}</p>");
+                if (!string.IsNullOrWhiteSpace(f.Remediation))
+                    sb.AppendLine($"<p><strong>Remediation:</strong> {HtmlEncode(f.Remediation)}</p>");
+                sb.AppendLine("</div>");
+            }
+            sb.AppendLine("</div>");
+        }
+
+        static string HtmlEncode(object? value)
+            => System.Net.WebUtility.HtmlEncode(value?.ToString() ?? string.Empty);
     }
 
     public void Dispose()

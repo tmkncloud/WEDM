@@ -17,6 +17,6 @@ build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.MvvmToolkitEnableINotifyPropertyChangingSupport = true
 build_property.RootNamespace = WEDM.Application
-build_property.ProjectDir = d:\Tmkn\weblogic tools\WEDM\src\WEDM.Application\
+build_property.ProjectDir = D:\Tmkn\weblogic tools\WEDM\src\WEDM.Application\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
