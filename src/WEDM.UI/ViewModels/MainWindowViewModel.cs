@@ -36,6 +36,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsMigrationReadyStep))]
     [NotifyPropertyChangedFor(nameof(ProgressPercent))]
     [NotifyPropertyChangedFor(nameof(IsMigrationWorkflow))]
+    [NotifyPropertyChangedFor(nameof(IsWorkflowExpanded))]
     private int _currentStepIndex;
 
     [ObservableProperty]
@@ -67,9 +68,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public IReadOnlyList<WizardStepViewModel> Steps => _activeSteps;
     public bool IsMigrationWorkflow => _activeOperationMode == WedmOperationMode.UpgradeMigrateExisting;
 
+    public bool IsWorkflowExpanded => _workflowExpanded;
+
     public bool CanGoBack => CurrentStepIndex > 0 && !DeploymentInProgress;
-    public bool CanGoNext => CurrentStep.CanProceed && !IsLastStep && !DeploymentInProgress;
-    public bool IsLastStep => CurrentStepIndex >= _activeSteps.Count - 1;
+    public bool CanGoNext => CurrentStep.CanProceed && !DeploymentInProgress
+        && (!_workflowExpanded || CurrentStepIndex < _activeSteps.Count - 1);
+    public bool IsLastStep => _workflowExpanded && CurrentStepIndex >= _activeSteps.Count - 1;
     public bool IsDeploymentReadyStep =>
         _activeOperationMode == WedmOperationMode.DeployNewEnvironment
         && CurrentStep is DeploymentSummaryViewModel;
@@ -171,6 +175,22 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         SubscribeToSteps(_deploySteps);
         SubscribeToSteps(_migrationSteps);
+
+        _operationSelection.PropertyChanged += OnOperationSelectionPropertyChanged;
+    }
+
+    private async void OnOperationSelectionPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(OperationSelectionViewModel.SelectedOperation) or "SelectedOperation"))
+            return;
+
+        if (_workflowExpanded || _operationSelection.SelectedOperation == WedmOperationMode.None)
+            return;
+
+        if (CurrentStep is not OperationSelectionViewModel)
+            return;
+
+        await ActivateSelectedWorkflowAsync();
     }
 
     private void SubscribeToSteps(IEnumerable<WizardStepViewModel> steps)
@@ -194,10 +214,22 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         _operationSelection.IsActive = true;
-        OnPropertyChanged(nameof(Steps));
-        OnPropertyChanged(nameof(IsMigrationWorkflow));
-        OnPropertyChanged(nameof(IsDeploymentReadyStep));
-        OnPropertyChanged(nameof(IsMigrationReadyStep));
+        NotifyWorkflowStructureChanged();
+    }
+
+    private async Task ActivateSelectedWorkflowAsync()
+    {
+        var mode = _operationSelection.SelectedOperation;
+        if (mode == WedmOperationMode.None || _workflowExpanded)
+            return;
+
+        if (!await _operationSelection.OnNavigatingFromAsync())
+            return;
+
+        ApplyCurrentStep();
+        ExpandWorkflow(mode);
+        await EnterCurrentStepAsync();
+        NotifyWorkflowStructureChanged();
     }
 
     private void ExpandWorkflow(WedmOperationMode mode)
@@ -220,10 +252,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         CurrentStepIndex = 1;
         CurrentStep.IsActive = true;
 
-        OnPropertyChanged(nameof(Steps));
-        OnPropertyChanged(nameof(IsMigrationWorkflow));
-        OnPropertyChanged(nameof(IsDeploymentReadyStep));
-        OnPropertyChanged(nameof(IsMigrationReadyStep));
+        NotifyWorkflowStructureChanged();
     }
 
     private void ApplyCurrentStep()
@@ -250,14 +279,22 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             await CurrentStep.OnNavigatingToAsync(Configuration);
     }
 
-    private void NotifyNavigationStateChanged()
+    private void NotifyNavigationStateChanged() => NotifyWorkflowStructureChanged();
+
+    private void NotifyWorkflowStructureChanged()
     {
+        OnPropertyChanged(nameof(Steps));
+        OnPropertyChanged(nameof(CurrentStep));
+        OnPropertyChanged(nameof(IsWorkflowExpanded));
+        OnPropertyChanged(nameof(IsMigrationWorkflow));
         OnPropertyChanged(nameof(IsDeploymentReadyStep));
         OnPropertyChanged(nameof(IsMigrationReadyStep));
-        NextCommand.NotifyCanExecuteChanged();
-        BackCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(IsLastStep));
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(CanGoBack));
+        OnPropertyChanged(nameof(ProgressPercent));
+        NextCommand.NotifyCanExecuteChanged();
+        BackCommand.NotifyCanExecuteChanged();
     }
 
     private void OnStepPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -283,7 +320,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             ExpandWorkflow(op.SelectedOperation);
             await EnterCurrentStepAsync();
-            NotifyNavigationStateChanged();
+            NotifyWorkflowStructureChanged();
             return;
         }
 
