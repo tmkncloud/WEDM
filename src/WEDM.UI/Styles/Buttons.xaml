@@ -57,16 +57,16 @@
 
     <!-- ── Primary Button ───────────────────────────────────────────────────── -->
     <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-        <Setter Property="Background"   Value="{StaticResource AccentPrimaryBrush}"/>
+        <Setter Property="Background"   Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="Foreground"   Value="White"/>
-        <Setter Property="BorderBrush"  Value="{StaticResource AccentPrimaryBrush}"/>
+        <Setter Property="BorderBrush"  Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
     <!-- ── Secondary Button ─────────────────────────────────────────────────── -->
     <Style x:Key="BtnSecondary" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-        <Setter Property="Background"   Value="{StaticResource BackgroundElevatedBrush}"/>
-        <Setter Property="Foreground"   Value="{StaticResource TextPrimaryBrush}"/>
-        <Setter Property="BorderBrush"  Value="{StaticResource BorderDefaultBrush}"/>
+        <Setter Property="Background"   Value="{DynamicResource BackgroundElevatedBrush}"/>
+        <Setter Property="Foreground"   Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="BorderBrush"  Value="{DynamicResource BorderDefaultBrush}"/>
     </Style>
 
     <!-- ── Danger Button ────────────────────────────────────────────────────── -->
@@ -86,7 +86,7 @@
     <!-- ── Ghost Button ─────────────────────────────────────────────────────── -->
     <Style x:Key="BtnGhost" TargetType="Button" BasedOn="{StaticResource BtnBase}">
         <Setter Property="Background"   Value="Transparent"/>
-        <Setter Property="Foreground"   Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground"   Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="BorderBrush"  Value="Transparent"/>
     </Style>
 
@@ -100,7 +100,7 @@
     <!-- ── Icon Button ──────────────────────────────────────────────────────── -->
     <Style x:Key="BtnIcon" TargetType="Button" BasedOn="{StaticResource BtnBase}">
         <Setter Property="Background"  Value="Transparent"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="Width"       Value="36"/>
         <Setter Property="Padding"     Value="0"/>
@@ -109,8 +109,8 @@
     <!-- ── Version Card Button (toggle) ─────────────────────────────────────── -->
     <Style x:Key="BtnVersionCard" TargetType="ToggleButton">
         <Setter Property="Cursor"          Value="Hand"/>
-        <Setter Property="Background"      Value="{StaticResource BackgroundCardBrush}"/>
-        <Setter Property="BorderBrush"     Value="{StaticResource BorderDefaultBrush}"/>
+        <Setter Property="Background"      Value="{DynamicResource BackgroundCardBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource BorderDefaultBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding"         Value="20,16"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
@@ -127,11 +127,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
-                            <Setter TargetName="border" Property="Background"  Value="{StaticResource AccentSubtleBrush}"/>
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+                            <Setter TargetName="border" Property="Background"  Value="{DynamicResource AccentSubtleBrush}"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource BorderMutedBrush}"/>
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BorderMutedBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

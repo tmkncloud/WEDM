@@ -43,7 +43,7 @@ public sealed class MiddlewareDiscoveryService :
         {
             MiddlewareHome         = source.MiddlewareHome,
             DomainHome             = source.DomainHome,
-            AllowSimulatedFallback = true,
+            AllowSimulatedFallback = false,
         };
         return await ExecuteInternalAsync(source, options, cancellationToken);
     }

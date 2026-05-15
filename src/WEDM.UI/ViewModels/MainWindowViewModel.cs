@@ -6,6 +6,7 @@ using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.UI.Services;
+using WedmTheme = WEDM.UI.Services.WedmTheme;
 using WEDM.UI.ViewModels.Base;
 using WEDM.UI.ViewModels.Migration;
 using WEDM.UI.ViewModels.Wizard;
@@ -47,6 +48,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _releaseChannelDisplay = "Stable";
+
+    [ObservableProperty]
+    private string _themeToggleLabel = "Dark mode";
 
     [ObservableProperty]
     private double _overallProgress;
@@ -454,6 +458,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarExpanded = !IsSidebarExpanded;
+
+    [RelayCommand]
+    private void ToggleTheme()
+    {
+        ThemeManager.Toggle();
+        ThemeToggleLabel = ThemeManager.Current == WedmTheme.Light ? "Dark mode" : "Light mode";
+    }
 
     public void RefreshNavigation() => NotifyNavigationStateChanged();
 

@@ -179,4 +179,8 @@ public sealed class DiscoveryScanOptions
 
     [JsonPropertyName("allowSimulatedFallback")]
     public bool AllowSimulatedFallback { get; set; }
+
+    /// <summary>When true (demo only), runs simulated discovery without requiring valid paths.</summary>
+    [JsonPropertyName("forceSimulation")]
+    public bool ForceSimulation { get; set; }
 }

@@ -4,17 +4,38 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Migration"
+             xmlns:converters="clr-namespace:WEDM.UI.Converters"
+             xmlns:val="clr-namespace:WEDM.UI.Validation"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:MigrationDiscoveryViewModel, IsDesignTimeCreatable=False}">
+
+    <UserControl.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVis"/>
+        <converters:StringToBoolConverter x:Key="StringToBool"/>
+    </UserControl.Resources>
 
     <StackPanel>
         <Border Style="{StaticResource MigrationStatusBanner}">
             <StackPanel>
-                <TextBlock Text="{Binding ScanModeDisplay, Mode=OneWay}" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <Border CornerRadius="4" Padding="8,4" HorizontalAlignment="Left" Margin="0,0,0,8">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource ScanModeRealBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSimulationResult}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource ScanModeSimulationBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="{Binding ScanModeDisplay, Mode=OneWay}"
+                               Style="{StaticResource TypeLabel}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                </Border>
                 <TextBlock Text="{Binding ScanStatusMessage, Mode=OneWay}"
                            Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
-                <ProgressBar Value="{Binding DiscoveryProgress, Mode=OneWay}" Maximum="100" Height="6"
-                             Margin="0,10,0,0"
+                <ProgressBar Value="{Binding DiscoveryProgress, Mode=OneWay}" Maximum="100" Height="4"
+                             Margin="0,8,0,0"
                              Visibility="{Binding ScanInProgress, Converter={StaticResource BoolToVisibilityConverter}}"/>
             </StackPanel>
         </Border>
@@ -23,43 +44,58 @@
         <Border Style="{StaticResource MigrationPanelCard}">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="140"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Middleware home" Style="{StaticResource TypeLabel}" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource TextBoxMono}" Margin="0,0,0,4"
                          Text="{Binding MiddlewareHome, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding ScanInProgress, Converter={StaticResource InverseBoolConverter}}"/>
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Domain home" Style="{StaticResource TypeLabel}" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource TextBoxStyle}"
+                         IsEnabled="{Binding ScanInProgress, Converter={StaticResource InverseBoolConverter}}"
+                         val:ValidationProperties.HasError="{Binding MiddlewareHomeError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding MiddlewareHomeError}"
+                           Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding MiddlewareHomeError, Converter={StaticResource StringToVis}}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Domain home" Style="{StaticResource TypeLabel}" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource TextBoxMono}" Margin="0,0,0,4"
                          Text="{Binding DomainHome, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding ScanInProgress, Converter={StaticResource InverseBoolConverter}}"/>
+                         IsEnabled="{Binding ScanInProgress, Converter={StaticResource InverseBoolConverter}}"
+                         val:ValidationProperties.HasError="{Binding DomainHomeError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding DomainHomeError}"
+                           Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding DomainHomeError, Converter={StaticResource StringToVis}}"/>
             </Grid>
         </Border>
 
-        <Button Style="{StaticResource BtnPrimary}" Content="Run environment discovery"
-                Command="{Binding RunDiscoveryCommand}" HorizontalAlignment="Left" Margin="0,0,0,20"
-                IsEnabled="{Binding ScanInProgress, Converter={StaticResource InverseBoolConverter}}"/>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Style="{StaticResource BtnPrimary}" Content="Run environment discovery"
+                    Command="{Binding RunDiscoveryCommand}" Margin="0,0,8,0"/>
+            <Button Style="{StaticResource BtnSecondary}" Content="Simulation preview (demo)"
+                    Command="{Binding RunSimulationDiscoveryCommand}"
+                    Visibility="{Binding ShowSimulationMode, Converter={StaticResource BoolToVisibilityConverter}}"/>
+        </StackPanel>
 
-        <TextBlock Text="Discovery pipeline" Style="{StaticResource TypeH3}" Margin="0,0,0,8"
+        <TextBlock Text="Discovery pipeline" Style="{StaticResource TypeH3}" Margin="0,0,0,6"
                    Visibility="{Binding ScanInProgress, Converter={StaticResource BoolToVisibilityConverter}}"/>
-        <ItemsControl ItemsSource="{Binding DiscoveryStages, Mode=OneWay}" Margin="0,0,0,16"
+        <ItemsControl ItemsSource="{Binding DiscoveryStages, Mode=OneWay}" Margin="0,0,0,12"
                       Visibility="{Binding ScanInProgress, Converter={StaticResource BoolToVisibilityConverter}}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Border Style="{StaticResource MigrationPanelCard}" Padding="10,8" Margin="0,0,0,4">
+                    <Border Style="{StaticResource MigrationPanelCard}" Padding="8,6" Margin="0,0,0,4">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="72"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding DisplayName}" Style="{StaticResource TypeLabel}"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Status}" Style="{StaticResource TypeCaption}" Margin="12,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Status}" Style="{StaticResource TypeCaption}" Margin="8,0"/>
                             <TextBlock Grid.Column="2" Style="{StaticResource TypeCaption}" HorizontalAlignment="Right">
                                 <Run Text="{Binding DurationMs, Mode=OneWay}"/><Run Text=" ms"/>
                             </TextBlock>
@@ -73,118 +109,48 @@
                 Visibility="{Binding IsEmptyState, Converter={StaticResource BoolToVisibilityConverter}}">
             <StackPanel HorizontalAlignment="Center">
                 <TextBlock Text="No discovery results yet" Style="{StaticResource TypeH3}" HorizontalAlignment="Center"/>
-                <TextBlock Text="Start discovery to populate topology, JVM configuration, patch inventory, and Forms / Reports metadata."
-                           Style="{StaticResource TypeCaption}" Foreground="{StaticResource TextMutedBrush}"
-                           TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,0"/>
+                <TextBlock Text="Provide valid Middleware and Domain paths, then run a real environment scan. Next stays disabled until a successful real scan completes."
+                           Style="{StaticResource TypeCaption}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0" MaxWidth="520"/>
             </StackPanel>
         </Border>
 
         <UniformGrid Columns="3" Visibility="{Binding HasDiscoveryResults, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Style="{StaticResource MigrationPanelCard}" Margin="0,0,8,0">
+            <Border Style="{StaticResource MigrationPanelCard}" Margin="0,0,6,0">
                 <StackPanel>
-                    <TextBlock Text="WebLogic topology" Style="{StaticResource TypeH3}" Margin="0,0,0,12"/>
+                    <TextBlock Text="WebLogic topology" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
                     <TextBlock Style="{StaticResource TypeCaption}"><Run Text="Domain: "/><Run Text="{Binding Topology.DomainName, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="Managed: "/><Run Text="{Binding Topology.ManagedServerCount, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="Clusters: "/><Run Text="{Binding Topology.ClusterCount, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="SSL: "/><Run Text="{Binding Topology.SslProtocolSummary, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="Node Manager: "/><Run Text="{Binding Topology.NodeManagerType, Mode=OneWay}"/></TextBlock>
+                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,2,0,0"><Run Text="Managed: "/><Run Text="{Binding Topology.ManagedServerCount, Mode=OneWay}"/></TextBlock>
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource MigrationPanelCard}" Margin="4,0">
+            <Border Style="{StaticResource MigrationPanelCard}" Margin="3,0">
                 <StackPanel>
-                    <TextBlock Text="Forms / Reports" Style="{StaticResource TypeH3}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Forms / Reports" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
                     <TextBlock Style="{StaticResource TypeCaption}"><Run Text="Forms: "/><Run Text="{Binding FormsMetadata.FormCount, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="Reports: "/><Run Text="{Binding FormsMetadata.ReportCount, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="Modules: "/><Run Text="{Binding FormsMetadata.ModuleCount, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="WebUtil: "/><Run Text="{Binding FormsMetadata.UsesWebUtil, Mode=OneWay}"/></TextBlock>
+                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,2,0,0"><Run Text="Reports: "/><Run Text="{Binding FormsMetadata.ReportCount, Mode=OneWay}"/></TextBlock>
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource MigrationPanelCard}" Margin="8,0,0,0">
+            <Border Style="{StaticResource MigrationPanelCard}" Margin="6,0,0,0">
                 <StackPanel>
-                    <TextBlock Text="Oracle inventory" Style="{StaticResource TypeH3}" Margin="0,0,0,12"/>
-                    <TextBlock Style="{StaticResource TypeCaption}"><Run Text="Homes: "/><Run Text="{Binding OracleInventory.HomeCount, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="Patches: "/><Run Text="{Binding PatchInventory.Count, Mode=OneWay}"/></TextBlock>
-                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,4,0,0"><Run Text="Healthy: "/><Run Text="{Binding OracleInventory.InventoryHealthy, Mode=OneWay}"/></TextBlock>
+                    <TextBlock Text="Oracle inventory" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+                    <TextBlock Style="{StaticResource TypeCaption}"><Run Text="Patches: "/><Run Text="{Binding PatchInventory.Count, Mode=OneWay}"/></TextBlock>
                 </StackPanel>
             </Border>
         </UniformGrid>
 
-        <TextBlock Text="Managed servers" Style="{StaticResource TypeH3}" Margin="0,16,0,8"
-                   Visibility="{Binding HasDiscoveryResults, Converter={StaticResource BoolToVisibilityConverter}}"/>
-        <ItemsControl ItemsSource="{Binding ManagedServers, Mode=OneWay}"
-                      Visibility="{Binding HasDiscoveryResults, Converter={StaticResource BoolToVisibilityConverter}}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Style="{StaticResource MigrationPanelCard}" Padding="12,10" Margin="0,0,0,6">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding Name}" Style="{StaticResource TypeLabel}"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Cluster}" Style="{StaticResource TypeCaption}" Margin="12,0"/>
-                            <TextBlock Grid.Column="2" Style="{StaticResource TypeCaption}">
-                                <Run Text=":"/><Run Text="{Binding ListenPort, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding State, Mode=OneWay}"/>
-                            </TextBlock>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <TextBlock Text="Patch inventory" Style="{StaticResource TypeH3}" Margin="0,16,0,8"
-                   Visibility="{Binding HasDiscoveryResults, Converter={StaticResource BoolToVisibilityConverter}}"/>
-        <ItemsControl ItemsSource="{Binding PatchInventory, Mode=OneWay}" MaxHeight="200"
-                      Visibility="{Binding HasDiscoveryResults, Converter={StaticResource BoolToVisibilityConverter}}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Style="{StaticResource MigrationPanelCard}" Padding="10,8" Margin="0,0,0,4">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding PatchId}" Style="{StaticResource TypeCaption}"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Description}" Style="{StaticResource TypeCaption}" Margin="12,0"/>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <TextBlock Text="Discovery insights" Style="{StaticResource TypeH3}" Margin="0,16,0,8"
-                   Visibility="{Binding HasDiscoveryResults, Converter={StaticResource BoolToVisibilityConverter}}"/>
-        <ItemsControl ItemsSource="{Binding DiscoveryInsights, Mode=OneWay}"
-                      Visibility="{Binding HasDiscoveryResults, Converter={StaticResource BoolToVisibilityConverter}}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Style="{StaticResource MigrationPanelCard}" Padding="12,10" Margin="0,0,0,6">
-                        <StackPanel>
-                            <TextBlock Text="{Binding Title}" Style="{StaticResource TypeLabel}"/>
-                            <TextBlock Text="{Binding Detail}" Style="{StaticResource TypeCaption}"
-                                       Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <TextBlock Text="Scan warnings" Style="{StaticResource TypeH3}" Margin="0,12,0,8"
+        <TextBlock Text="Scan warnings" Style="{StaticResource TypeH3}" Margin="0,12,0,6"
                    Visibility="{Binding HasDiscoveryWarnings, Converter={StaticResource BoolToVisibilityConverter}}"/>
         <ItemsControl ItemsSource="{Binding DiscoveryWarnings, Mode=OneWay}"
                       Visibility="{Binding HasDiscoveryWarnings, Converter={StaticResource BoolToVisibilityConverter}}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <TextBlock Text="{Binding}" Style="{StaticResource TypeCaption}"
-                               Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <TextBlock Text="{Binding}" Style="{StaticResource ValidationErrorText}" Margin="0,0,0,2"/>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <Border Style="{StaticResource MigrationPanelCard}" Margin="0,12,0,0"
+        <Border Style="{StaticResource MigrationPanelCard}" Margin="0,8,0,0"
                 Visibility="{Binding HasError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-            <TextBlock Text="{Binding ErrorMessage, Mode=OneWay}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding ErrorMessage, Mode=OneWay}" Style="{StaticResource ValidationErrorText}"/>
         </Border>
     </StackPanel>
 </UserControl>

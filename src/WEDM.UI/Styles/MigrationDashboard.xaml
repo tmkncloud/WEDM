@@ -2,10 +2,10 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Style x:Key="MigrationPanelCard" TargetType="Border">
-        <Setter Property="CornerRadius" Value="10"/>
-        <Setter Property="Padding" Value="20"/>
-        <Setter Property="Background" Value="{StaticResource BackgroundPanelBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="14"/>
+        <Setter Property="Background" Value="{DynamicResource BackgroundPanelBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Margin" Value="0,0,0,12"/>
     </Style>
@@ -20,20 +20,20 @@
     </Style>
 
     <Style x:Key="MigrationSectionTitle" TargetType="TextBlock" BasedOn="{StaticResource TypeH2}">
-        <Setter Property="Margin" Value="0,8,0,16"/>
+        <Setter Property="Margin" Value="0,4,0,10"/>
     </Style>
 
     <Style x:Key="MigrationStatusBanner" TargetType="Border">
         <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Padding" Value="14,10"/>
-        <Setter Property="Margin" Value="0,0,0,16"/>
-        <Setter Property="Background" Value="{StaticResource BackgroundElevatedBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="Margin" Value="0,0,0,12"/>
+        <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
     <Style x:Key="MigrationEmptyState" TargetType="Border" BasedOn="{StaticResource MigrationPanelCard}">
-        <Setter Property="Padding" Value="32,24"/>
+        <Setter Property="Padding" Value="20,16"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
 

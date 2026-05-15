@@ -10,11 +10,11 @@ none
 false
 TRACE;RELEASE;NET;NET8_0;NETCOREAPP
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\App.xaml
-311209123625
+32748552360
 
-68412561518
+701883083512
 2862060899750
-MainWindow.xaml;SplashWindow.xaml;Styles\Animations.xaml;Styles\Buttons.xaml;Styles\Colors.xaml;Styles\Inputs.xaml;Styles\MigrationDashboard.xaml;Styles\Typography.xaml;Styles\WizardValidation.xaml;Views\Dialogs\AboutWindow.xaml;Views\Migration\MigrationCompatibilityView.xaml;Views\Migration\MigrationDiscoveryView.xaml;Views\Migration\MigrationExecutionView.xaml;Views\Migration\MigrationSourceVersionView.xaml;Views\Migration\MigrationStrategyView.xaml;Views\Migration\MigrationSummaryView.xaml;Views\Migration\MigrationTargetVersionView.xaml;Views\Migration\MigrationTransformationView.xaml;Views\Migration\MigrationValidationView.xaml;Views\Wizard\DatabaseConfigView.xaml;Views\Wizard\DeploymentProgressView.xaml;Views\Wizard\DeploymentSummaryView.xaml;Views\Wizard\DomainConfigView.xaml;Views\Wizard\OperationSelectionView.xaml;Views\Wizard\PatchManagementView.xaml;Views\Wizard\PathConfigView.xaml;Views\Wizard\PrerequisiteView.xaml;Views\Wizard\ProductSystemHealthView.xaml;Views\Wizard\SecurityComplianceView.xaml;Views\Wizard\VersionSelectionView.xaml;Views\Wizard\WelcomeView.xaml;
+MainWindow.xaml;SplashWindow.xaml;Styles\Animations.xaml;Styles\Buttons.xaml;Styles\Inputs.xaml;Styles\MigrationDashboard.xaml;Styles\Theme.Dark.xaml;Styles\Theme.Light.xaml;Styles\Typography.xaml;Styles\WizardValidation.xaml;Views\Dialogs\AboutWindow.xaml;Views\Migration\MigrationCompatibilityView.xaml;Views\Migration\MigrationDiscoveryView.xaml;Views\Migration\MigrationExecutionView.xaml;Views\Migration\MigrationSourceVersionView.xaml;Views\Migration\MigrationStrategyView.xaml;Views\Migration\MigrationSummaryView.xaml;Views\Migration\MigrationTargetVersionView.xaml;Views\Migration\MigrationTransformationView.xaml;Views\Migration\MigrationValidationView.xaml;Views\Wizard\DatabaseConfigView.xaml;Views\Wizard\DeploymentProgressView.xaml;Views\Wizard\DeploymentSummaryView.xaml;Views\Wizard\DomainConfigView.xaml;Views\Wizard\OperationSelectionView.xaml;Views\Wizard\PatchManagementView.xaml;Views\Wizard\PathConfigView.xaml;Views\Wizard\PrerequisiteView.xaml;Views\Wizard\ProductSystemHealthView.xaml;Views\Wizard\SecurityComplianceView.xaml;Views\Wizard\VersionSelectionView.xaml;Views\Wizard\WelcomeView.xaml;
 
 False
 

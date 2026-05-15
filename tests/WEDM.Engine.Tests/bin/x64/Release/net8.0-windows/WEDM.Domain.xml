@@ -395,6 +395,12 @@
         <member name="T:WEDM.Domain.Models.DiscoveryExecutionResult">
             <summary>Canonical result of a full migration environment discovery run.</summary>
         </member>
+        <member name="P:WEDM.Domain.Models.DiscoveryScanOptions.ForceSimulation">
+            <summary>When true (demo only), runs simulated discovery without requiring valid paths.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.DiscoveryPathValidationResult">
+            <summary>Result of pre-flight validation for migration environment discovery paths.</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentEnvironmentKind">
             <summary>Reusable lifecycle profile (DEV / SIT / UAT / PROD) for defaults.</summary>
         </member>

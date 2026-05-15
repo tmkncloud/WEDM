@@ -797,7 +797,6 @@ D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\bin\x64\Release\net8.0-windows\win-x64\W
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\WEDM.UI.csproj.AssemblyReference.cache
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\Animations.baml
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\Buttons.baml
-D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\Colors.baml
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\Inputs.baml
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\Typography.baml
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\MainWindow.g.cs
@@ -870,3 +869,5 @@ d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\S
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Migration\MigrationTransformationView.g.cs
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Migration\MigrationTransformationView.baml
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\WizardValidation.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\Theme.Dark.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\Theme.Light.baml

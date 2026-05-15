@@ -16,61 +16,33 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Hero banner -->
-        <Border Grid.Row="0" CornerRadius="10"
-                Margin="0,0,0,24" Padding="32,28">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#1A2332" Offset="0"/>
-                    <GradientStop Color="#0F1923" Offset="1"/>
-                </LinearGradientBrush>
-            </Border.Background>
+        <Border Grid.Row="0" CornerRadius="6" Margin="0,0,0,12" Padding="14,12"
+                Background="{DynamicResource BackgroundPanelBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
             <StackPanel>
-                <TextBlock Text="🚀" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                <TextBlock Text="{Binding WelcomeHeadline}"
-                           Style="{StaticResource TypeDisplay}"
-                           TextAlignment="Center"
-                           TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding WelcomeSubheadline}"
-                           Style="{StaticResource TypeBody}"
-                           Foreground="{StaticResource TextMutedBrush}"
-                           TextAlignment="Center"
-                           Margin="0,8,0,0"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
-                    <Border CornerRadius="4" Padding="10,4"
-                            Background="{StaticResource AccentSubtleBrush}">
-                        <TextBlock Text="{Binding AppVersion, StringFormat='v{0}'}"
-                                   Style="{StaticResource TypeMono}"
-                                   Foreground="{StaticResource AccentPrimaryBrush}"/>
-                    </Border>
-                </StackPanel>
+                <TextBlock Text="{Binding WelcomeHeadline}" Style="{StaticResource TypeH1}" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding WelcomeSubheadline}" Style="{StaticResource TypeBody}"
+                           Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock Text="{Binding AppVersion, StringFormat='Version {0}'}"
+                           Style="{StaticResource TypeCaption}" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
 
-        <!-- Environment profile -->
-        <Border Grid.Row="1" CornerRadius="6" Padding="14,12" Margin="0,0,0,16"
-                Background="{StaticResource BackgroundPanelBrush}"
-                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+        <Border Grid.Row="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
+                Background="{DynamicResource BackgroundPanelBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
             <StackPanel>
-                <TextBlock Text="Environment profile" Style="{StaticResource TypeLabel}" Margin="0,0,0,6"/>
-                <ComboBox Style="{StaticResource ComboBoxStyle}"
-                          Width="220" HorizontalAlignment="Left"
+                <TextBlock Text="Environment profile" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
+                <ComboBox Style="{StaticResource ComboBoxStyle}" Width="220" HorizontalAlignment="Left"
                           ItemsSource="{Binding DeploymentEnvironmentOptions}"
                           SelectedItem="{Binding SelectedDeploymentEnvironment}"/>
                 <TextBlock Text="DEV = relaxed automation; SIT/UAT = online WLST + nmEnroll; PROD = strict validation and SSL-oriented Node Manager defaults."
-                           Style="{StaticResource TypeCaption}"
-                           Foreground="{StaticResource TextMutedBrush}"
-                           TextWrapping="Wrap" Margin="0,8,0,0"/>
+                           Style="{StaticResource TypeCaption}" TextWrapping="Wrap" Margin="0,6,0,0"/>
             </StackPanel>
         </Border>
 
-        <!-- Feature list header -->
-        <TextBlock Grid.Row="2"
-                   Text="What WEDM automates for you"
-                   Style="{StaticResource TypeH2}"
-                   Margin="0,0,0,12"/>
+        <TextBlock Grid.Row="2" Text="What WEDM automates" Style="{StaticResource TypeH2}" Margin="0,0,0,8"/>
 
-        <!-- Feature highlights -->
         <ItemsControl Grid.Row="3" ItemsSource="{Binding FeatureHighlights}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -79,37 +51,24 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Border CornerRadius="6" Margin="4"
-                            Padding="14,12"
-                            Background="{StaticResource BackgroundPanelBrush}">
-                        <Border.BorderBrush>
-                            <SolidColorBrush Color="#30FFFFFF" Opacity="0.08"/>
-                        </Border.BorderBrush>
-                        <Border.BorderThickness>1</Border.BorderThickness>
+                    <Border CornerRadius="4" Margin="0,0,6,6" Padding="10,8"
+                            Background="{DynamicResource BackgroundPanelBrush}"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="✓ " Foreground="{StaticResource SuccessBrush}"
-                                       Style="{StaticResource TypeBody}" VerticalAlignment="Top"
-                                       Margin="0,1,6,0"/>
-                            <TextBlock Text="{Binding}"
-                                       Style="{StaticResource TypeBody}"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="✓ " Foreground="{DynamicResource SuccessBrush}"
+                                       Style="{StaticResource TypeBody}" VerticalAlignment="Top" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding}" Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- Disclaimer -->
-        <Border Grid.Row="4" CornerRadius="6" Padding="14,10"
-                Margin="0,16,0,0"
-                Background="{StaticResource WarningSubtleBrush}">
-            <TextBlock Style="{StaticResource TypeCaption}"
-                       Foreground="{StaticResource WarningBrush}"
-                       TextWrapping="Wrap">
-                ⚠  WEDM requires Administrator privileges and will modify system-wide
-                   environment variables, the Windows Registry, and install Oracle software.
-                   Ensure you have a current system snapshot or backup before proceeding.
+        <Border Grid.Row="4" CornerRadius="4" Padding="10,8" Margin="0,12,0,0"
+                Background="{DynamicResource WarningSubtleBrush}"
+                BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1">
+            <TextBlock Style="{StaticResource TypeCaption}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap">
+                WEDM requires Administrator privileges and modifies system environment variables, the Windows Registry, and Oracle installations. Ensure you have a current backup before proceeding.
             </TextBlock>
         </Border>
     </Grid>

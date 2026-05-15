@@ -11,7 +11,7 @@
     <Style TargetType="TextBlock">
         <Setter Property="FontFamily"    Value="Segoe UI"/>
         <Setter Property="FontSize"      Value="13"/>
-        <Setter Property="Foreground"    Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Foreground"    Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="TextWrapping"  Value="NoWrap"/>
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
     </Style>
@@ -19,26 +19,24 @@
     <!-- Display — large hero/splash text -->
     <Style x:Key="TypeDisplay" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI Semibold"/>
-        <Setter Property="FontSize"    Value="32"/>
+        <Setter Property="FontSize"    Value="22"/>
         <Setter Property="FontWeight"  Value="SemiBold"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextPrimaryBrush}"/>
-        <Setter Property="LineHeight"  Value="40"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="LineHeight"  Value="28"/>
     </Style>
 
-    <!-- Heading 1 — section titles -->
     <Style x:Key="TypeH1" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI Semibold"/>
-        <Setter Property="FontSize"    Value="24"/>
-        <Setter Property="FontWeight"  Value="SemiBold"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextPrimaryBrush}"/>
-    </Style>
-
-    <!-- Heading 2 — sub-section titles -->
-    <Style x:Key="TypeH2" TargetType="TextBlock">
-        <Setter Property="FontFamily"  Value="Segoe UI"/>
         <Setter Property="FontSize"    Value="18"/>
         <Setter Property="FontWeight"  Value="SemiBold"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
+    <Style x:Key="TypeH2" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="Segoe UI"/>
+        <Setter Property="FontSize"    Value="15"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
     <!-- Heading 3 — card headers -->

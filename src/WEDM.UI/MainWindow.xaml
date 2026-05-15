@@ -153,9 +153,13 @@
                     </Border>
                 </StackPanel>
 
-                <!-- Window controls -->
+                <!-- Theme + window controls -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="0,0,8,0">
+                    <Button Style="{StaticResource BtnGhost}"
+                            Command="{Binding ToggleThemeCommand}"
+                            Content="{Binding ThemeToggleLabel, Mode=OneWay}"
+                            Height="32" Margin="0,0,4,0" ToolTip="Switch light / dark theme"/>
                     <Button Style="{StaticResource BtnIcon}"
                             Click="MinimizeWindow_Click"
                             ToolTip="Minimize">
@@ -343,7 +347,7 @@
                         Background="{StaticResource BackgroundPanelBrush}"
                         BorderBrush="{StaticResource BorderSubtleBrush}"
                         BorderThickness="0,0,0,1"
-                        Padding="32,20,32,20">
+                        Padding="20,12,20,12">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -360,9 +364,9 @@
                         <!-- Step icon -->
                         <TextBlock Grid.Column="1"
                                    Text="{Binding CurrentStep.StepIcon, Mode=OneWay}"
-                                   FontSize="36"
+                                   FontSize="24"
                                    VerticalAlignment="Center"
-                                   Margin="0,0,8,0"/>
+                                   Margin="0,0,4,0"/>
                     </Grid>
                 </Border>
 
@@ -370,7 +374,7 @@
                 <ScrollViewer Grid.Row="1"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              Padding="0">
+                              Padding="20,12,20,16">
                     <ContentControl Content="{Binding CurrentStep, Mode=OneWay}">
                         <ContentControl.RenderTransform>
                             <TranslateTransform x:Name="ContentTranslate"/>

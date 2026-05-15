@@ -45,6 +45,8 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        ThemeManager.Apply(WedmTheme.Light);
+
         StartupDiagnostics.Install(this);
         StartupDiagnostics.Trace("OnStartup", "begin");
 
@@ -119,6 +121,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IUpdateManifestReader, LocalUpdateManifestReader>();
         services.AddSingleton<IProductInfoProvider, AppProductInfoProvider>();
         services.AddSingleton<IAboutDialogService, AboutDialogService>();
+        services.AddSingleton<IWedmRuntimeOptions, WedmRuntimeOptions>();
 
         // ── Migration (real discovery, assessment, reporting, session persistence) ─
         services.AddSingleton<MiddlewareDiscoveryOrchestrator>();

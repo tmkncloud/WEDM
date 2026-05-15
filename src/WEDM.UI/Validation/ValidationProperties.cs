@@ -22,12 +22,16 @@ public static class ValidationProperties
         if (d is not Control control) return;
         if ((bool)e.NewValue)
         {
-            control.SetValue(Control.BorderBrushProperty, System.Windows.Application.Current.FindResource("DangerBrush") as Brush);
+            control.SetValue(Control.BorderBrushProperty,
+                System.Windows.Application.Current.FindResource("DangerBrush") as Brush
+                ?? Brushes.Red);
             control.SetValue(Control.BorderThicknessProperty, new Thickness(1.5));
         }
         else
         {
-            control.SetValue(Control.BorderBrushProperty, System.Windows.Application.Current.FindResource("BorderDefaultBrush") as Brush);
+            control.SetValue(Control.BorderBrushProperty,
+                System.Windows.Application.Current.FindResource("InputBorderBrush") as Brush
+                ?? System.Windows.Application.Current.FindResource("BorderDefaultBrush") as Brush);
             control.SetValue(Control.BorderThicknessProperty, new Thickness(1));
         }
     }

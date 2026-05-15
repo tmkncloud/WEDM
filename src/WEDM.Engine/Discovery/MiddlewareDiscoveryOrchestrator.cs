@@ -40,17 +40,18 @@ public sealed class MiddlewareDiscoveryOrchestrator : IMiddlewareDiscoveryOrches
 
         NormalizeProfile(source, middlewareHome, domainHome);
 
-        var usedReal = false;
-        if (SafeDiscoveryIO.DirectoryExists(middlewareHome) || SafeDiscoveryIO.DirectoryExists(domainHome))
-            usedReal = true;
-        else
+        if (options.ForceSimulation && options.AllowSimulatedFallback)
+            return BuildSimulatedFallback(source, sw, warnings, simulationOnly: true);
+
+        var pathValidation = DiscoveryEnvironmentValidator.Validate(middlewareHome, domainHome);
+        if (!pathValidation.IsValid)
         {
-            warnings.Add("Middleware or domain paths were not accessible — discovery will use limited analysis.");
-            if (options.AllowSimulatedFallback)
-            {
-                return BuildSimulatedFallback(source, sw, warnings);
-            }
+            warnings.AddRange(pathValidation.Errors);
+            return BuildFailedResult(sw, warnings,
+                "Discovery cannot run until Middleware Home and Domain Home are valid and accessible.");
         }
+
+        var usedReal = true;
 
         try
         {
@@ -197,7 +198,7 @@ public sealed class MiddlewareDiscoveryOrchestrator : IMiddlewareDiscoveryOrches
             result.Warnings = warnings;
 
             if (options.AllowSimulatedFallback)
-                return BuildSimulatedFallback(source, sw, warnings);
+                return BuildSimulatedFallback(source, sw, warnings, simulationOnly: false);
         }
 
         result.TotalDurationMs = sw.ElapsedMilliseconds;
@@ -211,13 +212,33 @@ public sealed class MiddlewareDiscoveryOrchestrator : IMiddlewareDiscoveryOrches
         return result;
     }
 
+    private static DiscoveryExecutionResult BuildFailedResult(
+        Stopwatch sw,
+        List<string> warnings,
+        string message)
+    {
+        warnings.Add(message);
+        return new DiscoveryExecutionResult
+        {
+            Topology        = new MiddlewareTopologySnapshot { ScanStatus = DiscoveryScanStatus.Failed },
+            FormsMetadata   = new FormsReportsMetadataSnapshot(),
+            UsedRealScan    = false,
+            ScanStatus      = DiscoveryScanStatus.Failed,
+            Warnings        = warnings,
+            TotalDurationMs = sw.ElapsedMilliseconds,
+        };
+    }
+
     private DiscoveryExecutionResult BuildSimulatedFallback(
         MigrationEnvironmentProfile source,
         Stopwatch sw,
-        List<string> warnings)
+        List<string> warnings,
+        bool simulationOnly)
     {
         var (topology, forms, simulatedInsights) = EnterpriseDiscoverySimulator.Build(source);
-        warnings.Add("Simulated discovery fallback was used because real paths were inaccessible.");
+        warnings.Add(simulationOnly
+            ? "Simulation mode — results are illustrative only and not from your environment."
+            : "Simulated discovery fallback was used because the real scan could not complete.");
         return new DiscoveryExecutionResult
         {
             Topology        = topology,
