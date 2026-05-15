@@ -38,6 +38,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ProgressPercent))]
     [NotifyPropertyChangedFor(nameof(IsMigrationWorkflow))]
     [NotifyPropertyChangedFor(nameof(IsWorkflowExpanded))]
+    [NotifyPropertyChangedFor(nameof(StepCounterText))]
     private int _currentStepIndex;
 
     [ObservableProperty]
@@ -88,6 +89,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public double ProgressPercent => _activeSteps.Count > 1
         ? (double)CurrentStepIndex / (_activeSteps.Count - 1) * 100
         : 0;
+
+    public string StepCounterText => _activeSteps.Count > 0
+        ? $"{CurrentStepIndex} of {_activeSteps.Count}"
+        : "0 of 0";
+
+    public string ReleaseChannelLabel => $"Release {ReleaseChannelDisplay}";
 
     public MainWindowViewModel(
         IProductInfoProvider              productInfo,
@@ -300,6 +307,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(CanGoBack));
         OnPropertyChanged(nameof(ProgressPercent));
+        OnPropertyChanged(nameof(StepCounterText));
         NextCommand.NotifyCanExecuteChanged();
         BackCommand.NotifyCanExecuteChanged();
     }
@@ -324,53 +332,61 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanGoNext))]
     private async Task NextAsync()
     {
-        var canLeave = await CurrentStep.OnNavigatingFromAsync();
-        if (!canLeave) return;
-
-        ApplyCurrentStep();
-
-        if (!_workflowExpanded && CurrentStep is OperationSelectionViewModel op
-            && op.SelectedOperation != WedmOperationMode.None)
+        await NavigateWizardAsync(async () =>
         {
-            ExpandWorkflow(op.SelectedOperation);
+            var canLeave = await CurrentStep.OnNavigatingFromAsync();
+            if (!canLeave) return false;
+
+            ApplyCurrentStep();
+
+            if (!_workflowExpanded && CurrentStep is OperationSelectionViewModel op
+                && op.SelectedOperation != WedmOperationMode.None)
+            {
+                ExpandWorkflow(op.SelectedOperation);
+                await EnterCurrentStepAsync();
+                NotifyWorkflowStructureChanged();
+                return true;
+            }
+
+            var fromTitle = CurrentStep.StepTitle;
+            CurrentStep.IsCompleted = true;
+            CurrentStep.IsActive    = false;
+
+            CurrentStepIndex++;
+            CurrentStep.IsActive = true;
+            LogWorkflowTransition(fromTitle, CurrentStep.StepTitle);
+
             await EnterCurrentStepAsync();
-            NotifyWorkflowStructureChanged();
-            return;
-        }
-
-        var fromTitle = CurrentStep.StepTitle;
-        CurrentStep.IsCompleted = true;
-        CurrentStep.IsActive    = false;
-
-        CurrentStepIndex++;
-        CurrentStep.IsActive = true;
-        LogWorkflowTransition(fromTitle, CurrentStep.StepTitle);
-
-        await EnterCurrentStepAsync();
-        NotifyNavigationStateChanged();
+            NotifyNavigationStateChanged();
+            return true;
+        });
     }
 
     [RelayCommand(CanExecute = nameof(CanGoBack))]
     private async Task BackAsync()
     {
-        if (CurrentStepIndex == 1 && _workflowExpanded)
+        await NavigateWizardAsync(async () =>
         {
-            ApplyCurrentStep();
+            if (CurrentStepIndex == 1 && _workflowExpanded)
+            {
+                ApplyCurrentStep();
+                CurrentStep.IsActive = false;
+                ResetToOperationSelection();
+                await _operationSelection.OnNavigatingToAsync(Configuration);
+                NotifyNavigationStateChanged();
+                return true;
+            }
+
+            var fromTitle = CurrentStep.StepTitle;
             CurrentStep.IsActive = false;
-            ResetToOperationSelection();
-            await _operationSelection.OnNavigatingToAsync(Configuration);
+            CurrentStepIndex--;
+            CurrentStep.IsActive = true;
+            LogWorkflowTransition(fromTitle, CurrentStep.StepTitle);
+
+            await EnterCurrentStepAsync();
             NotifyNavigationStateChanged();
-            return;
-        }
-
-        var fromTitle = CurrentStep.StepTitle;
-        CurrentStep.IsActive = false;
-        CurrentStepIndex--;
-        CurrentStep.IsActive = true;
-        LogWorkflowTransition(fromTitle, CurrentStep.StepTitle);
-
-        await EnterCurrentStepAsync();
-        NotifyNavigationStateChanged();
+            return true;
+        });
     }
 
     [RelayCommand]
@@ -470,7 +486,32 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private void LogWorkflowTransition(string fromStep, string toStep)
     {
+        StartupDiagnostics.TraceWizardNavigation(fromStep, toStep, _activeOperationMode.ToString());
         if (_activeOperationMode == WedmOperationMode.UpgradeMigrateExisting)
             MigrationDiagnostics.TraceWorkflowPhase(fromStep, toStep, "Migration");
+    }
+
+    private async Task NavigateWizardAsync(Func<Task<bool>> navigate)
+    {
+        var stepBefore = CurrentStep.StepTitle;
+        var indexBefore = CurrentStepIndex;
+        try
+        {
+            if (!await navigate().ConfigureAwait(true))
+                return;
+        }
+        catch (Exception ex)
+        {
+            StartupDiagnostics.TraceWizardNavigationFailure(stepBefore, indexBefore, ex);
+            CurrentStepIndex = indexBefore;
+            if (indexBefore >= 0 && indexBefore < _activeSteps.Count)
+            {
+                foreach (var s in _activeSteps)
+                    s.IsActive = false;
+                _activeSteps[indexBefore].IsActive = true;
+            }
+            NotifyNavigationStateChanged();
+            StartupDiagnostics.ShowWizardNavigationError(ex, stepBefore);
+        }
     }
 }

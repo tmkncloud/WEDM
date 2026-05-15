@@ -62,9 +62,46 @@ internal static class StartupDiagnostics
         {
             Trace("DispatcherUnhandledException", args.Exception.ToString());
             TryWriteStartupError("DispatcherUnhandledException", args.Exception);
-            // Let default WPF handling run after we have persisted diagnostics.
-            args.Handled = false;
+            ShowUiExceptionDialog("Unexpected UI error", args.Exception);
+            // Keep the shell alive so the operator can read logs and retry navigation.
+            args.Handled = true;
         };
+    }
+
+    public static void TraceWizardNavigation(string fromStep, string toStep, string? mode = null)
+    {
+        var detail = string.IsNullOrWhiteSpace(mode)
+            ? $"{fromStep} → {toStep}"
+            : $"{fromStep} → {toStep} ({mode})";
+        Trace("Wizard.Navigation", detail);
+    }
+
+    public static void TraceWizardNavigationFailure(string stepTitle, int stepIndex, Exception ex)
+    {
+        Trace("Wizard.Navigation.FAILED", $"step='{stepTitle}' index={stepIndex} | {ex.GetType().Name}: {ex.Message}");
+        TryWriteStartupError($"Wizard navigation failed at '{stepTitle}'", ex);
+    }
+
+    public static void ShowWizardNavigationError(Exception ex, string stepTitle)
+        => ShowUiExceptionDialog($"Could not open wizard step: {stepTitle}", ex);
+
+    public static void ShowUiExceptionDialog(string title, Exception ex)
+    {
+        try
+        {
+            var inner = ex is System.Windows.Markup.XamlParseException xaml && xaml.InnerException is not null
+                ? xaml.InnerException.Message
+                : ex.Message;
+            global::System.Windows.MessageBox.Show(
+                $"{inner}\n\nTechnical details were written to:\n{StartupErrorPath}\nand\n{TracePath}",
+                $"WEDM — {title}",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        catch
+        {
+            /* headless */
+        }
     }
 
     public static void Trace(string phase, string? detail = null)

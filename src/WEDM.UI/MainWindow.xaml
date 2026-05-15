@@ -146,10 +146,8 @@
                             BorderThickness="1" CornerRadius="4"
                             Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource TypeCaption}"
-                                   Foreground="{StaticResource TextSecondaryBrush}">
-                            <Run Text="Release "/>
-                            <Run Text="{Binding ReleaseChannelDisplay, Mode=OneWay}" FontWeight="SemiBold"/>
-                        </TextBlock>
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="{Binding ReleaseChannelLabel, Mode=OneWay}"/>
                     </Border>
                 </StackPanel>
 
@@ -205,11 +203,8 @@
                                        Style="{StaticResource TypeH3}"
                                        Margin="0,0,0,4"/>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource TypeCaption}">
-                                    <Run Text="{Binding CurrentStepIndex, Mode=OneWay, StringFormat={}{0}}"/>
-                                    <Run Text=" of "/>
-                                    <Run Text="{Binding Steps.Count, Mode=OneWay, StringFormat={}{0}}"/>
-                                </TextBlock>
+                                <TextBlock Text="{Binding StepCounterText, Mode=OneWay}"
+                                           Style="{StaticResource TypeCaption}"/>
                                 <TextBlock Text=" steps" Style="{StaticResource TypeCaption}"/>
                             </StackPanel>
                         </StackPanel>

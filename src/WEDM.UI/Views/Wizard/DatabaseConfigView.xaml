@@ -6,9 +6,14 @@
              xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
              xmlns:behaviors="clr-namespace:WEDM.UI.Behaviors"
              xmlns:val="clr-namespace:WEDM.UI.Validation"
+             xmlns:converters="clr-namespace:WEDM.UI.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:DatabaseConfigViewModel, IsDesignTimeCreatable=False}">
     <StackPanel>
+        <StackPanel.Resources>
+            <converters:StringToVisibilityConverter x:Key="StringToVis"/>
+            <converters:StringToBoolConverter x:Key="StringToBool"/>
+        </StackPanel.Resources>
         <Border CornerRadius="6" Padding="14,10" Margin="0,0,0,20"
                 Background="{StaticResource AccentSubtleBrush}">
             <CheckBox Content="Run Repository Creation Utility (RCU) for Fusion Middleware schemas"

@@ -11,9 +11,12 @@ public sealed partial class MigrationSourceVersionViewModel : MigrationWizardSte
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanProceed))]
     [NotifyPropertyChangedFor(nameof(SelectedSourceDisplay))]
+    [NotifyPropertyChangedFor(nameof(SelectedSourceSummary))]
     private MiddlewareReleaseKind _selectedSource = MiddlewareReleaseKind.Forms11g;
 
     public string SelectedSourceDisplay => MigrationVersionMatrix.GetDisplayName(SelectedSource);
+
+    public string SelectedSourceSummary => $"Selected: {SelectedSourceDisplay}";
 
     public IReadOnlyList<MiddlewareReleaseKind> SourceOptions { get; }
         = MigrationVersionMatrix.GetSupportedSources();
