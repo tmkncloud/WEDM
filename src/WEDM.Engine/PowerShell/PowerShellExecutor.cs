@@ -189,17 +189,53 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
             }
 
             sw.Stop();
-            var hadErrors = ps.HadErrors || errorLines.Count > 0;
-            var output = string.Join(Environment.NewLine, outputLines);
+
+            // ── Extract __WEDM_EXIT marker (written by BuildWlstLaunchBody) ──────────
+            // This is the authoritative exit code for all WLST / Start-Process launch
+            // scripts, bypassing ps.HadErrors which fires on any native-command stderr
+            // output (including WLST informational messages) regardless of actual success.
+            int? wedmExplicitExit = null;
+            var cleanOutputLines  = outputLines.ToList();
+            for (int i = cleanOutputLines.Count - 1; i >= 0; i--)
+            {
+                var marker = cleanOutputLines[i].Trim();
+                if (marker.StartsWith("__WEDM_EXIT:", StringComparison.Ordinal)
+                    && int.TryParse(marker["__WEDM_EXIT:".Length..], out var parsedRc))
+                {
+                    wedmExplicitExit = parsedRc;
+                    cleanOutputLines.RemoveAt(i);   // strip internal marker from user-visible output
+                    break;
+                }
+            }
+
+            bool hadErrors;
+            int  exitCode;
+            if (wedmExplicitExit.HasValue)
+            {
+                // WLST / Start-Process script with explicit exit code — trust it entirely.
+                exitCode  = wedmExplicitExit.Value;
+                hadErrors = exitCode != 0;
+            }
+            else
+            {
+                // Cmdlet-only script (no Start-Process wrapper).
+                // Only fail when ErrorRecord objects carry an actual exception; bare informational
+                // error-stream messages (e.g., Set-Location on non-existent path warning) should
+                // not abort a step that otherwise completes successfully.
+                hadErrors = ps.HadErrors && ps.Streams.Error.Any(e => e?.Exception is not null);
+                exitCode  = hadErrors ? 1 : 0;
+            }
+
+            var output = string.Join(Environment.NewLine, cleanOutputLines);
             var errors = string.Join(Environment.NewLine, errorLines);
 
             return new PowerShellResult
             {
                 Success     = !hadErrors,
-                ExitCode    = hadErrors ? 1 : 0,
+                ExitCode    = exitCode,
                 Output      = output,
                 Errors      = errors,
-                OutputLines = outputLines,
+                OutputLines = cleanOutputLines,
                 ErrorLines  = errorLines,
                 Duration    = sw.Elapsed
             };

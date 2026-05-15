@@ -21,6 +21,7 @@ public sealed class RollbackOpatchApplyStep : IStepExecutor
         _log.Warning(
             "OPatch apply rollback is not automated. Use Oracle OPatch rollback for the last patch set, restore from a filesystem backup, or re-image the Oracle Home per your change policy.",
             "Rollback.OPatch");
-        return Task.FromResult(StepExecutionResult.Ok("Documented manual OPatch rollback required."));
+        return Task.FromResult(StepExecutionResult.OkWithManualFollowUp(
+            "Manual: Oracle OPatch rollback for the applied patch(es), filesystem restore from snapshot, or DBA/ORACLE_HOME re-image per CAB."));
     }
 }

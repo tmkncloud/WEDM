@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
@@ -260,7 +261,18 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
                     PrerequisiteValidationReporter.LogBlockingFindings(_log, report.Validation, "Rollback");
 
                 if (config.EnableRollback)
-                    await RollbackAsync(steps, config, cancellationToken);
+                {
+                    var rollbackSummary = await RollbackAsync(steps, config, cancellationToken);
+                    report.Rollback = rollbackSummary;
+                    // Promote to fully-rolled-back only when every eligible step was cleanly reversed.
+                    if (rollbackSummary.FullyRolledBack)
+                        report.FinalStatus = DeploymentStatus.RolledBack;
+                    else
+                        _log.Warning(
+                            $"Rollback incomplete: {rollbackSummary.StepsFailed} step(s) failed to roll back, " +
+                            $"{rollbackSummary.StepsNoExecutor} step(s) have no executor (require manual reversal).",
+                            "Rollback");
+                }
 
                 return report;
             }
@@ -300,36 +312,136 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
 
     // ── Rollback ─────────────────────────────────────────────────────────────
 
-    public async Task<bool> RollbackAsync(
+    /// <summary>
+    /// Reverses all completed rollback-capable steps in reverse execution order.
+    /// Returns a <see cref="RollbackSummary"/> with per-step outcomes — never throws.
+    /// </summary>
+    public async Task<RollbackSummary> RollbackAsync(
         IReadOnlyList<DeploymentStep> steps,
         DeploymentConfiguration config,
         CancellationToken cancellationToken = default)
     {
+        var summary = new RollbackSummary { StartedAt = DateTimeOffset.UtcNow };
         _log.Warning("=== ROLLBACK INITIATED ===", "Rollback");
+
         var rollbackSteps = steps
             .Where(s => s.Status == StepStatus.Succeeded && s.CanRollback && s.RollbackAction != null)
             .OrderByDescending(s => s.Sequence)
             .ToList();
 
-        bool allOk = true;
+        _log.Info(
+            $"Rollback plan: {rollbackSteps.Count} of {steps.Count} step(s) eligible for reversal.",
+            "Rollback");
+
         foreach (var step in rollbackSteps)
         {
-            _log.Info($"Rolling back: {step.Name} → {step.RollbackAction}", "Rollback");
-            try
+            var record = new RollbackStepRecord
             {
-                var rollbackExecutor = _stepFactory.GetRollbackExecutor(step.RollbackAction!);
-                if (rollbackExecutor is not null)
-                    await rollbackExecutor.ExecuteAsync(step, config, cancellationToken);
-            }
-            catch (Exception ex)
+                Sequence       = step.Sequence,
+                StepName       = step.Name,
+                RollbackAction = step.RollbackAction!
+            };
+
+            var rollbackExecutor = _stepFactory.GetRollbackExecutor(step.RollbackAction!);
+            if (rollbackExecutor is null)
             {
-                _log.Error($"Rollback of '{step.Name}' failed: {ex.Message}", ex, "Rollback");
-                allOk = false;
+                // No executor registered — this step cannot be automatically reversed.
+                // The operator MUST perform manual reversal.
+                _log.Warning(
+                    $"[MANUAL ACTION REQUIRED] No rollback executor registered for '{step.Name}' " +
+                    $"(action: '{step.RollbackAction}'). This step cannot be automatically reversed.",
+                    "Rollback");
+
+                record.Outcome = "NoExecutor";
+                record.Error   = $"No executor registered for rollback action '{step.RollbackAction}'.";
+                record.Success = false;
+                step.Status    = StepStatus.RollbackFailed;
+                summary.StepsNoExecutor++;
             }
+            else
+            {
+                _log.Info($"Rolling back: {step.Name} → {step.RollbackAction}", "Rollback");
+                var sw = Stopwatch.StartNew();
+                try
+                {
+                    var result = await rollbackExecutor.ExecuteAsync(step, config, cancellationToken)
+                        .ConfigureAwait(false);
+                    sw.Stop();
+                    record.Duration = sw.Elapsed;
+
+                    if (result.Success)
+                    {
+                        record.Output = result.Output;
+
+                        if (result.ManualInterventionRequired)
+                        {
+                            step.Status    = StepStatus.RolledBack;
+                            record.Outcome = "ManualInterventionRequired";
+                            record.Success = true;
+                            summary.StepsManualInterventionRequired++;
+                            _log.Warning(
+                                $"Rollback recorded follow-up for '{step.Name}': operator action may still be required. {result.Output}",
+                                "Rollback");
+                        }
+                        else
+                        {
+                            step.Status    = StepStatus.RolledBack;
+                            record.Outcome = "RolledBack";
+                            record.Success = true;
+                            summary.StepsRolledBack++;
+                            _log.Info(
+                                $"Rollback OK: '{step.Name}' reversed in {record.Duration.TotalSeconds:F1}s.",
+                                "Rollback");
+                        }
+                    }
+                    else
+                    {
+                        step.Status    = StepStatus.RollbackFailed;
+                        record.Outcome = "Failed";
+                        record.Error   = result.Error;
+                        record.Output  = result.Output;
+                        record.Success = false;
+                        summary.StepsFailed++;
+                        _log.Error(
+                            $"Rollback FAILED: '{step.Name}' (exit {result.ExitCode}): {result.Error}",
+                            category: "Rollback");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    sw.Stop();
+                    record.Duration = sw.Elapsed;
+                    record.Outcome  = "Exception";
+                    record.Error    = ex.Message;
+                    record.Success  = false;
+                    step.Status     = StepStatus.RollbackFailed;
+                    summary.StepsFailed++;
+                    _log.Error(
+                        $"Rollback threw exception for '{step.Name}': {ex.Message}", ex, "Rollback");
+                }
+            }
+
+            summary.Records.Add(record);
         }
 
-        _log.Warning($"Rollback {(allOk ? "COMPLETED" : "PARTIAL")}.", "Rollback");
-        return allOk;
+        summary.CompletedAt     = DateTimeOffset.UtcNow;
+        summary.FullyRolledBack = summary.StepsFailed == 0
+            && summary.StepsNoExecutor == 0
+            && summary.StepsManualInterventionRequired == 0;
+
+        var hasProgress = summary.StepsRolledBack > 0 || summary.StepsManualInterventionRequired > 0;
+        var disposition = summary.FullyRolledBack ? "COMPLETED"
+            : !hasProgress && (summary.StepsFailed > 0 || summary.StepsNoExecutor > 0) ? "FAILED"
+            : "PARTIAL";
+
+        _log.Warning(
+            $"=== ROLLBACK {disposition} | " +
+            $"Reversed={summary.StepsRolledBack}  ManualFollowUp={summary.StepsManualInterventionRequired}  " +
+            $"NoExecutor={summary.StepsNoExecutor}  Failed={summary.StepsFailed} " +
+            $"| Elapsed={summary.Duration?.TotalSeconds:F1}s ===",
+            "Rollback");
+
+        return summary;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

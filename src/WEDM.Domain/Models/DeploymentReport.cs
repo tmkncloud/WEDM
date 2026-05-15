@@ -30,6 +30,12 @@ public sealed class DeploymentReport
     public List<LogEntry>           AuditLog         { get; set; } = new();
     public PrerequisiteValidationResult? Validation  { get; set; }
 
+    /// <summary>
+    /// Populated when a rollback was triggered. Null if the deployment succeeded or rollback was disabled.
+    /// Exposes per-step rollback outcomes for operator-grade audit and HTML reporting.
+    /// </summary>
+    public RollbackSummary?         Rollback         { get; set; }
+
     public int TotalSteps     => Steps.Count;
     public int StepsSucceeded => Steps.Count(s => s.Status == StepStatus.Succeeded);
     public int StepsFailed    => Steps.Count(s => s.Status == StepStatus.Failed);

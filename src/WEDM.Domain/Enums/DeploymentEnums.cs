@@ -52,12 +52,16 @@ public enum DeploymentStatus
 /// </summary>
 public enum StepStatus
 {
-    Pending    = 0,
-    Running    = 1,
-    Succeeded  = 2,
-    Failed     = 3,
-    Skipped    = 4,
-    Retrying   = 5
+    Pending        = 0,
+    Running        = 1,
+    Succeeded      = 2,
+    Failed         = 3,
+    Skipped        = 4,
+    Retrying       = 5,
+    /// <summary>Step was successfully reversed by its registered rollback executor.</summary>
+    RolledBack     = 6,
+    /// <summary>Rollback was attempted (or attempted and no executor was registered) but did not complete cleanly.</summary>
+    RollbackFailed = 7
 }
 
 /// <summary>

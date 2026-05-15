@@ -66,7 +66,13 @@ public static class WlstPowerShellEnvironment
         if (!string.IsNullOrWhiteSpace(preamble))
             sb.Append(preamble.TrimEnd()).AppendLine();
         sb.AppendLine($"$p = Start-Process -FilePath {wlstQ} -ArgumentList @({pyQ}) -Wait -PassThru -NoNewWindow");
-        sb.Append("exit $(if ($null -eq $p) { 1 } else { $p.ExitCode })");
+        // Emit a structured exit-code marker that PowerShellExecutor can read from the output stream,
+        // preventing the in-process PS SDK's ps.HadErrors flag from causing false-positive failures
+        // (WLST and other native commands write informational messages to stderr which populate Streams.Error
+        //  even when the child process exits cleanly).
+        sb.AppendLine("$__wedm_rc = if ($null -eq $p) { 1 } else { [int]$p.ExitCode }");
+        sb.AppendLine("Write-Output \"__WEDM_EXIT:$__wedm_rc\"");
+        sb.Append("exit $__wedm_rc");
         return sb.ToString();
     }
 }

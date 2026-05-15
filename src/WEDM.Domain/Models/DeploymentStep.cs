@@ -86,8 +86,18 @@ public sealed class StepExecutionResult
     public Exception? Exception { get; init; }
     public PrerequisiteValidationResult? ValidationSnapshot { get; init; }
 
+    /// <summary>
+    /// Set for rollback helpers that succeeded in recording state but cannot fully reverse
+    /// (e.g. schema drop requires DBA RCU/sqlplus). Rollback summaries surface this distinctly from hard failures.
+    /// </summary>
+    public bool ManualInterventionRequired { get; init; }
+
     public static StepExecutionResult Ok(string output = "", TimeSpan duration = default)
         => new() { Success = true, ExitCode = 0, Output = output, Duration = duration };
+
+    /// <inheritdoc cref="ManualInterventionRequired"/>
+    public static StepExecutionResult OkWithManualFollowUp(string output = "", TimeSpan duration = default)
+        => new() { Success = true, ExitCode = 0, Output = output, Duration = duration, ManualInterventionRequired = true };
 
     public static StepExecutionResult Fail(
         string error,

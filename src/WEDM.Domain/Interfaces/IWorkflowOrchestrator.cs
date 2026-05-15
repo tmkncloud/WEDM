@@ -24,8 +24,13 @@ public interface IWorkflowOrchestrator
         DeploymentConfiguration config,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Attempt rollback of all steps that support it, in reverse order.</summary>
-    Task<bool> RollbackAsync(
+    /// <summary>
+    /// Attempt rollback of all completed, rollback-capable steps in reverse execution order.
+    /// Returns a <see cref="RollbackSummary"/> describing exactly which steps were reversed,
+    /// which had no registered executor (requiring manual intervention), and which failed.
+    /// Never throws — individual step failures are captured in the summary.
+    /// </summary>
+    Task<RollbackSummary> RollbackAsync(
         IReadOnlyList<DeploymentStep> steps,
         DeploymentConfiguration config,
         CancellationToken cancellationToken = default);

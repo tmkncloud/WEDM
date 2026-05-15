@@ -109,13 +109,44 @@ public sealed partial class PrerequisiteViewModel : WizardStepViewModel
     }
 }
 
-/// <summary>Row view-model for a single <see cref="ValidationFinding"/> in the check grid.</summary>
+/// <summary>
+/// Row view-model for a single <see cref="ValidationFinding"/> in the check grid.
+/// Exposes all diagnostic fields required for operator-grade failure analysis:
+///   • CheckName, Message, Remediation
+///   • ActualValue / ExpectedValue — displayed when non-null
+///   • Severity label and color-coded icon
+///   • Category derived from dot-separated CheckName prefix
+/// </summary>
 public sealed class FindingRowViewModel(ValidationFinding finding)
 {
-    public string CheckName    { get; } = finding.CheckName;
-    public string Message      { get; } = finding.Message;
-    public string Remediation  { get; } = finding.Remediation ?? string.Empty;
-    public bool   Passed       { get; } = finding.Passed;
+    public string  CheckName      { get; } = finding.CheckName;
+    public string  Message        { get; } = finding.Message;
+    public string  Remediation    { get; } = finding.Remediation ?? string.Empty;
+    public bool    Passed         { get; } = finding.Passed;
+
+    // ── Diagnostic detail fields ──────────────────────────────────────────────
+    public string  ActualValue    { get; } = finding.ActualValue?.ToString()   ?? string.Empty;
+    public string  ExpectedValue  { get; } = finding.ExpectedValue?.ToString() ?? string.Empty;
+    public string  SeverityLabel  { get; } = finding.Passed ? "PASS" : finding.Severity.ToString().ToUpper();
+    public string  Category       { get; } = DeriveCategory(finding.CheckName);
+
+    /// <summary>True when the ActualValue / ExpectedValue comparison row should be shown.</summary>
+    public bool HasDiagnosticValues => !finding.Passed
+        && (!string.IsNullOrWhiteSpace(finding.ActualValue?.ToString())
+         || !string.IsNullOrWhiteSpace(finding.ExpectedValue?.ToString()));
+
+    /// <summary>Human-readable comparison line, e.g. "Expected: JDK 8   Actual: Not installed"</summary>
+    public string DiagnosticSummary
+    {
+        get
+        {
+            if (!HasDiagnosticValues) return string.Empty;
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(ExpectedValue)) parts.Add($"Expected: {ExpectedValue}");
+            if (!string.IsNullOrWhiteSpace(ActualValue))   parts.Add($"Actual: {ActualValue}");
+            return string.Join("   |   ", parts);
+        }
+    }
 
     public string StatusIcon => finding.Passed ? "✔" : finding.Severity switch
     {
@@ -134,6 +165,25 @@ public sealed class FindingRowViewModel(ValidationFinding finding)
             ValidationSeverity.Fatal   => MakeBrush("#FF0000"),
             _                          => MakeBrush("#8B949E"),
         };
+
+    public System.Windows.Media.Brush CategoryColor => Category switch
+    {
+        "JDK"      or "Java"   => MakeBrush("#2188FF"),
+        "Payload"  or "Middleware" => MakeBrush("#6F42C1"),
+        "Port"     or "Ports"  => MakeBrush("#E36209"),
+        "Database" or "DB"     => MakeBrush("#0366D6"),
+        "OS"       or "OSVersion" or "OSArchitecture" => MakeBrush("#1B7F79"),
+        "Disk"     or "DiskSpace" => MakeBrush("#8B6914"),
+        "RAM"      or "CPU"    => MakeBrush("#B31D28"),
+        _                      => MakeBrush("#586069"),
+    };
+
+    private static string DeriveCategory(string checkName)
+    {
+        if (string.IsNullOrWhiteSpace(checkName)) return "General";
+        var dot = checkName.IndexOf('.', StringComparison.Ordinal);
+        return dot > 0 ? checkName[..dot] : checkName;
+    }
 
     private static System.Windows.Media.SolidColorBrush MakeBrush(string hex)
         => new((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));

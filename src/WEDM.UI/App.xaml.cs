@@ -197,6 +197,18 @@ public partial class App : System.Windows.Application
         services.AddTransient<ValidateSecuritySecretsAndSslStep>();
         services.AddTransient<GenerateSecurityComplianceAuditStep>();
 
+        services.AddTransient<RemoveOracleFoldersStep>();
+        services.AddTransient<RemoveJdkStep>();
+        services.AddTransient<RemoveJavaEnvVarsStep>();
+        services.AddTransient<RemoveMiddlewareHomeStep>();
+        services.AddTransient<RemoveDomainStep>();
+        services.AddTransient<RemoveWindowsServiceStep>();
+        services.AddTransient<RemoveOracleRegistryKeysStep>();
+        services.AddTransient<RemoveVcRedistRollbackStep>();
+        services.AddTransient<RemoveOhsWebTierRollbackStep>();
+        services.AddTransient<RemoveFormsReportsRollbackStep>();
+        services.AddTransient<DropRcuSchemasRollbackStep>();
+
         services.AddSingleton<IStepExecutorFactory>(sp =>
         {
             var regWin = sp.GetRequiredService<RegisterWindowsServicesStep>();
@@ -249,12 +261,27 @@ public partial class App : System.Windows.Application
                 ["GenerateSecurityComplianceAudit"] = sp.GetRequiredService<GenerateSecurityComplianceAuditStep>(),
             };
 
+            var removeMw     = sp.GetRequiredService<RemoveMiddlewareHomeStep>();
+            var removeDomain = sp.GetRequiredService<RemoveDomainStep>();
+            var removeSvc    = sp.GetRequiredService<RemoveWindowsServiceStep>();
+            var removeReg    = sp.GetRequiredService<RemoveOracleRegistryKeysStep>();
+
             var rollback = new Dictionary<string, IStepExecutor>(StringComparer.OrdinalIgnoreCase)
             {
-                ["RollbackOpatchApply"] = sp.GetRequiredService<RollbackOpatchApplyStep>(),
+                ["RollbackOpatchApply"]       = sp.GetRequiredService<RollbackOpatchApplyStep>(),
+                ["Remove-OracleFolders"]      = sp.GetRequiredService<RemoveOracleFoldersStep>(),
+                ["Remove-JDK"]                = sp.GetRequiredService<RemoveJdkStep>(),
+                ["Remove-JavaEnvVars"]        = sp.GetRequiredService<RemoveJavaEnvVarsStep>(),
+                ["Remove-MiddlewareHome"]      = removeMw,
+                ["Remove-Domain"]            = removeDomain,
+                ["Remove-OracleRegistryKeys"] = removeReg,
+                ["Remove-VCRedist"]          = sp.GetRequiredService<RemoveVcRedistRollbackStep>(),
+                ["Remove-FormsReports"]      = sp.GetRequiredService<RemoveFormsReportsRollbackStep>(),
+                ["Remove-OHS"]               = sp.GetRequiredService<RemoveOhsWebTierRollbackStep>(),
+                ["Drop-RCUSchemas"]          = sp.GetRequiredService<DropRcuSchemasRollbackStep>(),
             };
 
-            IStepExecutor? Fallback(string name)
+            IStepExecutor? FallbackForward(string name)
             {
                 if (name.StartsWith("Register", StringComparison.OrdinalIgnoreCase) &&
                     name.EndsWith("Service", StringComparison.OrdinalIgnoreCase) &&
@@ -264,7 +291,15 @@ public partial class App : System.Windows.Application
                 return null;
             }
 
-            return new StepExecutorFactory(executors, rollback, Fallback);
+            IStepExecutor? FallbackRollback(string action)
+            {
+                if (action.StartsWith("Remove-", StringComparison.OrdinalIgnoreCase) &&
+                    action.EndsWith("Service", StringComparison.OrdinalIgnoreCase))
+                    return removeSvc;
+                return null;
+            }
+
+            return new StepExecutorFactory(executors, rollback, FallbackForward, FallbackRollback);
         });
 
         services.AddSingleton<IWorkflowOrchestrator, DeploymentWorkflowEngine>();

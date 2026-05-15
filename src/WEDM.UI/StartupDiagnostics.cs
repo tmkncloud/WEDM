@@ -48,23 +48,46 @@ internal static class StartupDiagnostics
         {
             var ex = args.ExceptionObject as Exception;
             var msg = $"AppDomain.UnhandledException isTerminating={args.IsTerminating}";
-            Trace("AppDomain.UnhandledException", ex?.ToString() ?? args.ExceptionObject?.ToString() ?? msg);
+            var detail = ex?.ToString() ?? args.ExceptionObject?.ToString() ?? msg;
+            Trace("AppDomain.UnhandledException", detail);
             TryWriteStartupError("AppDomain.UnhandledException", ex ?? new Exception(args.ExceptionObject?.ToString() ?? "unknown"));
+
+            // Only attempt dialog when not already terminating (avoids re-entrance during CLR fatal path).
+            if (!args.IsTerminating)
+            {
+                try
+                {
+                    global::System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+                        ShowUiExceptionDialog("Unhandled application error", ex ?? new Exception(detail)));
+                }
+                catch { /* headless or already shutting down */ }
+            }
         };
 
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
+            // Mark observed FIRST so the runtime does not escalate to process termination.
+            args.SetObserved();
             Trace("TaskScheduler.UnobservedTaskException", args.Exception?.ToString());
             TryWriteStartupError("UnobservedTaskException", args.Exception);
+            // Log to structured sink if already running — best-effort.
+            try
+            {
+                var svc = global::System.Windows.Application.Current?.TryFindResource("LoggingService")
+                    as WEDM.Domain.Interfaces.ILoggingService;
+                svc?.Error("Unobserved task exception (fire-and-forget leak detected)",
+                    args.Exception, "TaskScheduler");
+            }
+            catch { /* ignore — logging may not be ready */ }
         };
 
         app.DispatcherUnhandledException += (_, args) =>
         {
             Trace("DispatcherUnhandledException", args.Exception.ToString());
             TryWriteStartupError("DispatcherUnhandledException", args.Exception);
-            ShowUiExceptionDialog("Unexpected UI error", args.Exception);
             // Keep the shell alive so the operator can read logs and retry navigation.
             args.Handled = true;
+            ShowUiExceptionDialog("Unexpected UI error", args.Exception);
         };
     }
 
