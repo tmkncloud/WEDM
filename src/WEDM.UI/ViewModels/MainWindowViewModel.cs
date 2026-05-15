@@ -257,6 +257,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private void ApplyCurrentStep()
     {
+        if (!CurrentStep.CanProceed)
+            return;
+
         if (CurrentStep is MigrationWizardStepViewModel migrationStep)
             migrationStep.ApplyToMigrationConfiguration(Migration);
         else
@@ -299,9 +302,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private void OnStepPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (sender is WizardStepViewModel step
+            && e.PropertyName == nameof(ViewModelBase.IsBusy))
+        {
+            step.NotifyValidationStateChanged();
+        }
+
         if (e.PropertyName is nameof(WizardStepViewModel.CanProceed)
-            or nameof(WizardStepViewModel.IsBusy)
-            or nameof(WizardStepViewModel.IsValid))
+            or nameof(ViewModelBase.IsBusy)
+            or nameof(WizardStepViewModel.IsValid)
+            or nameof(WizardStepViewModel.HasStepValidationError))
         {
             RefreshNavigation();
         }
@@ -390,18 +400,30 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             var from = CurrentStepIndex;
             for (var i = from + 1; i < index; i++)
             {
-                if (_activeSteps[i] is MigrationWizardStepViewModel skippedMigration)
+                var step = _activeSteps[i];
+                step.ValidateStep();
+                if (!step.CanProceed)
+                {
+                    foreach (var s in _activeSteps)
+                        s.IsActive = false;
+                    CurrentStepIndex = i;
+                    CurrentStep.IsActive = true;
+                    NotifyNavigationStateChanged();
+                    return;
+                }
+
+                if (step is MigrationWizardStepViewModel skippedMigration)
                 {
                     await skippedMigration.OnNavigatingToAsync(Migration);
                     skippedMigration.ApplyToMigrationConfiguration(Migration);
                 }
                 else
                 {
-                    await _activeSteps[i].OnNavigatingToAsync(Configuration);
-                    _activeSteps[i].ApplyToConfiguration(Configuration);
+                    await step.OnNavigatingToAsync(Configuration);
+                    step.ApplyToConfiguration(Configuration);
                 }
 
-                _activeSteps[i].IsCompleted = true;
+                step.IsCompleted = true;
             }
 
             CurrentStepIndex = index;

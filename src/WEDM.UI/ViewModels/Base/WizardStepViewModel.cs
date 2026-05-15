@@ -25,12 +25,14 @@ public abstract partial class WizardStepViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanProceed))]
+    [NotifyPropertyChangedFor(nameof(HasStepValidationError))]
     private bool _isValid = true;
 
     [ObservableProperty]
     private bool _isCompleted;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStepValidationError))]
     private bool _isActive;
 
     public int StepIndex { get; set; }
@@ -56,7 +58,28 @@ public abstract partial class WizardStepViewModel : ViewModelBase
     /// Called when the wizard attempts to navigate FROM this step.
     /// Return false to block navigation (e.g., failed validation).
     /// </summary>
-    public virtual Task<bool> OnNavigatingFromAsync() => Task.FromResult(true);
+    public virtual Task<bool> OnNavigatingFromAsync()
+    {
+        RunStepValidation();
+        IsValid = CanProceed;
+        return Task.FromResult(CanProceed);
+    }
+
+    /// <summary>Override to refresh field errors before leave / Next enablement.</summary>
+    protected virtual void RunStepValidation() { }
+
+    /// <summary>Runs validation and updates error properties (callable from wizard controller).</summary>
+    public void ValidateStep() => RunStepValidation();
+
+    /// <summary>Notifies UI bindings after busy-state or validation changes from the shell.</summary>
+    public void NotifyValidationStateChanged()
+    {
+        OnPropertyChanged(nameof(HasStepValidationError));
+        OnPropertyChanged(nameof(CanProceed));
+    }
+
+    /// <summary>True when the active step has validation errors (sidebar hint).</summary>
+    public bool HasStepValidationError => IsActive && !CanProceed && !IsBusy;
 
     /// <summary>Write current values into the shared DeploymentConfiguration.</summary>
     public abstract void ApplyToConfiguration(Domain.Models.DeploymentConfiguration config);

@@ -15,6 +15,7 @@ build_property.EnforceExtendedAnalyzerRules =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.MvvmToolkitEnableINotifyPropertyChangingSupport = true
 build_property.RootNamespace = WEDM.Engine.Tests
 build_property.ProjectDir = d:\Tmkn\weblogic tools\WEDM\tests\WEDM.Engine.Tests\
 build_property.EnableComHosting = 

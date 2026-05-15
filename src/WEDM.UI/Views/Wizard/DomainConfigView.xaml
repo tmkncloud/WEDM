@@ -4,9 +4,15 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             xmlns:converters="clr-namespace:WEDM.UI.Converters"
+             xmlns:val="clr-namespace:WEDM.UI.Validation"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:DomainConfigViewModel, IsDesignTimeCreatable=False}">
     <StackPanel>
+        <StackPanel.Resources>
+            <converters:StringToVisibilityConverter x:Key="StringToVis"/>
+            <converters:StringToBoolConverter x:Key="StringToBool"/>
+        </StackPanel.Resources>
         <TextBlock Text="Topology" Style="{StaticResource TypeH2}" Margin="0,0,0,8"/>
         <TextBlock Text="{Binding ProfileSummary}" Style="{StaticResource TypeCaption}"
                    Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,0,0,10"/>
@@ -38,7 +44,10 @@
         <UniformGrid Columns="2" Margin="0,0,0,18">
             <StackPanel Margin="0,0,8,0">
                 <TextBlock Text="Domain Name" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding DomainName, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding DomainName, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding DomainNameError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Text="{Binding DomainNameError}" Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding DomainNameError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
             <StackPanel Margin="8,0,0,0">
                 <TextBlock Text="Topology" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
@@ -52,11 +61,17 @@
         <UniformGrid Columns="3" Margin="0,0,0,14">
             <StackPanel Margin="0,0,8,0">
                 <TextBlock Text="Server Name" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminServerName, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminServerName, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding AdminServerNameError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Text="{Binding AdminServerNameError}" Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding AdminServerNameError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
             <StackPanel Margin="4,0,8,0">
                 <TextBlock Text="Listen Port" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminPort, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminPort, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding AdminPortError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Text="{Binding AdminPortError}" Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding AdminPortError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
             <StackPanel Margin="4,0,0,0">
                 <TextBlock Text="SSL Port" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
@@ -67,17 +82,24 @@
         <UniformGrid Columns="3" Margin="0,0,0,20">
             <StackPanel Margin="0,0,8,0">
                 <TextBlock Text="Administrator User" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminUsername, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminUsername, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding AdminUsernameError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Text="{Binding AdminUsernameError}" Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding AdminUsernameError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
             <StackPanel Margin="4,0,8,0">
                 <TextBlock Text="Password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminPassword, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding AdminPassword, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding AdminPasswordError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Text="{Binding AdminPasswordError}" Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding AdminPasswordError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
             <StackPanel Margin="4,0,0,0">
                 <TextBlock Text="Confirm Password" Style="{StaticResource TypeLabel}" Margin="0,0,0,4"/>
-                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding ConfirmPassword, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock Text="{Binding PasswordMatchMessage}" Style="{StaticResource TypeCaption}"
-                           Foreground="{StaticResource DangerBrush}" Margin="0,4,0,0"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Text="{Binding ConfirmPassword, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding ConfirmPasswordError, Converter={StaticResource StringToBool}}"/>
+                <TextBlock Text="{Binding ConfirmPasswordError}" Style="{StaticResource ValidationErrorText}"
+                           Visibility="{Binding ConfirmPasswordError, Converter={StaticResource StringToVis}}"/>
             </StackPanel>
         </UniformGrid>
 

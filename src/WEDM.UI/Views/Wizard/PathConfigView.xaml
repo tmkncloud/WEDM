@@ -5,11 +5,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Wizard"
              xmlns:converters="clr-namespace:WEDM.UI.Converters"
+             xmlns:val="clr-namespace:WEDM.UI.Validation"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:PathConfigViewModel, IsDesignTimeCreatable=False}">
 
     <UserControl.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVis"/>
+        <converters:StringToBoolConverter x:Key="StringToBool"/>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -32,15 +34,15 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0" Style="{StaticResource TextBoxStyle}"
-                         Text="{Binding OracleRoot, UpdateSourceTrigger=PropertyChanged}"/>
+                         Text="{Binding OracleRoot, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding OracleRootError, Converter={StaticResource StringToBool}}"/>
                 <Button Grid.Column="1" Content="Browse…"
                         Style="{StaticResource BtnSecondary}"
                         Command="{Binding BrowseOracleRootCommand}"
                         Margin="8,0,0,0" Padding="12,0"/>
             </Grid>
             <TextBlock Text="{Binding OracleRootError}"
-                       Foreground="{StaticResource DangerBrush}"
-                       Style="{StaticResource TypeCaption}"
+                       Style="{StaticResource ValidationErrorText}"
                        Visibility="{Binding OracleRootError, Converter={StaticResource StringToVis}}"
                        Margin="0,0,0,12"/>
 
@@ -52,15 +54,15 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0" Style="{StaticResource TextBoxStyle}"
-                         Text="{Binding MiddlewareHome, UpdateSourceTrigger=PropertyChanged}"/>
+                         Text="{Binding MiddlewareHome, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding MiddlewareHomeError, Converter={StaticResource StringToBool}}"/>
                 <Button Grid.Column="1" Content="Browse…"
                         Style="{StaticResource BtnSecondary}"
                         Command="{Binding BrowseMiddlewareHomeCommand}"
                         Margin="8,0,0,0" Padding="12,0"/>
             </Grid>
             <TextBlock Text="{Binding MiddlewareHomeError}"
-                       Foreground="{StaticResource DangerBrush}"
-                       Style="{StaticResource TypeCaption}"
+                       Style="{StaticResource ValidationErrorText}"
                        Visibility="{Binding MiddlewareHomeError, Converter={StaticResource StringToVis}}"
                        Margin="0,0,0,12"/>
 
@@ -72,15 +74,15 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0" Style="{StaticResource TextBoxStyle}"
-                         Text="{Binding DomainBase, UpdateSourceTrigger=PropertyChanged}"/>
+                         Text="{Binding DomainBase, UpdateSourceTrigger=PropertyChanged}"
+                         val:ValidationProperties.HasError="{Binding DomainBaseError, Converter={StaticResource StringToBool}}"/>
                 <Button Grid.Column="1" Content="Browse…"
                         Style="{StaticResource BtnSecondary}"
                         Command="{Binding BrowseDomainBaseCommand}"
                         Margin="8,0,0,0" Padding="12,0"/>
             </Grid>
             <TextBlock Text="{Binding DomainBaseError}"
-                       Foreground="{StaticResource DangerBrush}"
-                       Style="{StaticResource TypeCaption}"
+                       Style="{StaticResource ValidationErrorText}"
                        Visibility="{Binding DomainBaseError, Converter={StaticResource StringToVis}}"
                        Margin="0,0,0,12"/>
 

@@ -114,7 +114,7 @@
                             VerticalAlignment="Center" Margin="16,0">
                     <!-- Oracle/WebLogic logo mark -->
                     <Border Width="28" Height="28" CornerRadius="6"
-                            Background="{StaticResource AccentGradientBrush}"
+                            Background="{StaticResource AccentPrimaryBrush}"
                             Margin="0,0,10,0">
                         <TextBlock Text="W" Foreground="White"
                                    FontFamily="Segoe UI Semibold" FontSize="16"
@@ -256,6 +256,9 @@
                                                                 <DataTrigger Binding="{Binding IsCompleted}" Value="True">
                                                                     <Setter Property="Background" Value="{StaticResource SuccessSubtleBrush}"/>
                                                                 </DataTrigger>
+                                                                <DataTrigger Binding="{Binding HasStepValidationError}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource DangerSubtleBrush}"/>
+                                                                </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Border.Style>
@@ -274,6 +277,10 @@
                                                                     <DataTrigger Binding="{Binding IsCompleted}" Value="True">
                                                                         <Setter Property="Text" Value="✔"/>
                                                                         <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding HasStepValidationError}" Value="True">
+                                                                        <Setter Property="Text" Value="!"/>
+                                                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -378,7 +385,7 @@
                         BorderThickness="0,1,0,0"
                         Height="4">
                     <Grid>
-                        <Rectangle Fill="{StaticResource AccentGradientBrush}" HorizontalAlignment="Left">
+                        <Rectangle Fill="{StaticResource AccentPrimaryBrush}" HorizontalAlignment="Left">
                             <Rectangle.Width>
                                 <MultiBinding>
                                     <MultiBinding.Converter>

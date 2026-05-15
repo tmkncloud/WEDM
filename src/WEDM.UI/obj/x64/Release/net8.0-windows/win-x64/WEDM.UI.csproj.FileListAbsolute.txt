@@ -869,3 +869,4 @@ d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\V
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\MigrationDashboard.baml
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Migration\MigrationTransformationView.g.cs
 d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Views\Migration\MigrationTransformationView.baml
+d:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Release\net8.0-windows\win-x64\Styles\WizardValidation.baml

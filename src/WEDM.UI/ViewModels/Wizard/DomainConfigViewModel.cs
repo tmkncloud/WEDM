@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using WEDM.Domain.Enums;
 using WEDM.Domain.Models;
+using WEDM.UI.Services;
 using WEDM.UI.ViewModels.Base;
 
 namespace WEDM.UI.ViewModels.Wizard;
@@ -46,6 +47,13 @@ public sealed partial class DomainConfigViewModel : WizardStepViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanProceed))]
     private string _confirmPassword = string.Empty;
+
+    [ObservableProperty] private string _domainNameError = string.Empty;
+    [ObservableProperty] private string _adminServerNameError = string.Empty;
+    [ObservableProperty] private string _adminPortError = string.Empty;
+    [ObservableProperty] private string _adminUsernameError = string.Empty;
+    [ObservableProperty] private string _adminPasswordError = string.Empty;
+    [ObservableProperty] private string _confirmPasswordError = string.Empty;
 
     // ── Node Manager ──────────────────────────────────────────────────────────
 
@@ -133,6 +141,7 @@ public sealed partial class DomainConfigViewModel : WizardStepViewModel
             $"Node Manager: {config.Domain.NodeManager.Type} on port {config.Domain.NodeManager.Port}";
 
         RefreshTopologyNodes();
+        ValidateFields();
         return Task.CompletedTask;
     }
 
@@ -144,17 +153,51 @@ public sealed partial class DomainConfigViewModel : WizardStepViewModel
             TopologyNodes.Add(new TopologyNodeVm("Managed", ms.Name, ms.Port, "○"));
     }
 
-    partial void OnAdminServerNameChanged(string value) => RefreshTopologyNodes();
+    partial void OnAdminServerNameChanged(string value)
+    {
+        RefreshTopologyNodes();
+        ValidateFields();
+    }
 
-    partial void OnAdminPortChanged(int value) => RefreshTopologyNodes();
+    partial void OnAdminPortChanged(int value)
+    {
+        RefreshTopologyNodes();
+        ValidateFields();
+    }
+
+    partial void OnDomainNameChanged(string value) => ValidateFields();
+    partial void OnAdminUsernameChanged(string value) => ValidateFields();
 
     public override bool CanProceed =>
-        !string.IsNullOrWhiteSpace(DomainName)     &&
-        !string.IsNullOrWhiteSpace(AdminServerName) &&
-        AdminPort is > 0 and < 65536               &&
-        !string.IsNullOrWhiteSpace(AdminUsername)  &&
-        !string.IsNullOrWhiteSpace(AdminPassword)  &&
-        PasswordsMatch;
+        string.IsNullOrEmpty(DomainNameError) &&
+        string.IsNullOrEmpty(AdminServerNameError) &&
+        string.IsNullOrEmpty(AdminPortError) &&
+        string.IsNullOrEmpty(AdminUsernameError) &&
+        string.IsNullOrEmpty(AdminPasswordError) &&
+        string.IsNullOrEmpty(ConfirmPasswordError) &&
+        !IsBusy;
+
+    protected override void RunStepValidation() => ValidateFields();
+
+    private void ValidateFields()
+    {
+        DomainNameError = WizardValidationHelper.IsValidIdentifier(DomainName, "Domain name", out var dn)
+            ? string.Empty : dn;
+        AdminServerNameError = WizardValidationHelper.IsValidIdentifier(AdminServerName, "Admin server name", out var sn)
+            ? string.Empty : sn;
+        AdminPortError = WizardValidationHelper.IsValidPort(AdminPort, out var pe) ? string.Empty : pe;
+        AdminUsernameError = WizardValidationHelper.IsRequiredText(AdminUsername, "Administrator user", out var ue)
+            ? string.Empty : ue;
+        AdminPasswordError = WizardValidationHelper.IsRequiredText(AdminPassword, "Password", out var pw)
+            ? string.Empty : pw;
+        ConfirmPasswordError = PasswordsMatch
+            ? string.Empty
+            : "Passwords do not match.";
+
+        IsValid = CanProceed;
+        OnPropertyChanged(nameof(CanProceed));
+        OnPropertyChanged(nameof(HasStepValidationError));
+    }
 
     public DomainConfigViewModel()
     {
@@ -168,12 +211,14 @@ public sealed partial class DomainConfigViewModel : WizardStepViewModel
     {
         OnPropertyChanged(nameof(PasswordsMatch));
         OnPropertyChanged(nameof(PasswordMatchMessage));
+        ValidateFields();
     }
 
     partial void OnConfirmPasswordChanged(string value)
     {
         OnPropertyChanged(nameof(PasswordsMatch));
         OnPropertyChanged(nameof(PasswordMatchMessage));
+        ValidateFields();
     }
 
     public override void ApplyToConfiguration(DeploymentConfiguration config)

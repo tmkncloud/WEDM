@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using System.IO;
 using WEDM.Domain.Models;
+using WEDM.UI.Services;
 using WEDM.UI.ViewModels.Base;
 
 namespace WEDM.UI.ViewModels.Wizard;
@@ -52,30 +53,46 @@ public sealed partial class PathConfigViewModel : WizardStepViewModel
     [ObservableProperty] private string _domainBaseError       = string.Empty;
 
     public override bool CanProceed =>
-        IsValidPath(OracleRoot)   &&
-        IsValidPath(MiddlewareHome) &&
-        IsValidPath(DomainBase);
+        string.IsNullOrEmpty(OracleRootError) &&
+        string.IsNullOrEmpty(MiddlewareHomeError) &&
+        string.IsNullOrEmpty(DomainBaseError) &&
+        !IsBusy;
 
     public PathConfigViewModel()
     {
         StepTitle       = "Installation Paths";
         StepDescription = "Configure Oracle directory locations.";
         StepIcon        = "📁";
+        ValidatePaths();
+    }
+
+    public override Task OnNavigatingToAsync(DeploymentConfiguration config)
+    {
+        ValidatePaths();
+        return Task.CompletedTask;
     }
 
     // ── Auto-populate when Oracle root changes ─────────────────────────────────
 
     partial void OnOracleRootChanged(string value)
     {
-        if (!AutoPopulatePaths) return;
-        MiddlewareHome   = Path.Combine(value, "Oracle_MW");
-        DomainBase       = Path.Combine(value, "Oracle_MW", "user_projects", "domains");
-        OracleInventory  = Path.Combine(value, "oraInventory");
-        TempDirectory    = Path.Combine(value, "Temp");
-        LogDirectory     = Path.Combine(value, "WEDM", "logs");
-        ReportsDirectory = Path.Combine(value, "WEDM", "reports");
+        if (AutoPopulatePaths)
+        {
+            MiddlewareHome   = Path.Combine(value, "Oracle_MW");
+            DomainBase       = Path.Combine(value, "Oracle_MW", "user_projects", "domains");
+            OracleInventory  = Path.Combine(value, "oraInventory");
+            TempDirectory    = Path.Combine(value, "Temp");
+            LogDirectory     = Path.Combine(value, "WEDM", "logs");
+            ReportsDirectory = Path.Combine(value, "WEDM", "reports");
+        }
+
         ValidatePaths();
     }
+
+    partial void OnMiddlewareHomeChanged(string value) => ValidatePaths();
+    partial void OnDomainBaseChanged(string value) => ValidatePaths();
+
+    protected override void RunStepValidation() => ValidatePaths();
 
     // ── Browse commands ────────────────────────────────────────────────────────
 
@@ -105,21 +122,12 @@ public sealed partial class PathConfigViewModel : WizardStepViewModel
 
     private void ValidatePaths()
     {
-        OracleRootError    = IsValidPath(OracleRoot)    ? string.Empty : "Enter a valid absolute path.";
-        MiddlewareHomeError = IsValidPath(MiddlewareHome) ? string.Empty : "Enter a valid absolute path.";
-        DomainBaseError    = IsValidPath(DomainBase)    ? string.Empty : "Enter a valid absolute path.";
+        OracleRootError     = WizardValidationHelper.IsRequiredPath(OracleRoot, out var e1) ? string.Empty : e1;
+        MiddlewareHomeError = WizardValidationHelper.IsRequiredPath(MiddlewareHome, out var e2) ? string.Empty : e2;
+        DomainBaseError     = WizardValidationHelper.IsRequiredPath(DomainBase, out var e3) ? string.Empty : e3;
+        IsValid = CanProceed;
         OnPropertyChanged(nameof(CanProceed));
-    }
-
-    private static bool IsValidPath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path)) return false;
-        try
-        {
-            _ = Path.GetFullPath(path);
-            return Path.IsPathRooted(path);
-        }
-        catch { return false; }
+        OnPropertyChanged(nameof(HasStepValidationError));
     }
 
     public override void ApplyToConfiguration(DeploymentConfiguration config)
