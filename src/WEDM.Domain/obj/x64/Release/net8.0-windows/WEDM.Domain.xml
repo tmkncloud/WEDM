@@ -54,6 +54,36 @@
             Log level used internally by the WEDM logging service.
             </summary>
         </member>
+        <member name="T:WEDM.Domain.Enums.WedmOperationMode">
+            <summary>Top-level WEDM operation selected on the first wizard screen.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.MiddlewareReleaseKind">
+            <summary>Oracle Forms / middleware release families supported for migration source/target selection.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.MigrationStrategyKind">
+            <summary>How aggressively the migration automation applies changes.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.CompatibilitySeverity">
+            <summary>Compatibility finding severity for enterprise risk dashboards.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.CompatibilityRiskCategory">
+            <summary>Category buckets used by the compatibility assessment engine.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.MigrationReadinessLevel">
+            <summary>Overall migration readiness band derived from assessment scoring.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.DiscoveryScanStatus">
+            <summary>Discovery scan lifecycle for source environment analysis.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.DiscoveryStageKind">
+            <summary>Structured discovery pipeline stages.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.MigrationComplexityKind">
+            <summary>Overall modernization complexity band for executive reporting.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.MigrationEffortCategory">
+            <summary>Estimated migration effort category for planning and staffing models.</summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.IDeploymentEngine">
             <summary>
             Core deployment engine contract.
@@ -129,6 +159,38 @@
         </member>
         <member name="E:WEDM.Domain.Interfaces.ILoggingService.EntryWritten">
             <summary>Raised on each log write for real-time UI binding.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.DiscoveryProgressEventArgs">
+            <summary>Progress notification for discovery pipeline stages.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IMiddlewareDiscoveryOrchestrator">
+            <summary>
+            Coordinates read-only environment discovery: inventory, domain, Forms/Reports, patches, compatibility.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IMiddlewareDiscoveryService">
+            <summary>Discovers installed middleware homes, domains, and inventory on the source host.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IFormsEnvironmentScanner">
+            <summary>Scans Forms / Reports module metadata for migration planning (future: deep scanner).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IWebLogicTopologyAnalyzer">
+            <summary>Analyzes WebLogic domain topology, clusters, and Node Manager posture.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IConfigurationTransformationEngine">
+            <summary>Migration transformation plan preview for summary dashboards.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.ICompatibilityAssessmentEngine">
+            <summary>Assesses source→target compatibility and produces enterprise risk findings.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IMigrationReportWriter">
+            <summary>Generates enterprise migration assessment reports (JSON and HTML).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IMigrationSessionStore">
+            <summary>Persists and restores migration session plans using versioned DTOs.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.ITransformationOrchestrator">
+            <summary>Staged migration preparation pipeline — generates artifacts only; never mutates source environments.</summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.IOperationalTelemetrySink">
             <summary>
@@ -276,6 +338,12 @@
         <member name="M:WEDM.Domain.Interfaces.IWorkflowOrchestrator.RollbackAsync(System.Collections.Generic.IReadOnlyList{WEDM.Domain.Models.DeploymentStep},WEDM.Domain.Models.DeploymentConfiguration,System.Threading.CancellationToken)">
             <summary>Attempt rollback of all steps that support it, in reverse order.</summary>
         </member>
+        <member name="T:WEDM.Domain.Migration.MigrationVersionMatrix">
+            <summary>
+            Enterprise upgrade path matrix for Oracle Forms / middleware releases.
+            Target lists are filtered reactively in the UI based on the selected source release.
+            </summary>
+        </member>
         <member name="T:WEDM.Domain.Models.CertificateValidationResult">
             <summary>Outcome of keystore / certificate checks (passwords must never be echoed).</summary>
         </member>
@@ -324,6 +392,9 @@
             Represents the result of executing a step's action — returned by automation executors.
             </summary>
         </member>
+        <member name="T:WEDM.Domain.Models.DiscoveryExecutionResult">
+            <summary>Canonical result of a full migration environment discovery run.</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentEnvironmentKind">
             <summary>Reusable lifecycle profile (DEV / SIT / UAT / PROD) for defaults.</summary>
         </member>
@@ -332,6 +403,20 @@
         </member>
         <member name="T:WEDM.Domain.Models.DomainOnlineAutomationConfiguration">
             <summary>WLST online automation after AdminServer is reachable (nmEnroll, hardening, validation).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.MigrationConfiguration">
+            <summary>
+            Dedicated session model for upgrade / migrate workflows.
+            Kept separate from <see cref="T:WEDM.Domain.Models.DeploymentConfiguration"/> to avoid mixing deployment and migration concerns.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.MigrationExecutionCredentials">
+            <summary>In-memory credentials — never persisted to disk.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.MigrationSessionDocument">
+            <summary>
+            Versioned migration session envelope for export/import and resume workflows.
+            </summary>
         </member>
         <member name="T:WEDM.Domain.Models.PatchConfiguration">
             <summary>OPatch / PSU automation configuration.</summary>

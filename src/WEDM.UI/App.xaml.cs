@@ -3,6 +3,10 @@ using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Windows;
 using WEDM.Domain.Interfaces;
+using WEDM.Engine.Discovery;
+using WEDM.Engine.Migration;
+using WEDM.Engine.Execution;
+using WEDM.Engine.Transformation;
 using WEDM.Engine.Opatch;
 using WEDM.Engine.PowerShell;
 using WEDM.Engine.ResponseFiles;
@@ -11,12 +15,14 @@ using WEDM.Engine.Workflow;
 using WEDM.Engine.Workflow.Steps;
 using WEDM.Infrastructure.Deployment;
 using WEDM.Infrastructure.Logging;
+using WEDM.Infrastructure.Migration;
 using WEDM.Infrastructure.Patching;
 using WEDM.Infrastructure.Packaging;
 using WEDM.Infrastructure.Registry;
 using WEDM.Infrastructure.Security;
 using WEDM.UI.Services;
 using WEDM.UI.ViewModels;
+using WEDM.UI.ViewModels.Migration;
 using WEDM.UI.ViewModels.Wizard;
 using DeploymentOrchestrator = WEDM.Application.Services.DeploymentOrchestrator;
 
@@ -113,6 +119,29 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IUpdateManifestReader, LocalUpdateManifestReader>();
         services.AddSingleton<IProductInfoProvider, AppProductInfoProvider>();
         services.AddSingleton<IAboutDialogService, AboutDialogService>();
+
+        // ── Migration (real discovery, assessment, reporting, session persistence) ─
+        services.AddSingleton<MiddlewareDiscoveryOrchestrator>();
+        services.AddSingleton<MiddlewareDiscoveryService>();
+        services.AddSingleton<IMiddlewareDiscoveryOrchestrator>(sp => sp.GetRequiredService<MiddlewareDiscoveryService>());
+        services.AddSingleton<IMiddlewareDiscoveryService>(sp => sp.GetRequiredService<MiddlewareDiscoveryService>());
+        services.AddSingleton<IFormsEnvironmentScanner>(sp => sp.GetRequiredService<MiddlewareDiscoveryService>());
+        services.AddSingleton<IWebLogicTopologyAnalyzer>(sp => sp.GetRequiredService<MiddlewareDiscoveryService>());
+        services.AddSingleton<ITransformationValidationEngine, TransformationValidationEngine>();
+        services.AddSingleton<IMigrationPlanGenerator, MigrationPlanGenerator>();
+        services.AddSingleton<TransformationOrchestrator>();
+        services.AddSingleton<ITransformationOrchestrator>(sp => sp.GetRequiredService<TransformationOrchestrator>());
+        services.AddSingleton<IConfigurationTransformationEngine, ConfigurationTransformationEngine>();
+        services.AddSingleton<IMigrationPreflightValidator, MigrationPreflightValidator>();
+        services.AddSingleton<IWlstExecutionService, WlstExecutionService>();
+        services.AddSingleton<IMigrationExecutionValidationEngine, MigrationExecutionValidationEngine>();
+        services.AddSingleton<IMigrationExecutionStateStore, MigrationExecutionStateStore>();
+        services.AddSingleton<IMigrationExecutionReportWriter, MigrationExecutionReportWriter>();
+        services.AddSingleton<MigrationExecutionOrchestrator>();
+        services.AddSingleton<IMigrationExecutionOrchestrator>(sp => sp.GetRequiredService<MigrationExecutionOrchestrator>());
+        services.AddSingleton<ICompatibilityAssessmentEngine, CompatibilityAssessmentEngine>();
+        services.AddSingleton<IMigrationReportWriter, MigrationReportWriter>();
+        services.AddSingleton<IMigrationSessionStore, JsonMigrationSessionStore>();
 
         // ── Engine ────────────────────────────────────────────────────────────
         services.AddSingleton<ResponseFileGenerator>();
@@ -240,6 +269,7 @@ public partial class App : System.Windows.Application
 
         // ── UI ────────────────────────────────────────────────────────────────
         services.AddSingleton<MainWindowViewModel>();
+        services.AddTransient<OperationSelectionViewModel>();
         services.AddTransient<WelcomeViewModel>();
         services.AddTransient<VersionSelectionViewModel>();
         services.AddTransient<PathConfigViewModel>();
@@ -251,6 +281,15 @@ public partial class App : System.Windows.Application
         services.AddTransient<ProductSystemHealthViewModel>();
         services.AddTransient<DeploymentProgressViewModel>();
         services.AddTransient<DeploymentSummaryViewModel>();
+        services.AddTransient<MigrationSourceVersionViewModel>();
+        services.AddTransient<MigrationTargetVersionViewModel>();
+        services.AddTransient<MigrationDiscoveryViewModel>();
+        services.AddTransient<MigrationCompatibilityViewModel>();
+        services.AddTransient<MigrationStrategyViewModel>();
+        services.AddTransient<MigrationValidationViewModel>();
+        services.AddTransient<MigrationTransformationViewModel>();
+        services.AddTransient<MigrationSummaryViewModel>();
+        services.AddTransient<MigrationExecutionViewModel>();
 
         services.AddSingleton<MainWindow>();
     }

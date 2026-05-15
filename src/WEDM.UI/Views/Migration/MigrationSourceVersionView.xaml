@@ -1,0 +1,46 @@
+<UserControl x:Class="WEDM.UI.Views.Migration.MigrationSourceVersionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Migration"
+             xmlns:enums="clr-namespace:WEDM.Domain.Enums;assembly=WEDM.Domain"
+             xmlns:converters="clr-namespace:WEDM.UI.Converters"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:MigrationSourceVersionViewModel, IsDesignTimeCreatable=False}">
+    <UserControl.Resources>
+        <converters:EnumToBoolConverter x:Key="EnumToBool"/>
+    </UserControl.Resources>
+    <StackPanel>
+        <TextBlock Text="Current middleware release" Style="{StaticResource TypeH2}" Margin="0,0,0,16"/>
+        <UniformGrid Columns="4" Margin="0,0,0,20">
+            <ToggleButton Style="{StaticResource BtnVersionCard}" Margin="0,0,6,0"
+                          IsChecked="{Binding SelectedSource, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static enums:MiddlewareReleaseKind.Forms6i}, Mode=TwoWay}">
+                <StackPanel><TextBlock Text="6i" Style="{StaticResource TypeH1}" TextAlignment="Center"/>
+                    <TextBlock Text="Forms 6i" Style="{StaticResource TypeCaption}" TextAlignment="Center" Opacity="0.7"/></StackPanel>
+            </ToggleButton>
+            <ToggleButton Style="{StaticResource BtnVersionCard}" Margin="3,0,3,0"
+                          IsChecked="{Binding SelectedSource, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static enums:MiddlewareReleaseKind.Forms10g}, Mode=TwoWay}">
+                <StackPanel><TextBlock Text="10g" Style="{StaticResource TypeH1}" TextAlignment="Center"/>
+                    <TextBlock Text="Forms 10g" Style="{StaticResource TypeCaption}" TextAlignment="Center" Opacity="0.7"/></StackPanel>
+            </ToggleButton>
+            <ToggleButton Style="{StaticResource BtnVersionCard}" Margin="3,0,3,0"
+                          IsChecked="{Binding SelectedSource, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static enums:MiddlewareReleaseKind.Forms11g}, Mode=TwoWay}">
+                <StackPanel><TextBlock Text="11g" Style="{StaticResource TypeH1}" TextAlignment="Center"/>
+                    <TextBlock Text="Forms 11g" Style="{StaticResource TypeCaption}" TextAlignment="Center" Opacity="0.7"/></StackPanel>
+            </ToggleButton>
+            <ToggleButton Style="{StaticResource BtnVersionCard}" Margin="6,0,0,0"
+                          IsChecked="{Binding SelectedSource, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static enums:MiddlewareReleaseKind.Forms12c}, Mode=TwoWay}">
+                <StackPanel><TextBlock Text="12c" Style="{StaticResource TypeH1}" TextAlignment="Center"/>
+                    <TextBlock Text="Forms 12c" Style="{StaticResource TypeCaption}" TextAlignment="Center" Opacity="0.7"/></StackPanel>
+            </ToggleButton>
+        </UniformGrid>
+        <Border CornerRadius="6" Padding="14,12" Background="{StaticResource BackgroundPanelBrush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1">
+            <TextBlock>
+                <Run Text="Selected: " Style="{StaticResource TypeCaption}"/>
+                <Run Text="{Binding SelectedSourceDisplay, Mode=OneWay}" FontWeight="SemiBold"/>
+            </TextBlock>
+        </Border>
+    </StackPanel>
+</UserControl>

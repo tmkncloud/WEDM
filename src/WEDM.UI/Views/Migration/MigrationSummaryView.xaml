@@ -1,0 +1,109 @@
+<UserControl x:Class="WEDM.UI.Views.Migration.MigrationSummaryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Migration"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:MigrationSummaryViewModel, IsDesignTimeCreatable=False}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <Border Style="{StaticResource MigrationAccentCard}">
+                <StackPanel>
+                    <TextBlock Text="{Binding ProjectName, Mode=OneWay}" Style="{StaticResource TypeH1}"/>
+                    <TextBlock Text="{Binding UpgradePath, Mode=OneWay}" Style="{StaticResource TypeBody}"
+                               Foreground="{StaticResource AccentPrimaryBrush}" Margin="0,6,0,0"/>
+                    <TextBlock Text="{Binding ExecutiveSummary, Mode=OneWay}" Style="{StaticResource TypeBody}"
+                               TextWrapping="Wrap" Margin="0,12,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <UniformGrid Columns="4" Margin="0,0,0,16">
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="0,0,6,0">
+                    <StackPanel>
+                        <TextBlock Text="{Binding ReadinessPercent, Mode=OneWay, StringFormat={}{0:F1}%}" Style="{StaticResource MigrationMetricValue}"/>
+                        <TextBlock Text="Readiness" Style="{StaticResource TypeCaption}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="3,0,3,0">
+                    <StackPanel>
+                        <TextBlock Text="{Binding ComplexityDisplay, Mode=OneWay}" Style="{StaticResource TypeH2}"/>
+                        <TextBlock Text="Complexity" Style="{StaticResource TypeCaption}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="3,0,3,0">
+                    <StackPanel>
+                        <TextBlock Text="{Binding BlockerCount, Mode=OneWay}" Style="{StaticResource TypeH2}"/>
+                        <TextBlock Text="Blockers" Style="{StaticResource TypeCaption}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="6,0,0,0">
+                    <StackPanel>
+                        <TextBlock Text="{Binding WarningCount, Mode=OneWay}" Style="{StaticResource TypeH2}"/>
+                        <TextBlock Text="Warnings" Style="{StaticResource TypeCaption}"/>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <UniformGrid Columns="2" Margin="0,0,0,16">
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="0,0,8,0">
+                    <StackPanel>
+                        <TextBlock Text="Source environment" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding SourceSummary, Mode=OneWay}" Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
+                        <TextBlock Margin="0,12,0,0" Style="{StaticResource TypeCaption}">
+                            <Run Text="Forms modules: "/><Run Text="{Binding FormCount, Mode=OneWay}"/>
+                            <Run Text=" · Managed servers: "/><Run Text="{Binding ManagedServerCount, Mode=OneWay}"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="8,0,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Target platform" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding TargetSummary, Mode=OneWay}" Style="{StaticResource TypeBody}"/>
+                        <TextBlock Text="{Binding StrategyDisplay, Mode=OneWay}" Style="{StaticResource TypeCaption}" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding EffortDisplay, Mode=OneWay, StringFormat=Effort category: {0}}"
+                                   Style="{StaticResource TypeCaption}" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <TextBlock Text="Operational recommendations" Style="{StaticResource MigrationSectionTitle}"/>
+            <Border Style="{StaticResource MigrationPanelCard}" Margin="0,0,0,16">
+                <TextBlock Text="{Binding OperationalRecommendations, Mode=OneWay}"
+                           Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
+            </Border>
+
+            <TextBlock Text="Transformation plan preview" Style="{StaticResource MigrationSectionTitle}"/>
+            <Border Style="{StaticResource MigrationPanelCard}" MaxHeight="200" Margin="0,0,0,16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding TransformationPlanPreview, Mode=OneWay}"
+                               Style="{StaticResource TypeMono}" FontSize="11" TextWrapping="Wrap"/>
+                </ScrollViewer>
+            </Border>
+
+            <TextBlock Text="Reports &amp; session" Style="{StaticResource MigrationSectionTitle}"/>
+            <Border Style="{StaticResource MigrationPanelCard}">
+                <StackPanel>
+                    <TextBlock Text="{Binding StatusMessage, Mode=OneWay}" Style="{StaticResource TypeBody}"
+                               TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <WrapPanel>
+                        <Button Style="{StaticResource BtnPrimary}" Content="Generate assessment reports"
+                                Command="{Binding GenerateReportsCommand}" Margin="0,0,8,8"/>
+                        <Button Style="{StaticResource BtnSecondary}" Content="Open reports folder"
+                                Command="{Binding OpenReportsFolderCommand}" Margin="0,0,8,8"/>
+                        <Button Style="{StaticResource BtnSecondary}" Content="Export migration plan"
+                                Command="{Binding SaveSessionCommand}" Margin="0,0,8,8"/>
+                        <Button Style="{StaticResource BtnGhost}" Content="Import migration plan"
+                                Command="{Binding LoadSessionCommand}" Margin="0,0,8,8"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource MigrationPanelCard}" Margin="0,12,0,0"
+                    Visibility="{Binding HasError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Text="{Binding ErrorMessage, Mode=OneWay}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap"/>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

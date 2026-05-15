@@ -1,0 +1,132 @@
+<UserControl x:Class="WEDM.UI.Views.Migration.MigrationExecutionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Migration"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:MigrationExecutionViewModel, IsDesignTimeCreatable=False}">
+
+    <StackPanel>
+        <Border Style="{StaticResource MigrationStatusBanner}">
+            <StackPanel>
+                <TextBlock Text="{Binding ExecutionStatus, Mode=OneWay}" Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
+                <TextBlock Style="{StaticResource TypeCaption}" Margin="0,6,0,0">
+                    <Run Text="Outcome: "/><Run Text="{Binding OutcomeDisplay, Mode=OneWay}"/>
+                    <Run Text=" · Dry-run: "/><Run Text="{Binding DryRun, Mode=OneWay}"/>
+                </TextBlock>
+                <ProgressBar Value="{Binding ExecutionProgress, Mode=OneWay}" Maximum="100" Height="6" Margin="0,10,0,0"
+                             Visibility="{Binding IsExecuting, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource MigrationPanelCard}" Margin="0,0,0,12"
+                Visibility="{Binding HasPendingCheckpoint, Converter={StaticResource BoolToVisibilityConverter}}"
+                BorderBrush="{StaticResource WarningBrush}" BorderThickness="2">
+            <StackPanel>
+                <TextBlock Text="Operator checkpoint" Style="{StaticResource TypeH3}" Foreground="{StaticResource WarningBrush}"/>
+                <TextBlock Text="{Binding CheckpointTitle, Mode=OneWay}" Style="{StaticResource TypeLabel}" Margin="0,8,0,4"/>
+                <TextBlock Text="{Binding CheckpointDetail, Mode=OneWay}" Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
+                <TextBox Style="{StaticResource TextBoxStyle}" Margin="0,10,0,0"
+                         Text="{Binding OperatorNote, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="Optional operator note"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button Style="{StaticResource BtnPrimary}" Content="Approve &amp; continue" Command="{Binding ApproveCheckpointCommand}" Margin="0,0,8,0"/>
+                    <Button Style="{StaticResource BtnSecondary}" Content="Pause" Command="{Binding PauseCheckpointCommand}" Margin="0,0,8,0"/>
+                    <Button Style="{StaticResource BtnDanger}" Content="Abort" Command="{Binding AbortCheckpointCommand}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <TextBlock Text="Execution options" Style="{StaticResource MigrationSectionTitle}"/>
+        <Border Style="{StaticResource MigrationPanelCard}" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <CheckBox Grid.Row="0" Grid.ColumnSpan="2" Content="Dry-run mode (rehearsal — no WLST processes started)"
+                          IsChecked="{Binding DryRun}" Margin="0,0,0,8"
+                          IsEnabled="{Binding IsExecuting, Converter={StaticResource InverseBoolConverter}}"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="WebLogic user" Style="{StaticResource TypeLabel}" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource TextBoxStyle}" Margin="0,0,0,8"
+                         Text="{Binding WebLogicUsername, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding IsExecuting, Converter={StaticResource InverseBoolConverter}}"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Password" Style="{StaticResource TypeLabel}" VerticalAlignment="Center"/>
+                <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="WebLogicPasswordBox" Margin="0,0,0,8"
+                             IsEnabled="{Binding IsExecuting, Converter={StaticResource InverseBoolConverter}}"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Target domain" Style="{StaticResource TypeLabel}" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource TextBoxStyle}"
+                         Text="{Binding TargetDomainHome, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding IsExecuting, Converter={StaticResource InverseBoolConverter}}"/>
+            </Grid>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Style="{StaticResource BtnPrimary}" Content="Start controlled execution"
+                    Command="{Binding StartExecutionCommand}" Margin="0,0,8,0"
+                    IsEnabled="{Binding IsExecuting, Converter={StaticResource InverseBoolConverter}}"/>
+            <Button Style="{StaticResource BtnDanger}" Content="Cancel"
+                    Command="{Binding CancelExecutionCommand}" Margin="0,0,8,0"
+                    Visibility="{Binding IsExecuting, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <Button Style="{StaticResource BtnSecondary}" Content="Open workspace" Command="{Binding OpenWorkspaceCommand}"/>
+        </StackPanel>
+
+        <TextBlock Text="Execution timeline" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+        <ItemsControl ItemsSource="{Binding ExecutionStages, Mode=OneWay}" MaxHeight="180" Margin="0,0,0,12">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource MigrationPanelCard}" Padding="8,6" Margin="0,0,0,4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="70"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding DisplayName}" Style="{StaticResource TypeLabel}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Status}" Style="{StaticResource TypeCaption}" Margin="8,0"/>
+                            <TextBlock Grid.Column="2" Style="{StaticResource TypeCaption}" HorizontalAlignment="Right">
+                                <Run Text="{Binding DurationMs, Mode=OneWay}"/><Run Text=" ms"/>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="WLST results" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+        <ItemsControl ItemsSource="{Binding WlstResults, Mode=OneWay}" MaxHeight="120" Margin="0,0,0,12">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Style="{StaticResource TypeCaption}" Margin="0,2,0,2">
+                        <Run Text="{Binding ScriptName, Mode=OneWay}"/>
+                        <Run Text=" · success="/>
+                        <Run Text="{Binding Success, Mode=OneWay}"/>
+                        <Run Text=" · exit="/>
+                        <Run Text="{Binding ExitCode, Mode=OneWay}"/>
+                    </TextBlock>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="Execution log" Style="{StaticResource TypeH3}" Margin="0,0,0,8"/>
+        <Border Style="{StaticResource MigrationPanelCard}" MaxHeight="200">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding ExecutionLog, Mode=OneWay}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -5,7 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:WEDM.UI.ViewModels"
         xmlns:wvm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+        xmlns:mvm="clr-namespace:WEDM.UI.ViewModels.Migration"
         xmlns:wviews="clr-namespace:WEDM.UI.Views.Wizard"
+        xmlns:mviews="clr-namespace:WEDM.UI.Views.Migration"
         xmlns:converters="clr-namespace:WEDM.UI.Converters"
         mc:Ignorable="d"
         Title="WebLogic Enterprise Deployment Manager"
@@ -20,6 +22,9 @@
 
     <Window.Resources>
         <!-- DataTemplate selectors for wizard steps -->
+        <DataTemplate DataType="{x:Type wvm:OperationSelectionViewModel}">
+            <wviews:OperationSelectionView/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type wvm:WelcomeViewModel}">
             <wviews:WelcomeView/>
         </DataTemplate>
@@ -52,6 +57,33 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type wvm:DeploymentProgressViewModel}">
             <wviews:DeploymentProgressView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationSourceVersionViewModel}">
+            <mviews:MigrationSourceVersionView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationTargetVersionViewModel}">
+            <mviews:MigrationTargetVersionView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationDiscoveryViewModel}">
+            <mviews:MigrationDiscoveryView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationCompatibilityViewModel}">
+            <mviews:MigrationCompatibilityView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationStrategyViewModel}">
+            <mviews:MigrationStrategyView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationValidationViewModel}">
+            <mviews:MigrationValidationView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationTransformationViewModel}">
+            <mviews:MigrationTransformationView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationSummaryViewModel}">
+            <mviews:MigrationSummaryView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type mvm:MigrationExecutionViewModel}">
+            <mviews:MigrationExecutionView/>
         </DataTemplate>
     </Window.Resources>
 
@@ -407,6 +439,11 @@
                                         <Setter Property="Content" Value="🚀  Deploy"/>
                                         <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
                                         <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsMigrationReadyStep}" Value="True">
+                                        <Setter Property="Content" Value="📋  Review &amp; Plan"/>
+                                        <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsLastStep}" Value="True">
                                         <Setter Property="Content" Value="Finish"/>

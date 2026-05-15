@@ -1,32 +1,31 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
+using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.UI.Services;
 using WEDM.UI.ViewModels.Base;
+using WEDM.UI.ViewModels.Migration;
 using WEDM.UI.ViewModels.Wizard;
 
 namespace WEDM.UI.ViewModels;
 
 /// <summary>
-/// Root ViewModel — owns the wizard step collection, navigation state,
-/// the shared DeploymentConfiguration, and overall application lifecycle.
-///
-/// Navigation model:
-///   Steps are indexed 0..N. CurrentStepIndex drives the active view.
-///   MainWindow data-binds CurrentStep to a ContentPresenter with DataTemplate selectors.
-///
-/// The configuration object is shared across all wizard steps via reference.
-/// Each step's ApplyToConfiguration() is called on forward navigation (Next or sidebar jumps).
-/// Sidebar forward jumps apply skipped intermediate steps so Configuration stays consistent.
+/// Root ViewModel — owns wizard step collections for deploy and migration workflows,
+/// navigation state, and separate DeploymentConfiguration / MigrationConfiguration sessions.
 /// </summary>
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
-    private readonly IReadOnlyList<WizardStepViewModel> _steps;
+    private readonly OperationSelectionViewModel _operationSelection;
+    private readonly IReadOnlyList<WizardStepViewModel> _deploySteps;
+    private readonly IReadOnlyList<WizardStepViewModel> _migrationSteps;
+    private readonly ObservableCollection<WizardStepViewModel> _activeSteps = [];
     private readonly IAboutDialogService _aboutDialog;
 
-    // ── Observable state ──────────────────────────────────────────────────────
+    private WedmOperationMode _activeOperationMode = WedmOperationMode.None;
+    private bool _workflowExpanded;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentStep))]
@@ -34,7 +33,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CanGoNext))]
     [NotifyPropertyChangedFor(nameof(IsLastStep))]
     [NotifyPropertyChangedFor(nameof(IsDeploymentReadyStep))]
+    [NotifyPropertyChangedFor(nameof(IsMigrationReadyStep))]
     [NotifyPropertyChangedFor(nameof(ProgressPercent))]
+    [NotifyPropertyChangedFor(nameof(IsMigrationWorkflow))]
     private int _currentStepIndex;
 
     [ObservableProperty]
@@ -52,56 +53,92 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _deploymentInProgress;
 
-    public DeploymentConfiguration Configuration { get; } = new DeploymentConfiguration
+    public DeploymentConfiguration Configuration { get; } = new()
     {
-        Name = "New WebLogic Deployment"
+        Name = "New WebLogic Deployment",
     };
 
-    // ── Computed ──────────────────────────────────────────────────────────────
+    public MigrationConfiguration Migration { get; } = new()
+    {
+        Name = "Middleware Migration Project",
+    };
 
-    public WizardStepViewModel CurrentStep => _steps[CurrentStepIndex];
-    public IReadOnlyList<WizardStepViewModel> Steps => _steps;
-    public bool CanGoBack    => CurrentStepIndex > 0 && !DeploymentInProgress;
-    public bool CanGoNext    => CurrentStep.CanProceed && !IsLastStep && !DeploymentInProgress;
-    public bool IsLastStep   => CurrentStepIndex == _steps.Count - 1;
-    public bool IsDeploymentReadyStep => CurrentStep is DeploymentSummaryViewModel;
-    public double ProgressPercent => _steps.Count > 1
-        ? (double)CurrentStepIndex / (_steps.Count - 1) * 100 : 0;
+    public WizardStepViewModel CurrentStep => _activeSteps[CurrentStepIndex];
+    public IReadOnlyList<WizardStepViewModel> Steps => _activeSteps;
+    public bool IsMigrationWorkflow => _activeOperationMode == WedmOperationMode.UpgradeMigrateExisting;
+
+    public bool CanGoBack => CurrentStepIndex > 0 && !DeploymentInProgress;
+    public bool CanGoNext => CurrentStep.CanProceed && !IsLastStep && !DeploymentInProgress;
+    public bool IsLastStep => CurrentStepIndex >= _activeSteps.Count - 1;
+    public bool IsDeploymentReadyStep =>
+        _activeOperationMode == WedmOperationMode.DeployNewEnvironment
+        && CurrentStep is DeploymentSummaryViewModel;
+    public bool IsMigrationReadyStep =>
+        _activeOperationMode == WedmOperationMode.UpgradeMigrateExisting
+        && CurrentStep is MigrationSummaryViewModel;
+
+    public double ProgressPercent => _activeSteps.Count > 1
+        ? (double)CurrentStepIndex / (_activeSteps.Count - 1) * 100
+        : 0;
 
     public MainWindowViewModel(
-        IProductInfoProvider         productInfo,
-        IAboutDialogService          aboutDialog,
-        WelcomeViewModel             welcome,
-        ProductSystemHealthViewModel productHealth,
-        VersionSelectionViewModel    versionSel,
-        PathConfigViewModel          paths,
-        DatabaseConfigViewModel      db,
-        DomainConfigViewModel        domain,
-        PatchManagementViewModel     patch,
-        SecurityComplianceViewModel  security,
-        PrerequisiteViewModel        prereq,
-        DeploymentProgressViewModel    progress,
-        DeploymentSummaryViewModel   summary)
+        IProductInfoProvider              productInfo,
+        IAboutDialogService               aboutDialog,
+        OperationSelectionViewModel       operationSelection,
+        WelcomeViewModel                  welcome,
+        ProductSystemHealthViewModel      productHealth,
+        VersionSelectionViewModel         versionSel,
+        PathConfigViewModel               paths,
+        DatabaseConfigViewModel           db,
+        DomainConfigViewModel             domain,
+        PatchManagementViewModel          patch,
+        SecurityComplianceViewModel       security,
+        PrerequisiteViewModel             prereq,
+        DeploymentProgressViewModel       progress,
+        DeploymentSummaryViewModel        summary,
+        MigrationSourceVersionViewModel   migrationSource,
+        MigrationTargetVersionViewModel   migrationTarget,
+        MigrationDiscoveryViewModel       migrationDiscovery,
+        MigrationCompatibilityViewModel   migrationCompatibility,
+        MigrationStrategyViewModel        migrationStrategy,
+        MigrationValidationViewModel      migrationValidation,
+        MigrationTransformationViewModel  migrationTransformation,
+        MigrationSummaryViewModel         migrationSummary,
+        MigrationExecutionViewModel       migrationExecution)
     {
-        _aboutDialog = aboutDialog;
+        _aboutDialog       = aboutDialog;
+        _operationSelection = operationSelection;
+
         var snap = productInfo.GetSnapshot();
-        AppVersion              = snap.DisplayVersion;
-        ReleaseChannelDisplay   = snap.ReleaseChannel;
+        AppVersion            = snap.DisplayVersion;
+        ReleaseChannelDisplay = snap.ReleaseChannel;
 
-        welcome.StepIndex = 0;
-        productHealth.StepIndex = 1;
-        versionSel.StepIndex = 2;
-        paths.StepIndex = 3;
-        db.StepIndex = 4;
-        domain.StepIndex = 5;
-        patch.StepIndex = 6;
-        security.StepIndex = 7;
-        prereq.StepIndex = 8;
-        summary.StepIndex = 9;
-        progress.StepIndex = 10;
+        operationSelection.StepIndex = 0;
+        welcome.StepIndex            = 1;
+        productHealth.StepIndex      = 2;
+        versionSel.StepIndex         = 3;
+        paths.StepIndex              = 4;
+        db.StepIndex                 = 5;
+        domain.StepIndex             = 6;
+        patch.StepIndex              = 7;
+        security.StepIndex           = 8;
+        prereq.StepIndex             = 9;
+        summary.StepIndex            = 10;
+        progress.StepIndex           = 11;
 
-        _steps = new List<WizardStepViewModel>
+        migrationSource.StepIndex       = 1;
+        migrationTarget.StepIndex       = 2;
+        migrationDiscovery.StepIndex    = 3;
+        migrationCompatibility.StepIndex = 4;
+        migrationStrategy.StepIndex     = 5;
+        migrationValidation.StepIndex      = 6;
+        migrationTransformation.StepIndex  = 7;
+        migrationSummary.StepIndex         = 8;
+        migrationExecution.StepIndex       = 9;
+
+        _deploySteps = new List<WizardStepViewModel>
         {
+            operationSelection,
             welcome,
             productHealth,
             versionSel,
@@ -115,12 +152,112 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             progress,
         };
 
-        Title      = "WebLogic Enterprise Deployment Manager";
-        CurrentStepIndex = 0;
-        _steps[0].IsActive = true;
+        _migrationSteps = new List<WizardStepViewModel>
+        {
+            operationSelection,
+            migrationSource,
+            migrationTarget,
+            migrationDiscovery,
+            migrationCompatibility,
+            migrationStrategy,
+            migrationValidation,
+            migrationTransformation,
+            migrationSummary,
+            migrationExecution,
+        };
 
-        foreach (var step in _steps)
+        Title = "WebLogic Enterprise Deployment Manager";
+        ResetToOperationSelection();
+
+        SubscribeToSteps(_deploySteps);
+        SubscribeToSteps(_migrationSteps);
+    }
+
+    private void SubscribeToSteps(IEnumerable<WizardStepViewModel> steps)
+    {
+        foreach (var step in steps)
             step.PropertyChanged += OnStepPropertyChanged;
+    }
+
+    private void ResetToOperationSelection()
+    {
+        _workflowExpanded     = false;
+        _activeOperationMode  = WedmOperationMode.None;
+        _activeSteps.Clear();
+        _activeSteps.Add(_operationSelection);
+        CurrentStepIndex = 0;
+
+        foreach (var step in _deploySteps.Concat(_migrationSteps).Distinct())
+        {
+            step.IsActive    = false;
+            step.IsCompleted = false;
+        }
+
+        _operationSelection.IsActive = true;
+        OnPropertyChanged(nameof(Steps));
+        OnPropertyChanged(nameof(IsMigrationWorkflow));
+        OnPropertyChanged(nameof(IsDeploymentReadyStep));
+        OnPropertyChanged(nameof(IsMigrationReadyStep));
+    }
+
+    private void ExpandWorkflow(WedmOperationMode mode)
+    {
+        _activeOperationMode = mode;
+        Migration.OperationMode = mode;
+
+        var sourceSteps = mode == WedmOperationMode.DeployNewEnvironment
+            ? _deploySteps
+            : _migrationSteps;
+
+        _activeSteps.Clear();
+        foreach (var step in sourceSteps)
+            _activeSteps.Add(step);
+
+        _workflowExpanded = true;
+        _operationSelection.IsCompleted = true;
+        _operationSelection.IsActive    = false;
+
+        CurrentStepIndex = 1;
+        CurrentStep.IsActive = true;
+
+        OnPropertyChanged(nameof(Steps));
+        OnPropertyChanged(nameof(IsMigrationWorkflow));
+        OnPropertyChanged(nameof(IsDeploymentReadyStep));
+        OnPropertyChanged(nameof(IsMigrationReadyStep));
+    }
+
+    private void ApplyCurrentStep()
+    {
+        if (CurrentStep is MigrationWizardStepViewModel migrationStep)
+            migrationStep.ApplyToMigrationConfiguration(Migration);
+        else
+            CurrentStep.ApplyToConfiguration(Configuration);
+
+        if (CurrentStep is OperationSelectionViewModel op)
+        {
+            Migration.OperationMode = op.SelectedOperation;
+            Configuration.Name = op.SelectedOperation == WedmOperationMode.DeployNewEnvironment
+                ? "New WebLogic Deployment"
+                : Configuration.Name;
+        }
+    }
+
+    private async Task EnterCurrentStepAsync()
+    {
+        if (CurrentStep is MigrationWizardStepViewModel migrationStep)
+            await migrationStep.OnNavigatingToAsync(Migration);
+        else
+            await CurrentStep.OnNavigatingToAsync(Configuration);
+    }
+
+    private void NotifyNavigationStateChanged()
+    {
+        OnPropertyChanged(nameof(IsDeploymentReadyStep));
+        OnPropertyChanged(nameof(IsMigrationReadyStep));
+        NextCommand.NotifyCanExecuteChanged();
+        BackCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(CanGoNext));
+        OnPropertyChanged(nameof(CanGoBack));
     }
 
     private void OnStepPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -133,51 +270,71 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    // ── Commands ──────────────────────────────────────────────────────────────
-
     [RelayCommand(CanExecute = nameof(CanGoNext))]
     private async Task NextAsync()
     {
         var canLeave = await CurrentStep.OnNavigatingFromAsync();
         if (!canLeave) return;
 
-        CurrentStep.ApplyToConfiguration(Configuration);
+        ApplyCurrentStep();
+
+        if (!_workflowExpanded && CurrentStep is OperationSelectionViewModel op
+            && op.SelectedOperation != WedmOperationMode.None)
+        {
+            ExpandWorkflow(op.SelectedOperation);
+            await EnterCurrentStepAsync();
+            NotifyNavigationStateChanged();
+            return;
+        }
+
+        var fromTitle = CurrentStep.StepTitle;
         CurrentStep.IsCompleted = true;
         CurrentStep.IsActive    = false;
 
         CurrentStepIndex++;
         CurrentStep.IsActive = true;
-        OnPropertyChanged(nameof(IsDeploymentReadyStep));
-        await CurrentStep.OnNavigatingToAsync(Configuration);
+        LogWorkflowTransition(fromTitle, CurrentStep.StepTitle);
 
-        NextCommand.NotifyCanExecuteChanged();
-        BackCommand.NotifyCanExecuteChanged();
+        await EnterCurrentStepAsync();
+        NotifyNavigationStateChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanGoBack))]
     private async Task BackAsync()
     {
+        if (CurrentStepIndex == 1 && _workflowExpanded)
+        {
+            ApplyCurrentStep();
+            CurrentStep.IsActive = false;
+            ResetToOperationSelection();
+            await _operationSelection.OnNavigatingToAsync(Configuration);
+            NotifyNavigationStateChanged();
+            return;
+        }
+
+        var fromTitle = CurrentStep.StepTitle;
         CurrentStep.IsActive = false;
         CurrentStepIndex--;
         CurrentStep.IsActive = true;
-        OnPropertyChanged(nameof(IsDeploymentReadyStep));
-        await CurrentStep.OnNavigatingToAsync(Configuration);
+        LogWorkflowTransition(fromTitle, CurrentStep.StepTitle);
 
-        NextCommand.NotifyCanExecuteChanged();
-        BackCommand.NotifyCanExecuteChanged();
+        await EnterCurrentStepAsync();
+        NotifyNavigationStateChanged();
     }
 
     [RelayCommand]
     private async Task NavigateTo(int index)
     {
-        if (index < 0 || index >= _steps.Count) return;
+        if (index < 0 || index >= _activeSteps.Count) return;
         if (DeploymentInProgress) return;
 
         if (index == CurrentStepIndex)
         {
-            await CurrentStep.OnNavigatingToAsync(Configuration);
+            await EnterCurrentStepAsync();
             return;
         }
+
+        if (!_workflowExpanded && index > 0) return;
 
         CurrentStep.IsActive = false;
 
@@ -190,15 +347,24 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 return;
             }
 
-            CurrentStep.ApplyToConfiguration(Configuration);
+            ApplyCurrentStep();
             CurrentStep.IsCompleted = true;
 
             var from = CurrentStepIndex;
             for (var i = from + 1; i < index; i++)
             {
-                await _steps[i].OnNavigatingToAsync(Configuration);
-                _steps[i].ApplyToConfiguration(Configuration);
-                _steps[i].IsCompleted = true;
+                if (_activeSteps[i] is MigrationWizardStepViewModel skippedMigration)
+                {
+                    await skippedMigration.OnNavigatingToAsync(Migration);
+                    skippedMigration.ApplyToMigrationConfiguration(Migration);
+                }
+                else
+                {
+                    await _activeSteps[i].OnNavigatingToAsync(Configuration);
+                    _activeSteps[i].ApplyToConfiguration(Configuration);
+                }
+
+                _activeSteps[i].IsCompleted = true;
             }
 
             CurrentStepIndex = index;
@@ -206,16 +372,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
-            // Backward: same as BackAsync — do not persist the step we are leaving.
             CurrentStepIndex = index;
             CurrentStep.IsActive = true;
         }
 
-        OnPropertyChanged(nameof(IsDeploymentReadyStep));
-        await CurrentStep.OnNavigatingToAsync(Configuration);
-
-        NextCommand.NotifyCanExecuteChanged();
-        BackCommand.NotifyCanExecuteChanged();
+        await EnterCurrentStepAsync();
+        NotifyNavigationStateChanged();
     }
 
     [RelayCommand]
@@ -227,19 +389,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
             FileName = "https://docs.oracle.com/en/middleware/fusion-middleware/weblogic-server/",
-            UseShellExecute = true
+            UseShellExecute = true,
         });
     }
 
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarExpanded = !IsSidebarExpanded;
 
-    /// <summary>Refresh Next/Back button states — called by child step VMs.</summary>
-    public void RefreshNavigation()
+    public void RefreshNavigation() => NotifyNavigationStateChanged();
+
+    private void LogWorkflowTransition(string fromStep, string toStep)
     {
-        NextCommand.NotifyCanExecuteChanged();
-        BackCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(CanGoNext));
-        OnPropertyChanged(nameof(CanGoBack));
+        if (_activeOperationMode == WedmOperationMode.UpgradeMigrateExisting)
+            MigrationDiagnostics.TraceWorkflowPhase(fromStep, toStep, "Migration");
     }
 }

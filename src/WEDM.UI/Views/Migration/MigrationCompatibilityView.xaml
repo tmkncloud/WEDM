@@ -1,0 +1,101 @@
+<UserControl x:Class="WEDM.UI.Views.Migration.MigrationCompatibilityView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Migration"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:MigrationCompatibilityViewModel, IsDesignTimeCreatable=False}">
+
+    <StackPanel>
+        <Border Style="{StaticResource MigrationStatusBanner}">
+            <TextBlock Text="{Binding ReadinessSummary, Mode=OneWay}" Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
+        </Border>
+
+        <Button Style="{StaticResource BtnPrimary}" Content="Run compatibility analysis"
+                Command="{Binding RunAssessmentCommand}" HorizontalAlignment="Left" Margin="0,0,0,20"/>
+
+        <Border Style="{StaticResource MigrationEmptyState}"
+                Visibility="{Binding IsEmptyState, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="Run compatibility analysis to generate readiness scoring and risk findings."
+                       Style="{StaticResource TypeBody}" Foreground="{StaticResource TextMutedBrush}" TextWrapping="Wrap"/>
+        </Border>
+
+        <Grid Visibility="{Binding HasAssessment, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource MigrationAccentCard}" Margin="0,0,16,0">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding ReadinessPercent, Mode=OneWay, StringFormat={}{0:F1}%}"
+                               Style="{StaticResource MigrationMetricValue}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Migration readiness" Style="{StaticResource TypeCaption}" HorizontalAlignment="Center" Margin="0,4,0,12"/>
+                    <ProgressBar Value="{Binding ReadinessPercent, Mode=OneWay}" Maximum="100" Height="8" Margin="0,0,0,12"/>
+                    <TextBlock Text="{Binding ReadinessLevel, Mode=OneWay}" Style="{StaticResource TypeLabel}"
+                               HorizontalAlignment="Center" Foreground="{StaticResource AccentPrimaryBrush}"/>
+                    <TextBlock Text="{Binding Complexity, Mode=OneWay, StringFormat=Complexity: {0}}"
+                               Style="{StaticResource TypeCaption}" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding EffortCategory, Mode=OneWay, StringFormat=Effort: {0}}"
+                               Style="{StaticResource TypeCaption}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <UniformGrid Grid.Column="1" Columns="2" Rows="3">
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="4">
+                    <StackPanel><TextBlock Text="{Binding BlockerCount, Mode=OneWay}" Style="{StaticResource TypeH1}"/><TextBlock Text="Blockers" Style="{StaticResource TypeCaption}"/></StackPanel>
+                </Border>
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="4">
+                    <StackPanel><TextBlock Text="{Binding CriticalCount, Mode=OneWay}" Style="{StaticResource TypeH1}"/><TextBlock Text="Critical" Style="{StaticResource TypeCaption}"/></StackPanel>
+                </Border>
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="4">
+                    <StackPanel><TextBlock Text="{Binding HighCount, Mode=OneWay}" Style="{StaticResource TypeH1}"/><TextBlock Text="High" Style="{StaticResource TypeCaption}"/></StackPanel>
+                </Border>
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="4">
+                    <StackPanel><TextBlock Text="{Binding MediumCount, Mode=OneWay}" Style="{StaticResource TypeH1}"/><TextBlock Text="Medium" Style="{StaticResource TypeCaption}"/></StackPanel>
+                </Border>
+                <Border Style="{StaticResource MigrationPanelCard}" Margin="4" Grid.ColumnSpan="2">
+                    <TextBlock Text="{Binding UpgradePathVisual, Mode=OneWay}" Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
+                </Border>
+            </UniformGrid>
+        </Grid>
+
+        <TextBlock Text="Executive summary" Style="{StaticResource MigrationSectionTitle}"
+                   Visibility="{Binding HasAssessment, Converter={StaticResource BoolToVisibilityConverter}}"/>
+        <Border Style="{StaticResource MigrationPanelCard}"
+                Visibility="{Binding HasAssessment, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="{Binding ExecutiveSummary, Mode=OneWay}" Style="{StaticResource TypeBody}" TextWrapping="Wrap"/>
+        </Border>
+
+        <TextBlock Text="Compatibility findings" Style="{StaticResource MigrationSectionTitle}"
+                   Visibility="{Binding HasAssessment, Converter={StaticResource BoolToVisibilityConverter}}"/>
+        <ItemsControl ItemsSource="{Binding Findings, Mode=OneWay}"
+                      Visibility="{Binding HasAssessment, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Style="{StaticResource MigrationPanelCard}" Padding="14,12" Margin="0,0,0,8">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <Border CornerRadius="3" Padding="8,2" Margin="0,0,8,0" Background="{StaticResource BackgroundElevatedBrush}">
+                                    <TextBlock Text="{Binding Severity}" Style="{StaticResource TypeCaption}"/>
+                                </Border>
+                                <TextBlock Text="{Binding Category}" Style="{StaticResource TypeCaption}" Foreground="{StaticResource TextMutedBrush}"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding Title}" Style="{StaticResource TypeLabel}"/>
+                            <TextBlock Text="{Binding Description}" Style="{StaticResource TypeBody}"
+                                       Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding Remediation}" Style="{StaticResource TypeCaption}"
+                                       Foreground="{StaticResource AccentPrimaryBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Style="{StaticResource MigrationPanelCard}" Margin="0,12,0,0"
+                Visibility="{Binding HasError, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="{Binding ErrorMessage, Mode=OneWay}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap"/>
+        </Border>
+    </StackPanel>
+</UserControl>
