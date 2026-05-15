@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © WEDM")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Enterprise WebLogic deployment, patching, and security automation for Windows.")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0 Stable+2bc9d05da4a7e483f30cc5b514e7d927eede1649")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0 Stable+5b3164348d94cf6ca644fb8f7a4a50d4ec003197")]
 [assembly: System.Reflection.AssemblyProductAttribute("WebLogic Enterprise Deployment Manager")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WebLogic Enterprise Deployment Manager")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.1.0.0")]

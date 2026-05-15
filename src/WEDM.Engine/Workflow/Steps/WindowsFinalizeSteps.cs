@@ -2,6 +2,7 @@ using System.Text;
 using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
+using WEDM.Engine.Wlst;
 
 namespace WEDM.Engine.Workflow.Steps;
 
@@ -42,8 +43,9 @@ public sealed class RegisterWindowsServicesStep : IStepExecutor
         CancellationToken cancellationToken)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var cmd = Path.Combine(config.Paths.MiddlewareHome, "wlserver", "server", "bin", "installNodeMgrSvc.cmd");
-        if (!File.Exists(cmd))
+        var cmd = MiddlewareHomePathResolver.ResolveExistingOrDefault(
+            MiddlewareHomePathResolver.GetInstallNodeMgrSvcCandidates(config.Paths.MiddlewareHome));
+        if (string.IsNullOrEmpty(cmd) || !File.Exists(cmd))
         {
             return StepExecutionResult.Fail(
                 $"installNodeMgrSvc.cmd not found at '{cmd}'. Middleware install may be incomplete.");

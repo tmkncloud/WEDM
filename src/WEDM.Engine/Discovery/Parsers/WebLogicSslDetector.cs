@@ -84,10 +84,11 @@ public static class WebLogicSslDetector
     private static bool IsSslElementEnabled(XElement? sslElement)
     {
         if (sslElement is null) return false;
-        var enabledAttr = sslElement.Attribute("enabled")?.Value ?? sslElement.Attribute(XName.Get("enabled"))?.Value;
+        var enabledAttr = sslElement.Attribute("enabled")?.Value;
         if (!string.IsNullOrWhiteSpace(enabledAttr))
             return IsEnabled(enabledAttr);
-        return sslElement.Elements().Any();
+        var enabledChild = ReadElement(sslElement, "enabled");
+        return IsEnabled(enabledChild);
     }
 
     private static bool IsEnabled(string? value)

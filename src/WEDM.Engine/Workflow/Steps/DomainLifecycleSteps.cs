@@ -5,7 +5,10 @@ using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Automation;
+using WEDM.Engine.Discovery.Parsers;
+using WEDM.Engine.Execution;
 using WEDM.Engine.ResponseFiles;
+using WEDM.Engine.Wlst;
 using WEDM.Infrastructure.Registry;
 
 namespace WEDM.Engine.Workflow.Steps;
@@ -38,15 +41,11 @@ public sealed class CreateDomainStep : IStepExecutor
         await File.WriteAllTextAsync(scriptPath, py, cancellationToken);
         _log.Info($"WLST script written: {scriptPath}", "Domain");
 
-        var wlstQ = "'" + wlst.Replace("'", "''", StringComparison.Ordinal) + "'";
-        var pyQ   = "'" + scriptPath.Replace("'", "''", StringComparison.Ordinal) + "'";
-        var body = $@"
-$p = Start-Process -FilePath {wlstQ} -ArgumentList @({pyQ}) -Wait -PassThru -NoNewWindow
-exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
-";
+        var env  = WlstPowerShellEnvironment.FromDeployment(config);
+        var body = WlstPowerShellEnvironment.BuildWlstLaunchBody(wlst, scriptPath, env);
 
         var result = await _ps.ExecuteCommandAsync(
-            body.Trim(),
+            body,
             workingDirectory: config.Paths.TempDirectory,
             runAsAdministrator: false,
             cancellationToken: cancellationToken,
@@ -86,13 +85,12 @@ public sealed class ConfigureAdminServerStep : IStepExecutor
 
         try
         {
-            var doc  = XDocument.Load(cfgXml);
-            var admin = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "server" &&
-                string.Equals((string?)e.Attribute("name"), config.Domain.AdminServerName, StringComparison.Ordinal));
+            var doc   = XDocument.Load(cfgXml);
+            var admin = WebLogicConfigXmlHelper.FindServerByName(doc, config.Domain.AdminServerName);
             if (admin is null)
                 return Task.FromResult(StepExecutionResult.Fail($"Admin server '{config.Domain.AdminServerName}' not found in config.xml."));
 
-            var listen = admin.Descendants().FirstOrDefault(e => e.Name.LocalName == "listen-port")?.Value;
+            var listen = WebLogicConfigXmlHelper.ReadChildValue(admin, "listen-port");
             if (int.TryParse(listen, out var p) && p == config.Domain.AdminPort)
             {
                 sw.Stop();
@@ -130,9 +128,7 @@ public sealed class CreateManagedServersStep : IStepExecutor
         var doc = XDocument.Load(cfgXml);
         foreach (var ms in config.Domain.ManagedServers)
         {
-            var el = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "server" &&
-                string.Equals((string?)e.Attribute("name"), ms.Name, StringComparison.Ordinal));
-            if (el is null)
+            if (WebLogicConfigXmlHelper.FindServerByName(doc, ms.Name) is null)
                 return Task.FromResult(StepExecutionResult.Fail($"Managed server '{ms.Name}' not found in config.xml."));
         }
 
@@ -207,8 +203,9 @@ public sealed class ConfigureNodeManagerStep : IStepExecutor
         File.WriteAllLines(nmProps, lines);
         _log.Info($"nodemanager.properties written: {nmProps}", "NodeManager");
 
-        var domainsFile = Path.Combine(config.Paths.MiddlewareHome, "wlserver", "common", "nodemanager", "nodemanager.domains");
-        if (File.Exists(domainsFile))
+        var domainsFile = MiddlewareHomePathResolver.ResolveExistingOrDefault(
+            MiddlewareHomePathResolver.GetNodeManagerDomainsFileCandidates(config.Paths.MiddlewareHome));
+        if (!string.IsNullOrEmpty(domainsFile) && File.Exists(domainsFile))
         {
             var set = new HashSet<string>(File.ReadAllLines(domainsFile).Where(l => !string.IsNullOrWhiteSpace(l)),
                 StringComparer.OrdinalIgnoreCase);

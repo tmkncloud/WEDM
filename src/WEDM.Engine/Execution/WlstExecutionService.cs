@@ -53,8 +53,8 @@ public sealed class WlstExecutionService : IWlstExecutionService
 
             await File.WriteAllTextAsync(stagedPath, content, cancellationToken);
 
-            var envLines = BuildEnvironmentPowerShell(environment);
-            var envTrace = BuildEnvironmentTrace(environment);
+            var envLines = WlstPowerShellEnvironment.BuildEnvironmentPowerShell(environment);
+            var envTrace = WlstPowerShellEnvironment.BuildEnvironmentTrace(environment);
 
             if (dryRun)
             {
@@ -124,32 +124,6 @@ public sealed class WlstExecutionService : IWlstExecutionService
         }
 
         return record;
-    }
-
-    internal static string BuildEnvironmentPowerShell(WlstExecutionEnvironment? environment)
-    {
-        if (environment is null) return string.Empty;
-        var sb = new StringBuilder();
-        if (!string.IsNullOrWhiteSpace(environment.OracleHome))
-        {
-            var oh = environment.OracleHome.Replace("'", "''", StringComparison.Ordinal);
-            sb.AppendLine($"$env:ORACLE_HOME = '{oh}'");
-        }
-        if (!string.IsNullOrWhiteSpace(environment.JavaHome))
-        {
-            var jh = environment.JavaHome.Replace("'", "''", StringComparison.Ordinal);
-            sb.AppendLine($"$env:JAVA_HOME = '{jh}'");
-            sb.AppendLine($"$env:PATH = \"$env:JAVA_HOME\\bin;$env:PATH\"");
-        }
-        return sb.ToString().TrimEnd();
-    }
-
-    internal static string BuildEnvironmentTrace(WlstExecutionEnvironment? environment)
-    {
-        if (environment is null) return "[WEDM] WLST environment: (process defaults)";
-        var oh = string.IsNullOrWhiteSpace(environment.OracleHome) ? "(unset)" : environment.OracleHome;
-        var jh = string.IsNullOrWhiteSpace(environment.JavaHome) ? "(unset)" : environment.JavaHome;
-        return $"[WEDM] WLST environment: ORACLE_HOME={oh}; JAVA_HOME={jh}";
     }
 
     private static string Truncate(string s, int max)

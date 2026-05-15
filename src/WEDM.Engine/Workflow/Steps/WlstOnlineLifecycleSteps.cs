@@ -3,6 +3,7 @@ using System.Text;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Automation;
+using WEDM.Engine.Execution;
 using WEDM.Infrastructure.Security;
 
 namespace WEDM.Engine.Workflow.Steps;
@@ -121,28 +122,23 @@ public sealed class WlstOnlinePostBootAutomationStep : IStepExecutor
         var pwdB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(config.Domain.AdminPassword));
         var userEsc = config.Domain.AdminUsername.Replace("'", "''", StringComparison.Ordinal);
         var urlEsc  = url.Replace("'", "''", StringComparison.Ordinal);
-        var wlstQ   = "'" + wlst.Replace("'", "''", StringComparison.Ordinal) + "'";
-        var pyQ     = "'" + pyPath.Replace("'", "''", StringComparison.Ordinal) + "'";
-
         var nmFlag = config.DomainOnlineAutomation.RunNmEnroll ? "1" : "0";
         var hdFlag = config.DomainOnlineAutomation.ApplyOnlineProductionAndMachineMapping ? "1" : "0";
 
-        var body = $@"
-$ErrorActionPreference = 'Continue'
+        var preamble = $@"
 $env:WEDM_ADMIN_USER = '{userEsc}'
 $env:WEDM_ADMIN_PASS = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{pwdB64}'))
 $env:WEDM_ADMIN_URL = '{urlEsc}'
 $env:WEDM_RUN_NM_ENROLL = '{nmFlag}'
-$env:WEDM_APPLY_ONLINE_HARDENING = '{hdFlag}'
-Write-Output ('[WEDM] WLST online: ' + {wlstQ} + ' ' + {pyQ})
-$p = Start-Process -FilePath {wlstQ} -ArgumentList @({pyQ}) -Wait -PassThru -NoNewWindow
-exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
-";
+$env:WEDM_APPLY_ONLINE_HARDENING = '{hdFlag}'";
+
+        var env  = WlstPowerShellEnvironment.FromDeployment(config);
+        var body = WlstPowerShellEnvironment.BuildWlstLaunchBody(wlst, pyPath, env, preamble);
 
         var sw = Stopwatch.StartNew();
         var mins = Math.Clamp(config.DomainOnlineAutomation.TimeoutMinutes, 5, 180);
         var r = await _ps.ExecuteCommandAsync(
-            body.Trim(),
+            body,
             workingDirectory: config.Paths.TempDirectory,
             runAsAdministrator: false,
             cancellationToken: cancellationToken,

@@ -32,7 +32,7 @@ public sealed class WlstExecutionServiceTests
     [Fact]
     public void BuildEnvironmentPowerShell_SetsJavaAndOracleHome()
     {
-        var ps = WlstExecutionService.BuildEnvironmentPowerShell(new WlstExecutionEnvironment
+        var ps = WlstPowerShellEnvironment.BuildEnvironmentPowerShell(new WlstExecutionEnvironment
         {
             JavaHome   = @"D:\Java\jdk-21",
             OracleHome = @"D:\Oracle\Middleware",
@@ -46,7 +46,7 @@ public sealed class WlstExecutionServiceTests
     [Fact]
     public void BuildEnvironmentTrace_DoesNotLeakSecrets()
     {
-        var trace = WlstExecutionService.BuildEnvironmentTrace(new WlstExecutionEnvironment
+        var trace = WlstPowerShellEnvironment.BuildEnvironmentTrace(new WlstExecutionEnvironment
         {
             JavaHome   = @"D:\Java\jdk",
             OracleHome = @"D:\Oracle\MW",

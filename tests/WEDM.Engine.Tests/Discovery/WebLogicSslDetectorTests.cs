@@ -15,7 +15,17 @@ public sealed class WebLogicSslDetectorTests
     }
 
     [Fact]
-    public void Analyze_ReturnsTrue_WhenAdminSslListenPortConfigured()
+    public void Analyze_ReturnsFalse_WhenOnlySslListenPortWithoutEnabled()
+    {
+        var temp = CreateDomain("ssl-listen-port-only.xml");
+        var result = WebLogicSslDetector.Analyze(temp);
+        Assert.False(result.AdminSslEnabled);
+        Assert.False(result.AnySslEnabled);
+        Directory.Delete(temp, true);
+    }
+
+    [Fact]
+    public void Analyze_ReturnsTrue_WhenEnabledChildIsTrue()
     {
         var temp = CreateDomain("ssl-enabled.xml");
         var result = WebLogicSslDetector.Analyze(temp);
@@ -32,6 +42,21 @@ public sealed class WebLogicSslDetectorTests
         var xml = fileName switch
         {
             "ssl-enabled.xml" => """
+                <?xml version="1.0"?>
+                <domain xmlns="http://xmlns.oracle.com/weblogic/domain">
+                  <name>TestDomain</name>
+                  <admin-server-name>AdminServer</admin-server-name>
+                  <server>
+                    <name>AdminServer</name>
+                    <listen-port>7001</listen-port>
+                    <ssl>
+                      <enabled>true</enabled>
+                      <listen-port>7002</listen-port>
+                    </ssl>
+                  </server>
+                </domain>
+                """,
+            "ssl-listen-port-only.xml" => """
                 <?xml version="1.0"?>
                 <domain xmlns="http://xmlns.oracle.com/weblogic/domain">
                   <name>TestDomain</name>

@@ -14,7 +14,9 @@ public static class WlstDomainScriptBuilder
     {
         var mw   = PyRaw(config.Paths.MiddlewareHome);
         var dom  = PyRaw(Path.Combine(config.Paths.DomainBase, config.Domain.DomainName));
-        var tmpl = PyRaw(Path.Combine(config.Paths.MiddlewareHome, "wlserver", "common", "templates", "wls", "wls.jar"));
+        var tmplPath = MiddlewareHomePathResolver.ResolveExistingOrDefault(
+            MiddlewareHomePathResolver.GetWlsTemplateJarCandidates(config.Paths.MiddlewareHome));
+        var tmpl = PyRaw(tmplPath);
 
         var sb = new StringBuilder();
         sb.AppendLine("# WEDM-generated WLST offline domain creation");
