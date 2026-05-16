@@ -1,91 +1,24 @@
 using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
+using WEDM.Engine.Jdk;
 using WEDM.Engine.Payload;
 using WEDM.Infrastructure.Registry;
 
 namespace WEDM.Engine.Workflow.Steps;
 
-/// <summary>Silent JDK installation via msiexec or vendor silent .exe (elevated).</summary>
+/// <summary>Silent JDK installation via strategy-based installer orchestration.</summary>
 public sealed class InstallJdkStep : IStepExecutor
 {
-    private readonly IPowerShellExecutor _ps;
-    private readonly ILoggingService _log;
-    private readonly IPayloadAcquisitionService _payloads;
+    private readonly JdkInstallationService _jdkInstall;
 
-    public InstallJdkStep(
-        IPowerShellExecutor ps,
-        ILoggingService log,
-        IPayloadAcquisitionService payloads)
-    {
-        _ps       = ps;
-        _log      = log;
-        _payloads = payloads;
-    }
+    public InstallJdkStep(JdkInstallationService jdkInstall) => _jdkInstall = jdkInstall;
 
-    public async Task<StepExecutionResult> ExecuteAsync(
+    public Task<StepExecutionResult> ExecuteAsync(
         DeploymentStep step,
         DeploymentConfiguration config,
         CancellationToken cancellationToken = default)
-    {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        if (!config.Components.HasFlag(InstallationComponents.JDK))
-            return StepExecutionResult.Ok("JDK installation not selected — skipped.", sw.Elapsed);
-
-        if (config.PayloadAcquisition.SkipInstallWhenPresent && _payloads.TryDetectCompatibleJdk(config, out var existing))
-        {
-            config.Java.JavaHome = existing!;
-            _log.Info($"JDK already installed at {existing} — skipped.", "Install.JDK");
-            return StepExecutionResult.Ok($"Already Installed — JDK at {existing}", sw.Elapsed);
-        }
-
-        var resolved = await _payloads.EnsureJdkInstallerAsync(config, cancellationToken).ConfigureAwait(false);
-        if (resolved.Status == PayloadResolutionStatus.AlreadyInstalled)
-            return StepExecutionResult.Ok(resolved.Message, sw.Elapsed);
-        if (!resolved.Success || string.IsNullOrWhiteSpace(resolved.InstallerPath))
-            return StepExecutionResult.Fail(resolved.Message);
-
-        var installer = resolved.InstallerPath;
-        Directory.CreateDirectory(config.Java.InstallDirectory);
-        var inst  = PsSingleQuote(Path.GetFullPath(config.Java.InstallDirectory));
-        var media = PsSingleQuote(Path.GetFullPath(installer));
-
-        string body;
-        if (installer.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
-        {
-            body = $@"
-$msi = {media}
-$dir = {inst}
-$args = @('/i', $msi, '/qn', '/norestart', 'REBOOT=ReallySuppress', ""INSTALLDIR=$dir"")
-$p = Start-Process -FilePath msiexec.exe -ArgumentList $args -Wait -PassThru -NoNewWindow
-exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
-";
-        }
-        else
-        {
-            body = $@"
-$exe = {media}
-$dir = {inst}
-$p = Start-Process -FilePath $exe -ArgumentList @('/s', ""INSTALLDIR=$dir"") -Wait -PassThru -NoNewWindow
-exit $(if ($null -eq $p) {{ 1 }} else {{ $p.ExitCode }})
-";
-        }
-
-        _log.Info($"Starting JDK silent installation ({resolved.Status}): {installer}", "Install.JDK");
-        var result = await _ps.ExecuteCommandAsync(
-            body.Trim(),
-            workingDirectory: config.Paths.TempDirectory,
-            runAsAdministrator: true,
-            cancellationToken: cancellationToken,
-            operationTimeout: TimeSpan.FromMinutes(45));
-
-        sw.Stop();
-        if (result.TimedOut)
-            return StepExecutionResult.Fail("JDK installer timed out.", -2);
-        return InstallerExitCodes.ToStepResult(result.ExitCode, "JDK", sw.Elapsed, config.Java.InstallDirectory);
-    }
-
-    private static string PsSingleQuote(string s) => "'" + s.Replace("'", "''", StringComparison.Ordinal) + "'";
+        => _jdkInstall.InstallAsync(config, cancellationToken);
 }
 
 /// <summary>Visual C++ x64 redistributable silent install.</summary>

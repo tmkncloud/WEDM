@@ -183,7 +183,8 @@ public sealed class GenerateDeploymentReportStep : IStepExecutor
             AuditLog          = _log.GetEntries(LogLevel.Debug).ToList(),
             LocalPayload      = config.LocalPayload.UsedLocalRepository
                 ? config.LocalPayload
-                : null
+                : null,
+            JdkInstallation   = config.Java.LastInstallationDiagnostics
         };
 
         var stamp = $"{config.Id:N}";

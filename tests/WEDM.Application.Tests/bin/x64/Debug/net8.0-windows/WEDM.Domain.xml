@@ -60,6 +60,12 @@
             Log level used internally by the WEDM logging service.
             </summary>
         </member>
+        <member name="T:WEDM.Domain.Enums.DeploymentLifecycleStatus">
+            <summary>Lifecycle of a persisted deployment session on disk.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.LocalPayloadComponent">
+            <summary>Logical payload slot in the versioned local repository (D:\WEDM\{version}\...).</summary>
+        </member>
         <member name="T:WEDM.Domain.Enums.WedmOperationMode">
             <summary>Top-level WEDM operation selected on the first wizard screen.</summary>
         </member>
@@ -125,12 +131,18 @@
             Resume a failed deployment from the last successful step.
             </summary>
         </member>
+        <member name="T:WEDM.Domain.Interfaces.IDeploymentLockService">
+            <summary>Machine-wide mutex for Oracle Home, domain, and central inventory paths.</summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.IDeploymentPlanAccessor">
             <summary>
             Holds the currently executing deployment step plan so late-stage executors
             (for example report generation) can read live step status without threading
             large objects through every method signature.
             </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IDeploymentSessionStore">
+            <summary>Persists deployment session checkpoints for crash recovery and resume.</summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.ILoggingService">
             <summary>
@@ -214,6 +226,14 @@
         <member name="T:WEDM.Domain.Interfaces.IPayloadAcquisitionService">
             <summary>Detects, downloads, and resolves JDK / VC++ installer payloads for deployment.</summary>
         </member>
+        <member name="T:WEDM.Domain.Interfaces.IPayloadLocator">
+            <summary>
+            Resolves Oracle installers from the fixed local repository layout (D:\WEDM\{11g|12c|14c|15c}\...).
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IPayloadLocator.ValidateAndResolveAsync(WEDM.Domain.Models.DeploymentConfiguration,System.Threading.CancellationToken)">
+            <summary>Validate all required/optional payloads and populate <see cref="P:WEDM.Domain.Models.DeploymentConfiguration.LocalPayload"/>.</summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.IPowerShellExecutor">
             <summary>
             Contract for executing PowerShell scripts and inline commands from C# code.
@@ -271,6 +291,9 @@
         </member>
         <member name="T:WEDM.Domain.Interfaces.IProductInfoProvider">
             <summary>Resolves build/version/channel metadata for the running WEDM host process.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IRcuAutomationService">
+            <summary>Silent RCU execution with response-file generation and schema safety checks.</summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.ISecurityComplianceEvaluator">
             <summary>Builds a compliance / security audit from configuration (no secret emission).</summary>
@@ -341,6 +364,12 @@
         <member name="M:WEDM.Domain.Interfaces.IWorkflowOrchestrator.RunAsync(WEDM.Domain.Models.DeploymentConfiguration,System.Collections.Generic.IReadOnlyList{WEDM.Domain.Models.DeploymentStep},System.Threading.CancellationToken)">
             <summary>Execute the workflow step by step with full error handling and retry.</summary>
         </member>
+        <member name="M:WEDM.Domain.Interfaces.IWorkflowOrchestrator.RunAsync(WEDM.Domain.Models.DeploymentConfiguration,System.Collections.Generic.IReadOnlyList{WEDM.Domain.Models.DeploymentStep},WEDM.Domain.Models.DeploymentWorkflowRunContext,System.Threading.CancellationToken)">
+            <summary>
+            Execute with optional resume context — skips steps already succeeded/skipped in <paramref name="context"/>.
+            Invokes <see cref="P:WEDM.Domain.Models.DeploymentWorkflowRunContext.CheckpointAsync"/> after each step when provided.
+            </summary>
+        </member>
         <member name="M:WEDM.Domain.Interfaces.IWorkflowOrchestrator.RunStepAsync(WEDM.Domain.Models.DeploymentStep,WEDM.Domain.Models.DeploymentConfiguration,System.Threading.CancellationToken)">
             <summary>Execute a single named step (for retry / resume scenarios).</summary>
         </member>
@@ -386,6 +415,9 @@
         <member name="P:WEDM.Domain.Models.DeploymentConfiguration.PayloadAcquisition">
             <summary>JDK/VC++ detection, download cache, and middleware payload rules.</summary>
         </member>
+        <member name="T:WEDM.Domain.Models.DeploymentLockDescriptor">
+            <summary>Machine-wide deployment lock metadata for a guarded Oracle resource.</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentReport">
             <summary>
             Complete deployment report generated at the end of a deployment session.
@@ -398,10 +430,25 @@
             Exposes per-step rollback outcomes for operator-grade audit and HTML reporting.
             </summary>
         </member>
+        <member name="P:WEDM.Domain.Models.DeploymentReport.LocalPayload">
+            <summary>Local payload repository resolution captured during validation.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentReport.JdkInstallation">
+            <summary>JDK installer diagnostics from the InstallJDK step (if executed).</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.LogEntry">
             <summary>
             Structured log entry for audit trail.
             </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.DeploymentSessionState">
+            <summary>
+            Durable deployment session persisted for crash recovery, resume, and operator diagnostics.
+            Written atomically after each workflow checkpoint.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.DeploymentStepSnapshot">
+            <summary>JSON-serializable step snapshot for checkpoint restore.</summary>
         </member>
         <member name="T:WEDM.Domain.Models.DeploymentStep">
             <summary>
@@ -424,6 +471,9 @@
         <member name="M:WEDM.Domain.Models.StepExecutionResult.OkWithManualFollowUp(System.String,System.TimeSpan)">
             <inheritdoc cref="P:WEDM.Domain.Models.StepExecutionResult.ManualInterventionRequired"/>
         </member>
+        <member name="T:WEDM.Domain.Models.DeploymentWorkflowRunContext">
+            <summary>Optional context for resumable workflow execution and checkpoint callbacks.</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DiscoveryExecutionResult">
             <summary>Canonical result of a full migration environment discovery run.</summary>
         </member>
@@ -441,6 +491,15 @@
         </member>
         <member name="T:WEDM.Domain.Models.DomainOnlineAutomationConfiguration">
             <summary>WLST online automation after AdminServer is reachable (nmEnroll, hardening, validation).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.JdkInstallationDiagnostics">
+            <summary>Captured diagnostics from a JDK install attempt (reporting + troubleshooting).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.LocalPayloadFolderDefinition">
+            <summary>Defines one subfolder under D:\WEDM\{version}\ and how to match installers inside it.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.LocalPayloadFolderDefinition.DirectoryPayload">
+            <summary>When true, validation checks directory structure instead of a single file (e.g. webutil).</summary>
         </member>
         <member name="T:WEDM.Domain.Models.MigrationConfiguration">
             <summary>
@@ -485,6 +544,9 @@
         </member>
         <member name="T:WEDM.Domain.Models.PayloadAcquisitionConfiguration">
             <summary>Controls prerequisite installer detection, download, and caching.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.PayloadAcquisitionConfiguration.UseLocalRepositoryOnly">
+            <summary>When true, WEDM uses only the local repository under <see cref="P:WEDM.Domain.Models.DeploymentConfiguration.PayloadBasePath"/> (no downloads).</summary>
         </member>
         <member name="T:WEDM.Domain.Models.WedmReleaseChannelKind">
             <summary>Logical release train for future update feeds (no network transport in core).</summary>

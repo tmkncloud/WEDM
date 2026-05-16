@@ -212,6 +212,9 @@ public sealed class DeploymentOrchestrator : IDisposable
 
             var report = await _workflow.RunAsync(config, steps, runContext, ct).ConfigureAwait(false);
             report.Validation ??= prereqs;
+            report.JdkInstallation ??= config.Java.LastInstallationDiagnostics;
+            if (config.LocalPayload.UsedLocalRepository)
+                report.LocalPayload = config.LocalPayload;
 
             await FinalizeSessionAsync(sessionId, config, report, ct).ConfigureAwait(false);
 

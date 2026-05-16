@@ -172,6 +172,9 @@ public sealed class JavaConfiguration
     public string JavaHome           { get; set; } = string.Empty;   // set after install
     public int    HeapSizeMb         { get; set; } = 1024;
     public bool   AutoDetectExisting { get; set; } = true;
+
+    [JsonPropertyName("lastInstallationDiagnostics")]
+    public JdkInstallationDiagnostics? LastInstallationDiagnostics { get; set; }
 }
 
 public sealed class DatabaseConfiguration

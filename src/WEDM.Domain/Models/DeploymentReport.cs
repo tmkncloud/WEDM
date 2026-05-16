@@ -39,6 +39,9 @@ public sealed class DeploymentReport
     /// <summary>Local payload repository resolution captured during validation.</summary>
     public LocalPayloadResolutionSnapshot? LocalPayload { get; set; }
 
+    /// <summary>JDK installer diagnostics from the InstallJDK step (if executed).</summary>
+    public JdkInstallationDiagnostics? JdkInstallation { get; set; }
+
     public int TotalSteps     => Steps.Count;
     public int StepsSucceeded => Steps.Count(s => s.Status == StepStatus.Succeeded);
     public int StepsFailed    => Steps.Count(s => s.Status == StepStatus.Failed);

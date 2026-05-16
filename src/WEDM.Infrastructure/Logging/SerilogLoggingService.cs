@@ -258,6 +258,7 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
         sb.AppendLine("</div></div>");
 
         AppendLocalPayloadSection(sb, report);
+        AppendJdkInstallationSection(sb, report);
 
         // ── Failed prerequisites (errors + fatals) ─────────────────────────────
         AppendValidationSection(sb, report, errorsOnly: true);
@@ -470,6 +471,37 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
                 $"<td class='{statusCls}'>{status}</td></tr>");
         }
         sb.AppendLine("</table></div>");
+    }
+
+    private static void AppendJdkInstallationSection(StringBuilder sb, DeploymentReport report)
+    {
+        var jdk = report.JdkInstallation;
+        if (jdk is null) return;
+
+        sb.AppendLine("<div class='card'><h2>JDK Installation</h2>");
+        KvRowStatic(sb, "Installer type", jdk.InstallerType);
+        KvRowStatic(sb, "Installer path", jdk.InstallerPath);
+        KvRowStatic(sb, "Target JAVA_HOME", jdk.TargetJavaHome);
+        KvRowStatic(sb, "Command line", jdk.ArgumentsDisplay);
+        KvRowStatic(sb, "Raw exit code", jdk.RawExitCode.ToString());
+        KvRowStatic(sb, "Normalized status", $"{jdk.NormalizedStatus}: {jdk.NormalizedMessage}");
+        if (!string.IsNullOrWhiteSpace(jdk.ResolvedJavaHome))
+            KvRowStatic(sb, "Resolved JAVA_HOME", jdk.ResolvedJavaHome);
+        if (!string.IsNullOrWhiteSpace(jdk.JavaVersionOutput))
+            KvRowStatic(sb, "java -version", jdk.JavaVersionOutput.Trim());
+
+        if (jdk.ValidationChecks.Count > 0)
+        {
+            sb.AppendLine("<table style='margin-top:12px'><tr><th>Validation check</th></tr>");
+            foreach (var c in jdk.ValidationChecks)
+            {
+                var cls = c.StartsWith("PASS", StringComparison.OrdinalIgnoreCase) ? "ok"
+                    : c.StartsWith("FAIL", StringComparison.OrdinalIgnoreCase) ? "fail" : "warn";
+                sb.AppendLine($"<tr><td class='{cls}'>{HtmlEncode(c)}</td></tr>");
+            }
+            sb.AppendLine("</table>");
+        }
+        sb.AppendLine("</div>");
     }
 
     private static void KvRowStatic(StringBuilder sb, string k, string v)

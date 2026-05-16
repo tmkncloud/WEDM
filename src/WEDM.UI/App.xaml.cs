@@ -159,6 +159,8 @@ public partial class App : System.Windows.Application
         services.AddSingleton<ResponseFileGenerator>();
         services.AddSingleton<IPayloadLocator, LocalPayloadLocator>();
         services.AddSingleton<IPayloadAcquisitionService, DeploymentPayloadService>();
+        services.AddSingleton<WEDM.Engine.Jdk.JdkInstallerStrategyFactory>();
+        services.AddSingleton<WEDM.Engine.Jdk.JdkInstallationService>();
         services.AddSingleton<IValidationEngine, PrerequisiteValidator>();
 
         // Step executors (transient — stateless automation workers)
