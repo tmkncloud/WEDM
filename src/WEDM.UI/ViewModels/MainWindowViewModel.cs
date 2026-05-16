@@ -8,6 +8,7 @@ using WEDM.Domain.Models;
 using WEDM.UI.Services;
 using WedmTheme = WEDM.UI.Services.WedmTheme;
 using WEDM.UI.ViewModels.Base;
+using WEDM.UI.ViewModels.Decommission;
 using WEDM.UI.ViewModels.Migration;
 using WEDM.UI.ViewModels.Wizard;
 
@@ -22,6 +23,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly OperationSelectionViewModel _operationSelection;
     private readonly IReadOnlyList<WizardStepViewModel> _deploySteps;
     private readonly IReadOnlyList<WizardStepViewModel> _migrationSteps;
+    private readonly IReadOnlyList<WizardStepViewModel> _decommissionSteps;
     private readonly ObservableCollection<WizardStepViewModel> _activeSteps = [];
     private readonly IAboutDialogService _aboutDialog;
 
@@ -37,6 +39,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsMigrationReadyStep))]
     [NotifyPropertyChangedFor(nameof(ProgressPercent))]
     [NotifyPropertyChangedFor(nameof(IsMigrationWorkflow))]
+    [NotifyPropertyChangedFor(nameof(IsDecommissionWorkflow))]
     [NotifyPropertyChangedFor(nameof(IsWorkflowExpanded))]
     [NotifyPropertyChangedFor(nameof(StepCounterText))]
     private int _currentStepIndex;
@@ -69,9 +72,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         Name = "Middleware Migration Project",
     };
 
+    public DecommissionConfiguration Decommission { get; } = new();
+
     public WizardStepViewModel CurrentStep => _activeSteps[CurrentStepIndex];
     public IReadOnlyList<WizardStepViewModel> Steps => _activeSteps;
     public bool IsMigrationWorkflow => _activeOperationMode == WedmOperationMode.UpgradeMigrateExisting;
+    public bool IsDecommissionWorkflow => _activeOperationMode == WedmOperationMode.DecommissionRemoveEnvironment;
 
     public bool IsWorkflowExpanded => _workflowExpanded;
 
@@ -85,6 +91,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public bool IsMigrationReadyStep =>
         _activeOperationMode == WedmOperationMode.UpgradeMigrateExisting
         && CurrentStep is MigrationSummaryViewModel;
+
+    public bool IsDecommissionReadyStep =>
+        _activeOperationMode == WedmOperationMode.DecommissionRemoveEnvironment
+        && CurrentStep is DecommissionSummaryViewModel;
 
     public double ProgressPercent => _activeSteps.Count > 1
         ? (double)CurrentStepIndex / (_activeSteps.Count - 1) * 100
@@ -119,7 +129,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         MigrationValidationViewModel      migrationValidation,
         MigrationTransformationViewModel  migrationTransformation,
         MigrationSummaryViewModel         migrationSummary,
-        MigrationExecutionViewModel       migrationExecution)
+        MigrationExecutionViewModel       migrationExecution,
+        DecommissionScopeViewModel        decommissionScope,
+        DecommissionDiscoveryViewModel    decommissionDiscovery,
+        DecommissionPreviewViewModel      decommissionPreview,
+        DecommissionSummaryViewModel      decommissionSummary,
+        DecommissionProgressViewModel     decommissionProgress)
     {
         _aboutDialog       = aboutDialog;
         _operationSelection = operationSelection;
@@ -151,6 +166,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         migrationSummary.StepIndex         = 8;
         migrationExecution.StepIndex       = 9;
 
+        decommissionScope.StepIndex      = 1;
+        decommissionDiscovery.StepIndex  = 2;
+        decommissionPreview.StepIndex    = 3;
+        decommissionSummary.StepIndex    = 4;
+        decommissionProgress.StepIndex   = 5;
+
         _deploySteps = new List<WizardStepViewModel>
         {
             operationSelection,
@@ -181,11 +202,22 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             migrationExecution,
         };
 
+        _decommissionSteps =
+        [
+            operationSelection,
+            decommissionScope,
+            decommissionDiscovery,
+            decommissionPreview,
+            decommissionSummary,
+            decommissionProgress,
+        ];
+
         Title = "WebLogic Enterprise Deployment Manager";
         ResetToOperationSelection();
 
         SubscribeToSteps(_deploySteps);
         SubscribeToSteps(_migrationSteps);
+        SubscribeToSteps(_decommissionSteps);
 
         _operationSelection.PropertyChanged += OnOperationSelectionPropertyChanged;
     }
@@ -218,7 +250,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _activeSteps.Add(_operationSelection);
         CurrentStepIndex = 0;
 
-        foreach (var step in _deploySteps.Concat(_migrationSteps).Distinct())
+        foreach (var step in _deploySteps.Concat(_migrationSteps).Concat(_decommissionSteps).Distinct())
         {
             step.IsActive    = false;
             step.IsCompleted = false;
@@ -248,9 +280,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _activeOperationMode = mode;
         Migration.OperationMode = mode;
 
-        var sourceSteps = mode == WedmOperationMode.DeployNewEnvironment
-            ? _deploySteps
-            : _migrationSteps;
+        var sourceSteps = mode switch
+        {
+            WedmOperationMode.DeployNewEnvironment        => _deploySteps,
+            WedmOperationMode.DecommissionRemoveEnvironment => _decommissionSteps,
+            _                                             => _migrationSteps,
+        };
 
         _activeSteps.Clear();
         foreach (var step in sourceSteps)
@@ -271,7 +306,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (!CurrentStep.CanProceed)
             return;
 
-        if (CurrentStep is MigrationWizardStepViewModel migrationStep)
+        if (CurrentStep is DecommissionWizardStepViewModel decommissionStep)
+            decommissionStep.ApplyToDecommissionConfiguration(Decommission);
+        else if (CurrentStep is MigrationWizardStepViewModel migrationStep)
             migrationStep.ApplyToMigrationConfiguration(Migration);
         else
             CurrentStep.ApplyToConfiguration(Configuration);
@@ -287,7 +324,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private async Task EnterCurrentStepAsync()
     {
-        if (CurrentStep is MigrationWizardStepViewModel migrationStep)
+        if (CurrentStep is DecommissionWizardStepViewModel decommissionStep)
+            await decommissionStep.OnNavigatingToAsync(Decommission);
+        else if (CurrentStep is MigrationWizardStepViewModel migrationStep)
             await migrationStep.OnNavigatingToAsync(Migration);
         else
             await CurrentStep.OnNavigatingToAsync(Configuration);
@@ -301,8 +340,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CurrentStep));
         OnPropertyChanged(nameof(IsWorkflowExpanded));
         OnPropertyChanged(nameof(IsMigrationWorkflow));
+        OnPropertyChanged(nameof(IsDecommissionWorkflow));
         OnPropertyChanged(nameof(IsDeploymentReadyStep));
         OnPropertyChanged(nameof(IsMigrationReadyStep));
+        OnPropertyChanged(nameof(IsDecommissionReadyStep));
         OnPropertyChanged(nameof(IsLastStep));
         OnPropertyChanged(nameof(CanGoNext));
         OnPropertyChanged(nameof(CanGoBack));
@@ -432,7 +473,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     return;
                 }
 
-                if (step is MigrationWizardStepViewModel skippedMigration)
+                if (step is DecommissionWizardStepViewModel skippedDecommission)
+                {
+                    await skippedDecommission.OnNavigatingToAsync(Decommission);
+                    skippedDecommission.ApplyToDecommissionConfiguration(Decommission);
+                }
+                else if (step is MigrationWizardStepViewModel skippedMigration)
                 {
                     await skippedMigration.OnNavigatingToAsync(Migration);
                     skippedMigration.ApplyToMigrationConfiguration(Migration);

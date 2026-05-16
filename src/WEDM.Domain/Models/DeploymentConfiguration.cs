@@ -149,6 +149,10 @@ public sealed class DeploymentConfiguration
     /// <summary>JDK/VC++ detection, download cache, and middleware payload rules.</summary>
     [JsonPropertyName("payloadAcquisition")]
     public PayloadAcquisitionConfiguration PayloadAcquisition { get; set; } = new();
+
+    /// <summary>Oracle inventory conflict detection, force clean install, and retry isolation.</summary>
+    [JsonPropertyName("oracleLifecycle")]
+    public OracleLifecycleConfiguration OracleLifecycle { get; set; } = new();
 }
 
 // ── Sub-models ─────────────────────────────────────────────────────────────────

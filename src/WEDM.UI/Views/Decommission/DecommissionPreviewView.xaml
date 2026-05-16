@@ -1,0 +1,11 @@
+<UserControl x:Class="WEDM.UI.Views.Decommission.DecommissionPreviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="0,8,0,0">
+        <CheckBox Content="Dry-run (no destructive changes)" IsChecked="{Binding DryRun}" Margin="0,0,0,8"/>
+        <CheckBox Content="Aggressive cleanup (broader temp and snapshot removal)" IsChecked="{Binding AggressiveCleanup}" Margin="0,0,0,8"/>
+        <CheckBox Content="Remove WEDM snapshots" IsChecked="{Binding RemoveSnapshots}" Margin="0,0,0,16"/>
+        <TextBlock Text="Type DECOMMISSION to confirm:" Style="{StaticResource TypeCaption}"/>
+        <TextBox Text="{Binding ConfirmationInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+    </StackPanel>
+</UserControl>

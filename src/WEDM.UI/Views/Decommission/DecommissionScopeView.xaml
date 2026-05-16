@@ -1,0 +1,16 @@
+<UserControl x:Class="WEDM.UI.Views.Decommission.DecommissionScopeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels.Decommission">
+    <StackPanel Margin="0,8,0,0">
+        <TextBlock Text="Oracle paths targeted for decommission" Style="{StaticResource TypeH2}" Margin="0,0,0,16"/>
+        <TextBlock Text="Oracle Root" Style="{StaticResource TypeCaption}"/>
+        <TextBox Text="{Binding OracleRoot, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12"/>
+        <TextBlock Text="Middleware Home" Style="{StaticResource TypeCaption}"/>
+        <TextBox Text="{Binding MiddlewareHome, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12"/>
+        <TextBlock Text="Domain Base" Style="{StaticResource TypeCaption}"/>
+        <TextBox Text="{Binding DomainBase, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12"/>
+        <TextBlock Text="Oracle Inventory" Style="{StaticResource TypeCaption}"/>
+        <TextBox Text="{Binding OracleInventory, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12"/>
+    </StackPanel>
+</UserControl>

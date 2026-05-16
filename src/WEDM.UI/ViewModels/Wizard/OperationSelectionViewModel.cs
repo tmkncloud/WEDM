@@ -15,17 +15,19 @@ public sealed partial class OperationSelectionViewModel : WizardStepViewModel
     [NotifyPropertyChangedFor(nameof(CanProceed))]
     [NotifyPropertyChangedFor(nameof(IsDeploySelected))]
     [NotifyPropertyChangedFor(nameof(IsMigrateSelected))]
+    [NotifyPropertyChangedFor(nameof(IsDecommissionSelected))]
     private WedmOperationMode _selectedOperation = WedmOperationMode.None;
 
     public bool IsDeploySelected  => SelectedOperation == WedmOperationMode.DeployNewEnvironment;
     public bool IsMigrateSelected => SelectedOperation == WedmOperationMode.UpgradeMigrateExisting;
+    public bool IsDecommissionSelected => SelectedOperation == WedmOperationMode.DecommissionRemoveEnvironment;
 
     public override bool CanProceed => SelectedOperation != WedmOperationMode.None;
 
     public OperationSelectionViewModel()
     {
         StepTitle       = "Select Operation";
-        StepDescription = "Choose whether to deploy a new environment or upgrade an existing middleware estate.";
+        StepDescription = "Deploy a new environment, upgrade/migrate existing middleware, or remove a WebLogic environment.";
         StepIcon        = "🔀";
     }
 
@@ -34,6 +36,9 @@ public sealed partial class OperationSelectionViewModel : WizardStepViewModel
 
     [RelayCommand]
     private void SelectMigrate() => SelectedOperation = WedmOperationMode.UpgradeMigrateExisting;
+
+    [RelayCommand]
+    private void SelectDecommission() => SelectedOperation = WedmOperationMode.DecommissionRemoveEnvironment;
 
     public override void ApplyToConfiguration(DeploymentConfiguration config)
     {
@@ -44,5 +49,6 @@ public sealed partial class OperationSelectionViewModel : WizardStepViewModel
     {
         OnPropertyChanged(nameof(IsDeploySelected));
         OnPropertyChanged(nameof(IsMigrateSelected));
+        OnPropertyChanged(nameof(IsDecommissionSelected));
     }
 }

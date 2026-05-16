@@ -24,7 +24,7 @@
                        Margin="0,8,0,0"/>
         </StackPanel>
 
-        <UniformGrid Grid.Row="1" Columns="2" Margin="0,0,0,24">
+        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,24">
 
             <!-- Deploy New Environment -->
             <Button Command="{Binding SelectDeployCommand}"
@@ -135,6 +135,59 @@
                             <TextBlock Text="Migration workflow"
                                        Style="{StaticResource TypeCaption}"
                                        Foreground="{StaticResource AccentPrimaryBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Button>
+
+            <!-- Remove WebLogic Environment -->
+            <Button Command="{Binding SelectDecommissionCommand}"
+                    Margin="12,0,0,0"
+                    Height="Auto"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalContentAlignment="Stretch"
+                    Cursor="Hand">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                    </Style>
+                </Button.Style>
+                <Border CornerRadius="12" Padding="28,32" MinHeight="280">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{StaticResource BackgroundPanelBrush}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDecommissionSelected}" Value="True">
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+                                    <Setter Property="BorderThickness" Value="2"/>
+                                    <Setter Property="Background" Value="{StaticResource AccentSubtleBrush}"/>
+                                </DataTrigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="🧹" FontSize="44" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                        <TextBlock Text="Remove WebLogic Environment"
+                                   Style="{StaticResource TypeH1}"
+                                   TextAlignment="Center"/>
+                        <TextBlock Text="Oracle-aware decommission — discovery, inventory detach, graceful shutdown, and environment sanitization."
+                                   Style="{StaticResource TypeBody}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,12,0,0"/>
+                        <Border CornerRadius="4" Padding="10,4" Margin="0,20,0,0"
+                                HorizontalAlignment="Center"
+                                Background="{StaticResource BackgroundElevatedBrush}">
+                            <TextBlock Text="Decommission workflow"
+                                       Style="{StaticResource TypeCaption}"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
                         </Border>
                     </StackPanel>
                 </Border>

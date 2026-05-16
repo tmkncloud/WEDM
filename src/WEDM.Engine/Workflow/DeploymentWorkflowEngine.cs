@@ -2,6 +2,7 @@ using System.Diagnostics;
 using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
+using WEDM.Engine.Decommissioning;
 using WEDM.Engine.Validation;
 using WEDM.Engine.Workflow.Steps;
 
@@ -27,6 +28,7 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
     private readonly ILoggingService           _log;
     private readonly IStepExecutorFactory      _stepFactory;
     private readonly IDeploymentPlanAccessor   _planAccessor;
+    private readonly IInstallRetryIsolationService? _retryIsolation;
 
     public event EventHandler<DeploymentStep>? StepStarted;
     public event EventHandler<DeploymentStep>? StepCompleted;
@@ -35,11 +37,13 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
     public DeploymentWorkflowEngine(
         ILoggingService log,
         IStepExecutorFactory stepFactory,
-        IDeploymentPlanAccessor planAccessor)
+        IDeploymentPlanAccessor planAccessor,
+        IInstallRetryIsolationService? retryIsolation = null)
     {
-        _log          = log;
-        _stepFactory = stepFactory;
-        _planAccessor = planAccessor;
+        _log            = log;
+        _stepFactory      = stepFactory;
+        _planAccessor     = planAccessor;
+        _retryIsolation   = retryIsolation;
     }
 
     // ── Step Plan Builder ─────────────────────────────────────────────────────
@@ -242,6 +246,15 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
                     _log.Warning($"Retrying step '{step.Name}' (attempt {attempt})...", "Workflow");
                     step.Status = StepStatus.Retrying;
                     await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+
+                    if (_retryIsolation is not null && config.OracleLifecycle.IsolateRetries)
+                    {
+                        var isolation = _retryIsolation.PrepareRetryAttempt(config, step.Name, attempt);
+                        _log.Info(
+                            $"Retry isolation: temp={isolation.IsolatedTempDirectory}; actions={string.Join("; ", isolation.Actions)}",
+                            "Workflow.Retry");
+                    }
+
                     step.MarkStarted();
                 }
 

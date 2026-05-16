@@ -6,6 +6,8 @@ public enum WedmOperationMode
     None = 0,
     DeployNewEnvironment,
     UpgradeMigrateExisting,
+    /// <summary>Remove / decommission an existing Oracle middleware environment.</summary>
+    DecommissionRemoveEnvironment,
 }
 
 /// <summary>Oracle Forms / middleware release families supported for migration source/target selection.</summary>

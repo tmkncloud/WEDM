@@ -8,6 +8,8 @@
         xmlns:mvm="clr-namespace:WEDM.UI.ViewModels.Migration"
         xmlns:wviews="clr-namespace:WEDM.UI.Views.Wizard"
         xmlns:mviews="clr-namespace:WEDM.UI.Views.Migration"
+        xmlns:dvm="clr-namespace:WEDM.UI.ViewModels.Decommission"
+        xmlns:dviews="clr-namespace:WEDM.UI.Views.Decommission"
         xmlns:converters="clr-namespace:WEDM.UI.Converters"
         mc:Ignorable="d"
         Title="WebLogic Enterprise Deployment Manager"
@@ -84,6 +86,21 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type mvm:MigrationExecutionViewModel}">
             <mviews:MigrationExecutionView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dvm:DecommissionScopeViewModel}">
+            <dviews:DecommissionScopeView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dvm:DecommissionDiscoveryViewModel}">
+            <dviews:DecommissionDiscoveryView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dvm:DecommissionPreviewViewModel}">
+            <dviews:DecommissionPreviewView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dvm:DecommissionSummaryViewModel}">
+            <dviews:DecommissionSummaryView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dvm:DecommissionProgressViewModel}">
+            <dviews:DecommissionProgressView/>
         </DataTemplate>
     </Window.Resources>
 

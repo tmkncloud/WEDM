@@ -871,3 +871,13 @@ D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Vie
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Migration\MigrationTransformationView.baml
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Migration\MigrationValidationView.baml
 D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Wizard\OperationSelectionView.baml
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionDiscoveryView.baml
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionPreviewView.baml
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionProgressView.baml
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionSummaryView.baml
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionDiscoveryView.g.cs
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionPreviewView.g.cs
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionProgressView.g.cs
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionScopeView.g.cs
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionSummaryView.g.cs
+D:\Tmkn\weblogic tools\WEDM\src\WEDM.UI\obj\x64\Debug\net8.0-windows\win-x64\Views\Decommission\DecommissionScopeView.baml

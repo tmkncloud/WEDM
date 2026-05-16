@@ -4,6 +4,7 @@ using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using WEDM.Domain.Enums;
+using WEDM.Engine.Decommissioning;
 using WEDM.Engine.Opatch;
 using WEDM.Engine.Versioning;
 using WEDM.Domain.Interfaces;
@@ -33,15 +34,18 @@ public sealed class PrerequisiteValidator : IValidationEngine
     private readonly ILoggingService _log;
     private readonly Infrastructure.Registry.WindowsRegistryService _registry;
     private readonly IPayloadAcquisitionService _payloads;
+    private readonly IDeployOracleConflictDetector? _oracleConflicts;
 
     public PrerequisiteValidator(
         ILoggingService log,
         Infrastructure.Registry.WindowsRegistryService registry,
-        IPayloadAcquisitionService payloads)
+        IPayloadAcquisitionService payloads,
+        IDeployOracleConflictDetector? oracleConflicts = null)
     {
-        _log      = log;
-        _registry = registry;
-        _payloads = payloads;
+        _log             = log;
+        _registry        = registry;
+        _payloads        = payloads;
+        _oracleConflicts = oracleConflicts;
     }
 
     // ── Full validation suite ─────────────────────────────────────────────────
@@ -67,6 +71,9 @@ public sealed class PrerequisiteValidator : IValidationEngine
 
         if (config.Database.RunRcu)
             tasks.Add(ValidateDatabaseConnectivityAsync(config, cancellationToken));
+
+        if (_oracleConflicts is not null)
+            tasks.Add(ValidateOracleLifecycleConflictsAsync(config, cancellationToken));
 
         var results = await Task.WhenAll(tasks);
         foreach (var r in results) result.AddRange(r.Findings);
@@ -423,6 +430,51 @@ public sealed class PrerequisiteValidator : IValidationEngine
             result.Fatal("Patch.Staging", $"Patch staging directory does not exist: '{config.Patches.PatchStagingDirectory}'.");
 
         return result;
+    }
+
+    private Task<PrerequisiteValidationResult> ValidateOracleLifecycleConflictsAsync(
+        DeploymentConfiguration config,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = PrerequisiteValidationResult.New(config.Id);
+
+        if (_oracleConflicts is null)
+            return Task.FromResult(result);
+
+        var report = _oracleConflicts.DetectConflicts(config);
+
+        foreach (var finding in report.Findings)
+        {
+            var remediation = finding.Remediation ?? string.Empty;
+            switch (finding.Severity)
+            {
+                case OracleConflictSeverity.Blocking when !config.OracleLifecycle.ForceCleanInstall:
+                    result.Fatal($"OracleLifecycle.{finding.Code}", finding.Message, remediation);
+                    break;
+                case OracleConflictSeverity.Blocking when config.OracleLifecycle.ForceCleanInstall:
+                    result.Warn($"OracleLifecycle.{finding.Code}",
+                        $"{finding.Message} (Force Clean Install enabled — proceeding with sanitization.)",
+                        remediation);
+                    break;
+                case OracleConflictSeverity.Error:
+                    result.Fatal($"OracleLifecycle.{finding.Code}", finding.Message, remediation);
+                    break;
+                default:
+                    result.Warn($"OracleLifecycle.{finding.Code}", finding.Message, remediation);
+                    break;
+            }
+        }
+
+        if (report.SuggestDecommission)
+        {
+            result.Warn(
+                "OracleLifecycle.SuggestDecommission",
+                "Oracle state conflicts detected. Run Remove WebLogic Environment before redeploying.",
+                "Select Remove WebLogic Environment from the operation screen to decommission and sanitize.");
+        }
+
+        return Task.FromResult(result);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

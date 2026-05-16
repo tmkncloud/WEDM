@@ -40,6 +40,9 @@ public sealed partial class PrerequisiteViewModel : WizardStepViewModel
     [ObservableProperty]
     private string _errorCount = "–";
 
+    [ObservableProperty]
+    private bool _forceCleanInstall;
+
     public ObservableCollection<FindingRowViewModel> Findings { get; } = new();
 
     public override bool CanProceed => HasRun && AllPassed;
@@ -57,7 +60,7 @@ public sealed partial class PrerequisiteViewModel : WizardStepViewModel
     public override async Task OnNavigatingToAsync(DeploymentConfiguration config)
     {
         _config = config;
-        // Auto-run checks when the user navigates to this step
+        ForceCleanInstall = config.OracleLifecycle.ForceCleanInstall;
         if (!HasRun)
             await RunChecksAsync();
     }
@@ -105,7 +108,7 @@ public sealed partial class PrerequisiteViewModel : WizardStepViewModel
 
     public override void ApplyToConfiguration(DeploymentConfiguration config)
     {
-        // No configuration changes — this step is read-only
+        config.OracleLifecycle.ForceCleanInstall = ForceCleanInstall;
     }
 }
 

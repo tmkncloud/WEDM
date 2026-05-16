@@ -11,9 +11,13 @@ using WEDM.Engine.Opatch;
 using WEDM.Engine.PowerShell;
 using WEDM.Engine.ResponseFiles;
 using WEDM.Engine.Payload;
+using WEDM.Engine.Decommissioning;
+using WEDM.Engine.Decommissioning.Steps;
 using WEDM.Engine.Validation;
 using WEDM.Engine.Workflow;
 using WEDM.Engine.Workflow.Steps;
+using WEDM.UI.ViewModels.Decommission;
+using WEDM.UI.Views.Decommission;
 using WEDM.Application.Services;
 using WEDM.Engine.Rcu;
 using WEDM.Infrastructure.Deployment;
@@ -162,7 +166,34 @@ public partial class App : System.Windows.Application
         services.AddSingleton<WEDM.Engine.Jdk.JdkInstallerStrategyFactory>(
             _ => new WEDM.Engine.Jdk.JdkInstallerStrategyFactory());
         services.AddSingleton<WEDM.Engine.Jdk.JdkInstallationService>();
-        services.AddSingleton<IValidationEngine, PrerequisiteValidator>();
+
+        // ── Decommissioning / Oracle lifecycle ───────────────────────────────
+        services.AddSingleton<IOracleInventoryService, OracleInventoryService>();
+        services.AddSingleton<IOracleProcessManager, OracleProcessManager>();
+        services.AddSingleton<IOracleHomeValidator, OracleHomeValidator>();
+        services.AddSingleton<IOracleCleanupService, OracleCleanupService>();
+        services.AddSingleton<IEnvironmentDiscoveryService, EnvironmentDiscoveryService>();
+        services.AddSingleton<IDeployOracleConflictDetector, DeployOracleConflictDetector>();
+        services.AddSingleton<IInstallRetryIsolationService, InstallRetryIsolationService>();
+        services.AddSingleton<IDecommissionWorkflowEngine, DecommissionWorkflowEngine>();
+        services.AddSingleton<MiddlewareRemovalOrchestrator>();
+        services.AddSingleton<DecommissionOrchestrator>();
+
+        services.AddTransient<DecommissionDiscoverStep>();
+        services.AddTransient<DecommissionValidateStep>();
+        services.AddTransient<DecommissionGracefulShutdownStep>();
+        services.AddTransient<DecommissionServiceCleanupStep>();
+        services.AddTransient<DecommissionInventoryDetachStep>();
+        services.AddTransient<DecommissionFilesystemStep>();
+        services.AddTransient<DecommissionRegistryStep>();
+        services.AddTransient<DecommissionPostValidateStep>();
+        services.AddTransient<DecommissionReportStep>();
+
+        services.AddSingleton<IValidationEngine>(sp => new PrerequisiteValidator(
+            sp.GetRequiredService<ILoggingService>(),
+            sp.GetRequiredService<WindowsRegistryService>(),
+            sp.GetRequiredService<IPayloadAcquisitionService>(),
+            sp.GetRequiredService<IDeployOracleConflictDetector>()));
 
         // Step executors (transient — stateless automation workers)
         services.AddTransient<ValidatePrerequisitesStep>();
@@ -342,6 +373,11 @@ public partial class App : System.Windows.Application
         services.AddTransient<MigrationTransformationViewModel>();
         services.AddTransient<MigrationSummaryViewModel>();
         services.AddTransient<MigrationExecutionViewModel>();
+        services.AddTransient<DecommissionScopeViewModel>();
+        services.AddTransient<DecommissionDiscoveryViewModel>();
+        services.AddTransient<DecommissionPreviewViewModel>();
+        services.AddTransient<DecommissionSummaryViewModel>();
+        services.AddTransient<DecommissionProgressViewModel>();
 
         services.AddSingleton<MainWindow>();
     }

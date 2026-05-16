@@ -4,6 +4,18 @@
         <name>WEDM.Domain</name>
     </assembly>
     <members>
+        <member name="T:WEDM.Domain.Enums.OracleCleanupMode">
+            <summary>Oracle environment cleanup aggressiveness.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.DecommissionPhase">
+            <summary>Decommission workflow phase identifiers.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.DecommissionStatus">
+            <summary>Overall decommission session outcome.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Enums.OracleConflictSeverity">
+            <summary>Severity for conflict / orphan findings during deploy pre-flight.</summary>
+        </member>
         <member name="T:WEDM.Domain.Enums.WebLogicVersion">
             <summary>
             Supported Oracle WebLogic major versions.
@@ -68,6 +80,9 @@
         </member>
         <member name="T:WEDM.Domain.Enums.WedmOperationMode">
             <summary>Top-level WEDM operation selected on the first wizard screen.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Enums.WedmOperationMode.DecommissionRemoveEnvironment">
+            <summary>Remove / decommission an existing Oracle middleware environment.</summary>
         </member>
         <member name="T:WEDM.Domain.Enums.MiddlewareReleaseKind">
             <summary>Oracle Forms / middleware release families supported for migration source/target selection.</summary>
@@ -390,6 +405,15 @@
         <member name="T:WEDM.Domain.Models.CertificateValidationResult">
             <summary>Outcome of keystore / certificate checks (passwords must never be echoed).</summary>
         </member>
+        <member name="T:WEDM.Domain.Models.DecommissionConfiguration">
+            <summary>Configuration for Remove WebLogic Environment / decommission workflows.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.EnvironmentTopology">
+            <summary>Discovered Oracle middleware estate topology.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleLifecycleConfiguration">
+            <summary>Deploy-time Oracle lifecycle controls (conflict detection, force clean install, retry isolation).</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentConfiguration">
             <summary>
             Root deployment configuration model.
@@ -414,6 +438,9 @@
         </member>
         <member name="P:WEDM.Domain.Models.DeploymentConfiguration.PayloadAcquisition">
             <summary>JDK/VC++ detection, download cache, and middleware payload rules.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.OracleLifecycle">
+            <summary>Oracle inventory conflict detection, force clean install, and retry isolation.</summary>
         </member>
         <member name="T:WEDM.Domain.Models.DeploymentLockDescriptor">
             <summary>Machine-wide deployment lock metadata for a guarded Oracle resource.</summary>

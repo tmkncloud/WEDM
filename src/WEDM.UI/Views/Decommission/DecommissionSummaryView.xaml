@@ -1,0 +1,6 @@
+<UserControl x:Class="WEDM.UI.Views.Decommission.DecommissionSummaryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <TextBlock Text="Review discovered assets and cleanup options, then click Next to start decommission."
+               Style="{StaticResource TypeBody}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+</UserControl>

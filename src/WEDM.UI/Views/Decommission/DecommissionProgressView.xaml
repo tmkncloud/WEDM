@@ -1,0 +1,11 @@
+<UserControl x:Class="WEDM.UI.Views.Decommission.DecommissionProgressView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel Margin="0,8,0,0">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource TypeBody}" VerticalAlignment="Center"/>
+            <Button Content="Open Report" Command="{Binding OpenReportCommand}" Margin="16,0,0,0" Style="{StaticResource BtnSecondary}"/>
+        </StackPanel>
+        <ListBox ItemsSource="{Binding LogLines}" />
+    </DockPanel>
+</UserControl>
