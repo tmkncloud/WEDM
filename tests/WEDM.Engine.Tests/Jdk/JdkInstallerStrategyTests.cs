@@ -76,6 +76,22 @@ public sealed class JdkInstallerStrategyTests
     }
 
     [Fact]
+    public void Factory_default_ctor_registers_all_production_strategies()
+    {
+        var factory = new JdkInstallerStrategyFactory();
+        factory.Resolve(@"D:\WEDM\12c\jdk\jdk-8u202-windows-x64.exe").StrategyName.Should().Be("OracleJdk8Exe");
+        factory.Resolve(@"D:\payload\generic-jdk-17.msi").StrategyName.Should().Be("MsiJdk");
+        factory.Resolve(@"D:\payload\temurin-21.msi").StrategyName.Should().Be("TemurinMsi");
+    }
+
+    [Fact]
+    public void Factory_matches_jdk_dash_star_exe_pattern()
+    {
+        var strategy = new OracleJdk8ExeInstallerStrategy();
+        strategy.CanHandle(@"D:\WEDM\14c\jdk\jdk-11.0.22-windows-x64.exe").Should().BeTrue();
+    }
+
+    [Fact]
     public void ExitCodeNormalizer_maps_minus_80_to_invalid_arguments()
     {
         var r = JdkExitCodeNormalizer.Normalize(-80);

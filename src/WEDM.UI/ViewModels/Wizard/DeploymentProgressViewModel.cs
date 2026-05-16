@@ -29,6 +29,7 @@ public sealed partial class DeploymentProgressViewModel : WizardStepViewModel
     private readonly DeploymentOrchestrator _orchestrator;
     private readonly ILoggingService        _log;
     private CancellationTokenSource?        _cts;
+    private DeploymentConfiguration?        _activeConfig;
     private System.Timers.Timer?            _elapsedTimer;
     private DateTimeOffset                  _startTime;
 
@@ -63,7 +64,10 @@ public sealed partial class DeploymentProgressViewModel : WizardStepViewModel
     private string _finalStatusMessage = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenReportCommand))]
     private string _reportPath = string.Empty;
+
+    public bool CanOpenReport => !string.IsNullOrWhiteSpace(ReportPath) && File.Exists(ReportPath);
 
     public string OverallProgressLabel => $"{OverallProgress:F0}%";
 
@@ -97,6 +101,7 @@ public sealed partial class DeploymentProgressViewModel : WizardStepViewModel
     {
         if (IsDeploying) return;
 
+        _activeConfig  = config;
         _cts           = new CancellationTokenSource();
         IsDeploying    = true;
         IsFailed       = false;
@@ -121,16 +126,15 @@ public sealed partial class DeploymentProgressViewModel : WizardStepViewModel
                 ? $"✔  Deployment completed successfully in {report.TotalDuration?.ToString(@"hh\:mm\:ss")}"
                 : BuildFailureMessage(report);
 
-            if (!string.IsNullOrWhiteSpace(report.DomainHome))
-                ReportPath = Path.Combine(
-                    config.Paths.ReportsDirectory,
-                    $"wedm-report-{report.ReportId:N}.html");
+            ResolveReportPath(config, report);
         }
         catch (OperationCanceledException)
         {
             IsFailed           = true;
             CanRetry           = true;
             FinalStatusMessage = "Deployment was cancelled.";
+            if (_activeConfig is not null)
+                ResolveReportPath(_activeConfig, report: null);
         }
         catch (Exception ex)
         {
@@ -138,6 +142,8 @@ public sealed partial class DeploymentProgressViewModel : WizardStepViewModel
             CanRetry           = true;
             FinalStatusMessage = $"Unexpected error: {ex.Message}";
             SetError(ex.Message);
+            if (_activeConfig is not null)
+                ResolveReportPath(_activeConfig, report: null);
         }
         finally
         {
@@ -155,14 +161,77 @@ public sealed partial class DeploymentProgressViewModel : WizardStepViewModel
             Domain.Enums.LogLevel.Warning);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanOpenReport))]
     private void OpenReport()
     {
-        if (!string.IsNullOrWhiteSpace(ReportPath) && File.Exists(ReportPath))
+        var path = ReportPath;
+        if (string.IsNullOrWhiteSpace(path) && _activeConfig is not null)
+            ResolveReportPath(_activeConfig, report: null);
+
+        path = ReportPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            SetError("Deployment report file was not found. Check the reports folder.");
+            return;
+        }
+
+        try
+        {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                FileName = ReportPath, UseShellExecute = true
+                FileName        = path,
+                UseShellExecute = true
             });
+        }
+        catch (Exception ex)
+        {
+            SetError($"Could not open report: {ex.Message}");
+        }
+    }
+
+    partial void OnReportPathChanged(string value)
+        => OpenReportCommand.NotifyCanExecuteChanged();
+
+    private void ResolveReportPath(DeploymentConfiguration config, DeploymentReport? report)
+    {
+        var reportsDir = config.Paths.ReportsDirectory;
+        if (string.IsNullOrWhiteSpace(reportsDir))
+            return;
+
+        Directory.CreateDirectory(reportsDir);
+
+        if (report is not null)
+        {
+            var expected = Path.Combine(reportsDir, $"wedm-report-{report.ReportId:N}.html");
+            if (File.Exists(expected))
+            {
+                ReportPath = expected;
+                return;
+            }
+        }
+
+        var deploymentReport = Directory.Exists(reportsDir)
+            ? Directory.GetFiles(reportsDir, "wedm-report-*.html")
+                .Select(p => new FileInfo(p))
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .FirstOrDefault()?.FullName
+            : null;
+
+        if (!string.IsNullOrWhiteSpace(deploymentReport))
+        {
+            ReportPath = deploymentReport;
+            return;
+        }
+
+        var workflowReport = Directory.Exists(reportsDir)
+            ? Directory.GetFiles(reportsDir, "wedm-workflow-*.html")
+                .Select(p => new FileInfo(p))
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .FirstOrDefault()?.FullName
+            : null;
+
+        if (!string.IsNullOrWhiteSpace(workflowReport))
+            ReportPath = workflowReport;
     }
 
     public override void ApplyToConfiguration(DeploymentConfiguration config) { }

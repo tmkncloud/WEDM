@@ -9,11 +9,15 @@ public sealed class OracleJdk8ExeInstallerStrategy : IJdkInstallerStrategy
 
     public bool CanHandle(string installerPath)
     {
-        if (!installerPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        if (!JdkInstallerPathNormalizer.IsExe(installerPath))
             return false;
 
-        var name = Path.GetFileName(installerPath).ToLowerInvariant();
-        return name.Contains("jdk") && (name.Contains("8u") || name.Contains("1.8") || name.Contains("windows"));
+        if (JdkInstallerPathNormalizer.MatchesJdkExePattern(installerPath))
+            return true;
+
+        var name = JdkInstallerPathNormalizer.GetFileName(installerPath).ToLowerInvariant();
+        return name.Contains("jdk")
+            && (name.Contains("8u") || name.Contains("1.8") || name.Contains("windows"));
     }
 
     public string ResolveTargetJavaHome(DeploymentConfiguration config)

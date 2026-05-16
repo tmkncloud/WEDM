@@ -65,9 +65,20 @@ public sealed class JdkInstallationService
         if (!resolved.Success || string.IsNullOrWhiteSpace(resolved.InstallerPath))
             return StepExecutionResult.Fail(resolved.Message);
 
-        var installerPath = resolved.InstallerPath;
-        var strategy      = _strategies.Resolve(installerPath);
-        var invocation    = strategy.BuildInvocation(config, installerPath);
+        var installerPath = resolved.InstallerPath!;
+        IJdkInstallerStrategy strategy;
+        try
+        {
+            strategy = _strategies.Resolve(installerPath);
+        }
+        catch (NotSupportedException ex)
+        {
+            diagnostics.NormalizedMessage = ex.Message;
+            config.Java.LastInstallationDiagnostics = diagnostics;
+            return StepExecutionResult.Fail(ex.Message);
+        }
+
+        var invocation = strategy.BuildInvocation(config, installerPath);
 
         diagnostics.InstallerType    = strategy.StrategyName;
         diagnostics.InstallerPath    = installerPath;

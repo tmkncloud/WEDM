@@ -8,7 +8,7 @@ public sealed class GenericExeJdkInstallerStrategy : IJdkInstallerStrategy
     public string StrategyName => "GenericExe";
 
     public bool CanHandle(string installerPath)
-        => installerPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+        => JdkInstallerPathNormalizer.IsExe(installerPath);
 
     public string ResolveTargetJavaHome(DeploymentConfiguration config)
         => JdkTargetPathResolver.ResolveTargetJavaHome(config);
