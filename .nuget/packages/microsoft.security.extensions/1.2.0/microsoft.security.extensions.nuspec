@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/01/nuspec.xsd">
+  <metadata minClientVersion="2.5">
+    <id>Microsoft.Security.Extensions</id>
+    <version>1.2.0</version>
+    <title></title>
+    <authors>Microsoft</authors>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <projectUrl>https://aka.ms/getfilesiginforedist</projectUrl>
+    <description>This assembly contains a collection of functions used to collect information about file signatures.
+    This assembly is officially supported only for Windows versions on which .NETStandard 2.0 is supported.</description>
+    <releaseNotes></releaseNotes>
+    <copyright>© Microsoft Corporation. All rights reserved.</copyright>
+    <dependencies>
+      <group targetFramework=".NETStandard2.0" />
+    </dependencies>
+  </metadata>
+</package>

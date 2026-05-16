@@ -8,7 +8,8 @@ public enum WebLogicVersion
     Unknown   = 0,
     WLS_11g   = 11,   // 10.3.6 — JDK 7/8
     WLS_12c   = 12,   // 12.2.1.4 — JDK 8
-    WLS_14c   = 14    // 14.1.2 — JDK 21
+    WLS_14c   = 14,   // 14.1.x — JDK 21
+    WLS_15c   = 15    // 15.x — JDK 21 (local repo folder: 15c)
 }
 
 /// <summary>

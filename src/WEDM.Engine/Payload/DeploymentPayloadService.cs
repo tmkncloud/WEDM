@@ -4,6 +4,8 @@ using System.Text.Json;
 using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
+using LocalPayloadComponent = WEDM.Domain.Enums.LocalPayloadComponent;
+using WEDM.Engine.Versioning;
 using WEDM.Infrastructure.Registry;
 
 namespace WEDM.Engine.Payload;
@@ -22,25 +24,7 @@ namespace WEDM.Engine.Payload;
 /// </summary>
 public sealed class DeploymentPayloadService : IPayloadAcquisitionService
 {
-    // Per-version required Oracle media file name fragments. Key = version enum, value = list of
-    // patterns that MUST be present in the payload directory for the deployment to proceed.
-    private static readonly Dictionary<WebLogicVersion, IReadOnlyList<string>> RequiredMediaMatrix = new()
-    {
-        [WebLogicVersion.WLS_11g] = new[]
-        {
-            "wls",           // wls1036_generic.jar or similar
-            "fmw",           // FMW Infrastructure or Forms/Reports
-        },
-        [WebLogicVersion.WLS_12c] = new[]
-        {
-            "fmw_12",        // fmw_12.2.1.x_infrastructure_generic.jar
-        },
-        [WebLogicVersion.WLS_14c] = new[]
-        {
-            "fmw_14",        // fmw_14.1.1.x_infrastructure_generic.jar
-        },
-    };
-
+    private readonly IPayloadLocator _local;
     private const int    MaxDownloadAttempts   = 3;
     private const long   MinAcceptableFileBytes = 1L * 1024 * 1024; // 1 MB
     private const int    BaseRetryDelaySeconds  = 2;
@@ -66,10 +50,14 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
     private readonly ILoggingService _log;
     private readonly WindowsRegistryService _registry;
 
-    public DeploymentPayloadService(ILoggingService log, WindowsRegistryService registry)
+    public DeploymentPayloadService(
+        ILoggingService log,
+        WindowsRegistryService registry,
+        IPayloadLocator local)
     {
-        _log       = log;
-        _registry  = registry;
+        _log      = log;
+        _registry = registry;
+        _local    = local;
     }
 
     public async Task<PrerequisiteValidationResult> ValidateAndPrepareAsync(
@@ -77,6 +65,27 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
         CancellationToken cancellationToken = default)
     {
         var result = new PrerequisiteValidationResult();
+
+        if (config.PayloadAcquisition.UseLocalRepositoryOnly)
+        {
+            var localReport = await _local.ValidateAndResolveAsync(config, cancellationToken).ConfigureAwait(false);
+            MergeLocalPayloadFindings(result, localReport, config);
+
+            if (!localReport.CanProceed)
+            {
+                _log.Error(
+                    $"Local payload repository validation failed ({localReport.Findings.Count(f => f.Severity == ValidationSeverity.Fatal)} fatal).",
+                    category: "Payload.Local");
+                return result;
+            }
+
+            _log.Info(
+                $"Local payload repository OK: {localReport.Entries.Count(e => e.Found)} resolved under {localReport.VersionFolder}",
+                "Payload.Local");
+            ValidateResolvedFileSizes(localReport, result);
+            return result;
+        }
+
         Directory.CreateDirectory(config.PayloadAcquisition.CacheDirectory);
 
         if (config.Components.HasFlag(InstallationComponents.JDK))
@@ -152,6 +161,12 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
         if (config.PayloadAcquisition.SkipInstallWhenPresent && TryDetectCompatibleJdk(config, out _))
             return new() { Status = PayloadResolutionStatus.AlreadyInstalled, Message = "JDK already installed — skipped." };
 
+        if (config.PayloadAcquisition.UseLocalRepositoryOnly)
+        {
+            await _local.ValidateAndResolveAsync(config, cancellationToken).ConfigureAwait(false);
+            return _local.Resolve(LocalPayloadComponent.Jdk, config);
+        }
+
         if (!string.IsNullOrWhiteSpace(config.JdkInstallerPath) && File.Exists(config.JdkInstallerPath))
         {
             return new()
@@ -207,6 +222,12 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
 
         if (config.PayloadAcquisition.SkipInstallWhenPresent && IsVcRedistInstalled())
             return new() { Status = PayloadResolutionStatus.AlreadyInstalled, Message = "VC++ already installed — skipped." };
+
+        if (config.PayloadAcquisition.UseLocalRepositoryOnly)
+        {
+            await _local.ValidateAndResolveAsync(config, cancellationToken).ConfigureAwait(false);
+            return _local.Resolve(LocalPayloadComponent.Vc, config);
+        }
 
         if (!string.IsNullOrWhiteSpace(config.VcRedistX64InstallerPath) && File.Exists(config.VcRedistX64InstallerPath))
         {
@@ -305,7 +326,8 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
         }
 
         // ── Per-version required media matrix ─────────────────────────────────
-        if (!RequiredMediaMatrix.TryGetValue(config.WebLogicVersion, out var required))
+        var required = WebLogicVersionAdapterFactory.For(config.WebLogicVersion).RequiredMediaPatterns;
+        if (required.Count == 0)
             return;
 
         var fileNames = installerFiles.Select(f => f.Name.ToLowerInvariant()).ToList();
@@ -335,11 +357,74 @@ public sealed class DeploymentPayloadService : IPayloadAcquisitionService
 
     private static int RequiredJdkMajor(WebLogicVersion version) => version switch
     {
-        WebLogicVersion.WLS_14c => 21,
+        WebLogicVersion.WLS_14c or WebLogicVersion.WLS_15c => 21,
         WebLogicVersion.WLS_12c => 8,
         WebLogicVersion.WLS_11g => 8,
         _                       => 8
     };
+
+    private static void MergeLocalPayloadFindings(
+        PrerequisiteValidationResult result,
+        LocalPayloadRepositoryReport localReport,
+        DeploymentConfiguration config)
+    {
+        result.Pass("Payload.LocalRepository",
+            $"Using local payload repository: {localReport.VersionFolder}",
+            actual: localReport.VersionFolder);
+
+        foreach (var entry in localReport.Entries.Where(e => e.Found))
+        {
+            var checksumNote = entry.ChecksumStatus switch
+            {
+                PayloadChecksumStatus.Verified         => " (SHA-256 verified)",
+                PayloadChecksumStatus.Mismatch           => " (CHECKSUM MISMATCH)",
+                PayloadChecksumStatus.ManifestMissing    => " (no manifest checksum)",
+                _                                        => string.Empty
+            };
+            result.Pass($"Payload.Local.{entry.Component}",
+                $"{entry.Component}: {entry.ResolvedPath}{checksumNote}",
+                actual: entry.ResolvedPath);
+        }
+
+        foreach (var finding in localReport.Findings)
+        {
+            switch (finding.Severity)
+            {
+                case ValidationSeverity.Fatal:
+                    result.Fatal(finding.Code, finding.Message, finding.Remediation,
+                        actual: finding.MissingPath, expected: finding.ExpectedPatterns);
+                    break;
+                case ValidationSeverity.Warning:
+                    result.Warn(finding.Code, finding.Message, finding.Remediation,
+                        actual: finding.MissingPath);
+                    break;
+                default:
+                    result.Pass(finding.Code, finding.Message);
+                    break;
+            }
+        }
+
+        config.LocalPayload = new LocalPayloadResolutionSnapshot
+        {
+            UsedLocalRepository = true,
+            RepositoryRoot      = localReport.RepositoryRoot,
+            VersionFolder       = localReport.VersionFolder,
+            ManifestPresent     = localReport.ManifestPresent,
+            Entries             = localReport.Entries.ToList()
+        };
+    }
+
+    private static void ValidateResolvedFileSizes(LocalPayloadRepositoryReport localReport, PrerequisiteValidationResult result)
+    {
+        foreach (var entry in localReport.Entries.Where(e => e.Found && !string.IsNullOrWhiteSpace(e.ResolvedPath) && File.Exists(e.ResolvedPath)))
+        {
+            var fi = new FileInfo(entry.ResolvedPath!);
+            if (fi.Length < MinAcceptableFileBytes && !Directory.Exists(entry.ResolvedPath!))
+                result.Warn($"Payload.Size.{entry.Component}",
+                    $"Resolved '{fi.Name}' is suspiciously small ({fi.Length:N0} bytes).",
+                    "Verify the installer is complete.");
+        }
+    }
 
     private static bool IsCompatibleJdk(string javaHome, WebLogicVersion version)
     {

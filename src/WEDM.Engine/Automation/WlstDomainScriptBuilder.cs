@@ -49,7 +49,7 @@ public static class WlstDomainScriptBuilder
     }
 
     public static string ResolveWlstCmd(DeploymentConfiguration config)
-        => WlstPathResolver.Resolve(config.Paths.MiddlewareHome);
+        => WlstPathResolver.Resolve(config.Paths.MiddlewareHome, config.WebLogicVersion);
 
     private static string PyRaw(string path)
         => "r'" + path.Replace("'", "\\'", StringComparison.Ordinal) + "'";

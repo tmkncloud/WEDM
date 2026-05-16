@@ -3,6 +3,8 @@ using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Opatch;
+using WEDM.Infrastructure.Deployment;
+using WEDM.Infrastructure.Security;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -17,10 +19,18 @@ public sealed class DeploymentOrchestratorTests
     private readonly Mock<IPowerShellExecutor>     _psMock        = new();
     private readonly Mock<IOperationalTelemetrySink> _telemetryMock = new();
 
-    private DeploymentOrchestrator CreateSut()
+    private DeploymentOrchestrator CreateSut(string? sessionRoot = null, string? lockRoot = null)
     {
         var opatch = new OpatchRunner(_psMock.Object, _logMock.Object);
-        return new(_workflowMock.Object, _validatorMock.Object, opatch, _logMock.Object, _telemetryMock.Object);
+        return new(
+            _workflowMock.Object,
+            _validatorMock.Object,
+            opatch,
+            _logMock.Object,
+            _telemetryMock.Object,
+            new JsonDeploymentSessionStore(sessionRoot ?? Path.Combine(Path.GetTempPath(), "wedm-test-sessions", Guid.NewGuid().ToString("N"))),
+            new DeploymentLockService(lockRoot ?? Path.Combine(Path.GetTempPath(), "wedm-test-locks", Guid.NewGuid().ToString("N"))),
+            new DeploymentSecretLifecycleService());
     }
 
     [Fact]
@@ -46,6 +56,8 @@ public sealed class DeploymentOrchestratorTests
         _validatorMock.Setup(v => v.ValidateJavaAsync(config, It.IsAny<CancellationToken>()))
             .ReturnsAsync(PrerequisiteValidationResult.New(config.Id));
         _validatorMock.Setup(v => v.ValidateVcRedistAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(PrerequisiteValidationResult.New(config.Id));
+        _validatorMock.Setup(v => v.ValidatePayloadIntegrityAsync(config, It.IsAny<CancellationToken>()))
             .ReturnsAsync(PrerequisiteValidationResult.New(config.Id));
 
         var sut = CreateSut();

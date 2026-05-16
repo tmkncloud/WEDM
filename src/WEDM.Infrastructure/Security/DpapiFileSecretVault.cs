@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using WEDM.Domain.Interfaces;
+using WEDM.Infrastructure.Persistence;
 
 namespace WEDM.Infrastructure.Security;
 
@@ -60,6 +61,6 @@ public sealed class DpapiFileSecretVault : ILocalSecretVault
     {
         var p = FilePath(deploymentId);
         var json = JsonSerializer.Serialize(map, new JsonSerializerOptions { WriteIndented = false });
-        File.WriteAllText(p, json);
+        AtomicFileWriter.WriteAllTextAsync(p, json).GetAwaiter().GetResult();
     }
 }

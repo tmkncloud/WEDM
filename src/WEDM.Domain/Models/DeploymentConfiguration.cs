@@ -77,7 +77,7 @@ public sealed class DeploymentConfiguration
     // ── Payload ──────────────────────────────────────────────────────────────
 
     [JsonPropertyName("payloadBasePath")]
-    public string PayloadBasePath { get; set; } = @".\payload";
+    public string PayloadBasePath { get; set; } = @"D:\WEDM";
 
     // ── Options ──────────────────────────────────────────────────────────────
 
@@ -106,6 +106,27 @@ public sealed class DeploymentConfiguration
     /// <summary>Absolute path to VC++ x64 redistributable (e.g. vc_redist.x64.exe).</summary>
     [JsonPropertyName("vcRedistX64InstallerPath")]
     public string VcRedistX64InstallerPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("vcRedistX86InstallerPath")]
+    public string VcRedistX86InstallerPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("infrastructureInstallerPath")]
+    public string InfrastructureInstallerPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("webLogicInstallerPath")]
+    public string WebLogicInstallerPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("formsInstallerPath")]
+    public string FormsInstallerPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("webTierInstallerPath")]
+    public string WebTierInstallerPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("webUtilRootPath")]
+    public string WebUtilRootPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("localPayload")]
+    public LocalPayloadResolutionSnapshot LocalPayload { get; set; } = new();
 
     /// <summary>Maximum wall-clock time for Oracle OUI java -jar silent install before termination.</summary>
     [JsonPropertyName("ouiInstallTimeoutMinutes")]

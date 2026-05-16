@@ -36,6 +36,9 @@ public sealed class DeploymentReport
     /// </summary>
     public RollbackSummary?         Rollback         { get; set; }
 
+    /// <summary>Local payload repository resolution captured during validation.</summary>
+    public LocalPayloadResolutionSnapshot? LocalPayload { get; set; }
+
     public int TotalSteps     => Steps.Count;
     public int StepsSucceeded => Steps.Count(s => s.Status == StepStatus.Succeeded);
     public int StepsFailed    => Steps.Count(s => s.Status == StepStatus.Failed);

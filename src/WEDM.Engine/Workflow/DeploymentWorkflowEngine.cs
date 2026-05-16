@@ -176,9 +176,16 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
 
     // ── Execution ─────────────────────────────────────────────────────────────
 
+    public Task<DeploymentReport> RunAsync(
+        DeploymentConfiguration config,
+        IReadOnlyList<DeploymentStep> steps,
+        CancellationToken cancellationToken = default)
+        => RunAsync(config, steps, context: null, cancellationToken);
+
     public async Task<DeploymentReport> RunAsync(
         DeploymentConfiguration config,
         IReadOnlyList<DeploymentStep> steps,
+        DeploymentWorkflowRunContext? context,
         CancellationToken cancellationToken = default)
     {
         var report = new DeploymentReport
@@ -199,14 +206,26 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
 
         _log.Info($"=== Deployment STARTED: {config.Name} ({steps.Count} steps) ===", "Workflow");
 
+        ApplyResumeState(steps, context?.ResumeState);
+
         _planAccessor.Bind(steps);
         try
         {
-        int completedCount = 0;
+        int completedCount = steps.Count(s =>
+            s.Status is StepStatus.Succeeded or StepStatus.Skipped);
 
         foreach (var step in steps.OrderBy(s => s.Sequence))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            context?.Heartbeat?.Invoke();
+
+            if (step.Status is StepStatus.Succeeded or StepStatus.Skipped)
+            {
+                _log.Info($"Resume: skipping completed step '{step.Name}' ({step.Status}).", "Workflow");
+                completedCount++;
+                ReportProgress(completedCount, steps.Count);
+                continue;
+            }
 
             _log.StepStarted(step.Name, step.Sequence);
             step.MarkStarted();
@@ -250,6 +269,12 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
             StepCompleted?.Invoke(this, step);
             completedCount++;
             ReportProgress(completedCount, steps.Count);
+
+            if (context?.CheckpointAsync is not null)
+            {
+                var snapshot = BuildSessionSnapshot(config, steps, context.SessionId, report, step.Name, completedCount);
+                await context.CheckpointAsync(snapshot, cancellationToken).ConfigureAwait(false);
+            }
 
             if (!succeeded && step.IsRequired)
             {
@@ -303,8 +328,9 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
         var executor = _stepFactory.GetExecutor(step.Name);
         if (executor is null)
         {
-            _log.Warning($"No executor registered for step '{step.Name}' — skipping.", "Workflow");
-            return StepExecutionResult.Ok($"Step '{step.Name}' skipped (no executor).");
+            _log.Error($"No executor registered for required step '{step.Name}'.", category: "Workflow");
+            return StepExecutionResult.Fail(
+                $"No executor registered for step '{step.Name}'. Deployment cannot proceed safely.");
         }
 
         return await executor.ExecuteAsync(step, config, cancellationToken);
@@ -450,5 +476,51 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
     {
         double pct = total > 0 ? (double)completed / total * 100.0 : 0;
         ProgressUpdated?.Invoke(this, pct);
+    }
+
+    private static void ApplyResumeState(IReadOnlyList<DeploymentStep> steps, DeploymentSessionState? resume)
+    {
+        if (resume?.Steps is null || resume.Steps.Count == 0) return;
+        var byName = resume.Steps.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+        foreach (var step in steps)
+        {
+            if (!byName.TryGetValue(step.Name, out var snap)) continue;
+            step.Status          = snap.Status;
+            step.AttemptCount    = snap.AttemptCount;
+            step.OutputLog       = snap.OutputLog;
+            step.ErrorMessage    = snap.ErrorMessage;
+            step.ExitCode        = snap.ExitCode;
+            step.ProgressPercent = snap.ProgressPercent;
+            step.StartedAt       = snap.StartedAt;
+            step.CompletedAt     = snap.CompletedAt;
+        }
+    }
+
+    private static DeploymentSessionState BuildSessionSnapshot(
+        DeploymentConfiguration config,
+        IReadOnlyList<DeploymentStep> steps,
+        Guid sessionId,
+        DeploymentReport report,
+        string currentStep,
+        int completedCount)
+    {
+        var total = steps.Count;
+        return new DeploymentSessionState
+        {
+            SessionId              = sessionId,
+            ConfigurationId        = config.Id,
+            LifecycleStatus        = DeploymentLifecycleStatus.InProgress,
+            StartedAt              = report.StartedAt,
+            LastCheckpointAt       = DateTimeOffset.UtcNow,
+            LastHeartbeatAt        = DateTimeOffset.UtcNow,
+            ProcessId              = Environment.ProcessId,
+            OverallProgressPercent = total > 0 ? (double)completedCount / total * 100.0 : 0,
+            CurrentStepName        = currentStep,
+            Configuration          = config,
+            Steps                  = steps.Select(DeploymentStepSnapshot.FromStep).ToList(),
+            Validation             = report.Validation,
+            Rollback               = report.Rollback,
+            Report                 = report
+        };
     }
 }

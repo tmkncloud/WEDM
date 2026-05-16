@@ -2,6 +2,7 @@ using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Opatch;
+using WEDM.Infrastructure.Security;
 
 namespace WEDM.Application.Services;
 
@@ -17,11 +18,14 @@ namespace WEDM.Application.Services;
 /// </summary>
 public sealed class DeploymentOrchestrator : IDisposable
 {
-    private readonly IWorkflowOrchestrator      _workflow;
-    private readonly IValidationEngine          _validator;
-    private readonly OpatchRunner               _opatch;
-    private readonly ILoggingService            _log;
-    private readonly IOperationalTelemetrySink _telemetry;
+    private readonly IWorkflowOrchestrator           _workflow;
+    private readonly IValidationEngine               _validator;
+    private readonly OpatchRunner                      _opatch;
+    private readonly ILoggingService                   _log;
+    private readonly IOperationalTelemetrySink         _telemetry;
+    private readonly IDeploymentSessionStore         _sessions;
+    private readonly IDeploymentLockService            _locks;
+    private readonly DeploymentSecretLifecycleService  _secretLifecycle;
     private bool _disposed;
 
     // ── Public events (marshalled; subscribers need not dispatch) ─────────────
@@ -37,13 +41,19 @@ public sealed class DeploymentOrchestrator : IDisposable
         IValidationEngine     validator,
         OpatchRunner          opatch,
         ILoggingService       log,
-        IOperationalTelemetrySink telemetry)
+        IOperationalTelemetrySink telemetry,
+        IDeploymentSessionStore sessions,
+        IDeploymentLockService locks,
+        DeploymentSecretLifecycleService secretLifecycle)
     {
-        _workflow   = workflow;
-        _validator  = validator;
-        _opatch     = opatch;
-        _log        = log;
-        _telemetry  = telemetry;
+        _workflow        = workflow;
+        _validator       = validator;
+        _opatch          = opatch;
+        _log             = log;
+        _telemetry       = telemetry;
+        _sessions        = sessions;
+        _locks           = locks;
+        _secretLifecycle = secretLifecycle;
 
         // Bridge engine events to orchestrator events
         _workflow.StepStarted    += OnStepStarted;
@@ -53,6 +63,22 @@ public sealed class DeploymentOrchestrator : IDisposable
 
     // ── Core Execution ────────────────────────────────────────────────────────
 
+    /// <summary>Resume a previously interrupted deployment session.</summary>
+    public async Task<DeploymentReport> ResumeDeploymentAsync(
+        Guid sessionId,
+        CancellationToken ct = default)
+    {
+        var state = await _sessions.LoadAsync(sessionId, ct).ConfigureAwait(false)
+            ?? throw new InvalidOperationException($"Deployment session {sessionId:N} not found.");
+
+        if (!state.CanResume)
+            throw new InvalidOperationException(
+                $"Session {sessionId:N} is not resumable (status: {state.LifecycleStatus}).");
+
+        _log.Info($"Resuming deployment session {sessionId:N} from checkpoint {state.LastCheckpointAt:u}.", "DeploymentOrchestrator");
+        return await ExecuteDeploymentCoreAsync(state.Configuration, ct, resumeState: state).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Execute a full deployment — validation, installation, configuration — and
     /// return a completed <see cref="DeploymentReport"/>.
@@ -60,7 +86,27 @@ public sealed class DeploymentOrchestrator : IDisposable
     public async Task<DeploymentReport> ExecuteDeploymentAsync(
         DeploymentConfiguration config,
         CancellationToken        ct = default)
+        => await ExecuteDeploymentCoreAsync(config, ct, resumeState: null).ConfigureAwait(false);
+
+    private async Task<DeploymentReport> ExecuteDeploymentCoreAsync(
+        DeploymentConfiguration config,
+        CancellationToken ct,
+        DeploymentSessionState? resumeState)
     {
+        var sessionId = resumeState?.SessionId ?? Guid.NewGuid();
+        var lockResult = await _locks.TryAcquireAsync(config, sessionId, ct).ConfigureAwait(false);
+        if (!lockResult.Acquired)
+        {
+            _log.Error(lockResult.FailureReason ?? "Could not acquire deployment locks.", category: "DeploymentOrchestrator");
+            return new DeploymentReport
+            {
+                ConfigurationId = config.Id,
+                FinalStatus     = DeploymentStatus.Failed,
+                MachineName     = Environment.MachineName,
+                CompletedAt     = DateTimeOffset.UtcNow
+            };
+        }
+
         _log.BeginSession(config.Id, $"WebLogic {config.WebLogicVersion} deployment");
         _log.Info("Deployment started", "DeploymentOrchestrator", new
         {
@@ -140,8 +186,34 @@ public sealed class DeploymentOrchestrator : IDisposable
 
             // ── Phase 2: Workflow Execution ─────────────────────────────────
             var steps = _workflow.BuildStepPlan(config);
-            var report = await _workflow.RunAsync(config, steps, ct);
+            if (resumeState?.Steps.Count > 0)
+                MergeResumeSteps(steps, resumeState);
+
+            var runContext = DeploymentWorkflowRunContext.Fresh(
+                sessionId,
+                async (snapshot, token) =>
+                {
+                    snapshot.Validation = prereqs;
+                    snapshot.LockToken  = sessionId.ToString("N");
+                    await _sessions.SaveAsync(snapshot, token).ConfigureAwait(false);
+                    await _locks.HeartbeatAsync(sessionId, token).ConfigureAwait(false);
+                });
+
+            if (resumeState is not null)
+                runContext = new DeploymentWorkflowRunContext
+                {
+                    SessionId      = sessionId,
+                    ResumeState    = resumeState,
+                    CheckpointAsync = runContext.CheckpointAsync,
+                    Heartbeat      = () => _ = _locks.HeartbeatAsync(sessionId)
+                };
+
+            await PersistSessionStartAsync(sessionId, config, steps, prereqs, ct).ConfigureAwait(false);
+
+            var report = await _workflow.RunAsync(config, steps, runContext, ct).ConfigureAwait(false);
             report.Validation ??= prereqs;
+
+            await FinalizeSessionAsync(sessionId, config, report, ct).ConfigureAwait(false);
 
             // ── Phase 3: Post-deployment report ────────────────────────────
             if (!string.IsNullOrWhiteSpace(config.Paths.ReportsDirectory))
@@ -164,12 +236,14 @@ public sealed class DeploymentOrchestrator : IDisposable
         catch (OperationCanceledException)
         {
             _log.Warning("Deployment was cancelled by user.", "DeploymentOrchestrator");
+            await MarkSessionInterruptedAsync(sessionId, "Cancelled by operator.", ct).ConfigureAwait(false);
             Telemetry("deployment.cancelled", config);
             throw;
         }
         catch (Exception ex)
         {
             _log.Error($"Unhandled exception: {ex.Message}", ex, "DeploymentOrchestrator");
+            await MarkSessionInterruptedAsync(sessionId, ex.Message, ct).ConfigureAwait(false);
             Telemetry("deployment.failed", config, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["exception"] = ex.GetType().Name
@@ -178,7 +252,77 @@ public sealed class DeploymentOrchestrator : IDisposable
         }
         finally
         {
+            await _locks.ReleaseAsync(sessionId, ct).ConfigureAwait(false);
+            _secretLifecycle.CleanupSession(config.Paths.TempDirectory);
             _log.EndSession();
+        }
+    }
+
+    private async Task PersistSessionStartAsync(
+        Guid sessionId,
+        DeploymentConfiguration config,
+        IReadOnlyList<DeploymentStep> steps,
+        PrerequisiteValidationResult prereqs,
+        CancellationToken ct)
+    {
+        var state = new DeploymentSessionState
+        {
+            SessionId       = sessionId,
+            ConfigurationId = config.Id,
+            LifecycleStatus = DeploymentLifecycleStatus.InProgress,
+            StartedAt       = DateTimeOffset.UtcNow,
+            LastCheckpointAt = DateTimeOffset.UtcNow,
+            Configuration   = config,
+            Steps           = steps.Select(DeploymentStepSnapshot.FromStep).ToList(),
+            Validation      = prereqs
+        };
+        await _sessions.SaveAsync(state, ct).ConfigureAwait(false);
+    }
+
+    private async Task FinalizeSessionAsync(
+        Guid sessionId,
+        DeploymentConfiguration config,
+        DeploymentReport report,
+        CancellationToken ct)
+    {
+        var state = await _sessions.LoadAsync(sessionId, ct).ConfigureAwait(false);
+        if (state is null) return;
+        state.LifecycleStatus = report.FinalStatus switch
+        {
+            DeploymentStatus.Completed  => DeploymentLifecycleStatus.Completed,
+            DeploymentStatus.RolledBack => DeploymentLifecycleStatus.RolledBack,
+            DeploymentStatus.Failed     => DeploymentLifecycleStatus.Failed,
+            _                           => DeploymentLifecycleStatus.PartialFail
+        };
+        state.Report = report;
+        state.OverallProgressPercent = 100;
+        await _sessions.SaveAsync(state, ct).ConfigureAwait(false);
+    }
+
+    private async Task MarkSessionInterruptedAsync(Guid sessionId, string reason, CancellationToken ct)
+    {
+        try
+        {
+            var state = await _sessions.LoadAsync(sessionId, ct).ConfigureAwait(false);
+            if (state is null) return;
+            state.LifecycleStatus = DeploymentLifecycleStatus.Interrupted;
+            state.FailureReason   = reason;
+            await _sessions.SaveAsync(state, ct).ConfigureAwait(false);
+        }
+        catch { /* best effort */ }
+    }
+
+    private static void MergeResumeSteps(IReadOnlyList<DeploymentStep> steps, DeploymentSessionState resume)
+    {
+        var byName = resume.Steps.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+        foreach (var step in steps)
+        {
+            if (!byName.TryGetValue(step.Name, out var snap)) continue;
+            var restored = snap.ToDeploymentStep();
+            step.Status       = restored.Status;
+            step.AttemptCount = restored.AttemptCount;
+            step.OutputLog    = restored.OutputLog;
+            step.ErrorMessage = restored.ErrorMessage;
         }
     }
 

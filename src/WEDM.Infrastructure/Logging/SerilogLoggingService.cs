@@ -257,6 +257,8 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
             KvRow(sb, "JDK Path", report.InstalledJdkPath);
         sb.AppendLine("</div></div>");
 
+        AppendLocalPayloadSection(sb, report);
+
         // ── Failed prerequisites (errors + fatals) ─────────────────────────────
         AppendValidationSection(sb, report, errorsOnly: true);
 
@@ -432,6 +434,46 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
             sb.AppendLine("</div>");
         }
     }
+
+    private static void AppendLocalPayloadSection(StringBuilder sb, DeploymentReport report)
+    {
+        var lp = report.LocalPayload;
+        if (lp is null || !lp.UsedLocalRepository) return;
+
+        sb.AppendLine("<div class='card'><h2>Local Payload Repository</h2>");
+        KvRowStatic(sb, "Repository root", lp.RepositoryRoot);
+        KvRowStatic(sb, "Version folder", lp.VersionFolder);
+        KvRowStatic(sb, "Manifest", lp.ManifestPresent ? "payload-manifest.json present" : "Not present (checksum warnings only)");
+
+        if (lp.Entries.Count == 0)
+        {
+            sb.AppendLine("<p class='section-empty'>No payload entries recorded.</p></div>");
+            return;
+        }
+
+        sb.AppendLine("<table><tr><th>Component</th><th>Resolved path</th><th>Checksum</th><th>Status</th></tr>");
+        foreach (var e in lp.Entries)
+        {
+            var chk = e.ChecksumStatus switch
+            {
+                Domain.Models.PayloadChecksumStatus.Verified      => ("ok", "Verified"),
+                Domain.Models.PayloadChecksumStatus.Mismatch        => ("fail", "Mismatch"),
+                Domain.Models.PayloadChecksumStatus.ManifestMissing => ("warn", "No manifest"),
+                _                                                 => ("skip", e.ChecksumStatus.ToString())
+            };
+            var path = string.IsNullOrWhiteSpace(e.ResolvedPath) ? "—" : e.ResolvedPath;
+            var status = e.Found ? "Resolved" : "Missing";
+            var statusCls = e.Found ? "ok" : "fail";
+            sb.AppendLine($"<tr><td>{HtmlEncode(e.Component)}</td>" +
+                $"<td style='word-break:break-all'>{HtmlEncode(path)}</td>" +
+                $"<td class='{chk.Item1}'>{chk.Item2}</td>" +
+                $"<td class='{statusCls}'>{status}</td></tr>");
+        }
+        sb.AppendLine("</table></div>");
+    }
+
+    private static void KvRowStatic(StringBuilder sb, string k, string v)
+        => sb.AppendLine($"<div class='kv'><span class='k'>{HtmlEncode(k)}</span><span class='v'>{HtmlEncode(v)}</span></div>");
 
     private static string HtmlEncode(object? value)
         => System.Net.WebUtility.HtmlEncode(value?.ToString() ?? string.Empty);

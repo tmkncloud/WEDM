@@ -14,7 +14,10 @@ using WEDM.Engine.Payload;
 using WEDM.Engine.Validation;
 using WEDM.Engine.Workflow;
 using WEDM.Engine.Workflow.Steps;
+using WEDM.Application.Services;
+using WEDM.Engine.Rcu;
 using WEDM.Infrastructure.Deployment;
+using WEDM.Infrastructure.Persistence;
 using WEDM.Infrastructure.Logging;
 using WEDM.Infrastructure.Migration;
 using WEDM.Infrastructure.Patching;
@@ -107,6 +110,11 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<WindowsRegistryService>();
         services.AddSingleton<IDeploymentPlanAccessor, DeploymentPlanAccessor>();
+        services.AddSingleton<IDeploymentSessionStore, JsonDeploymentSessionStore>();
+        services.AddSingleton<IDeploymentLockService, DeploymentLockService>();
+        services.AddSingleton<DeploymentRecoveryManager>();
+        services.AddSingleton<DeploymentSecretLifecycleService>();
+        services.AddSingleton<IRcuAutomationService, RcuAutomationService>();
         services.AddSingleton<IPowerShellExecutor, PowerShellExecutor>();
 
         services.AddSingleton<OpatchRunner>();
@@ -149,6 +157,7 @@ public partial class App : System.Windows.Application
 
         // ── Engine ────────────────────────────────────────────────────────────
         services.AddSingleton<ResponseFileGenerator>();
+        services.AddSingleton<IPayloadLocator, LocalPayloadLocator>();
         services.AddSingleton<IPayloadAcquisitionService, DeploymentPayloadService>();
         services.AddSingleton<IValidationEngine, PrerequisiteValidator>();
 

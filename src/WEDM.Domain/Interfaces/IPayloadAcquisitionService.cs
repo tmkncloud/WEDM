@@ -1,3 +1,4 @@
+using WEDM.Domain.Enums;
 using WEDM.Domain.Models;
 
 namespace WEDM.Domain.Interfaces;
@@ -36,6 +37,12 @@ public sealed class PayloadResolutionResult
     public PayloadResolutionStatus Status { get; init; }
     public string? InstallerPath { get; init; }
     public string Message { get; init; } = string.Empty;
+    public LocalPayloadComponent? Component { get; init; }
+    public string? RepositoryFolder { get; init; }
+    public PayloadChecksumStatus ChecksumStatus { get; init; }
+    public string? ExpectedSha256 { get; init; }
+    public string? ActualSha256 { get; init; }
+
     public bool Success => Status is PayloadResolutionStatus.NotRequired
         or PayloadResolutionStatus.AlreadyInstalled
         or PayloadResolutionStatus.ResolvedExisting

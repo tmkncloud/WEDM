@@ -180,7 +180,10 @@ public sealed class GenerateDeploymentReportStep : IStepExecutor
             DomainHome        = Path.Combine(config.Paths.DomainBase, config.Domain.DomainName),
             AdminUrl          = $"http://{config.Network.Hostname}:{config.Domain.AdminPort}/console",
             Steps             = steps,
-            AuditLog          = _log.GetEntries(LogLevel.Debug).ToList()
+            AuditLog          = _log.GetEntries(LogLevel.Debug).ToList(),
+            LocalPayload      = config.LocalPayload.UsedLocalRepository
+                ? config.LocalPayload
+                : null
         };
 
         var stamp = $"{config.Id:N}";

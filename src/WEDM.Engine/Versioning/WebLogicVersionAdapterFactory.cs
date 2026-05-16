@@ -16,6 +16,7 @@ public static class WebLogicVersionAdapterFactory
             [WebLogicVersion.WLS_11g] = new Wls11gAdapter(),
             [WebLogicVersion.WLS_12c] = new Wls12cAdapter(),
             [WebLogicVersion.WLS_14c] = new Wls14cAdapter(),
+            [WebLogicVersion.WLS_15c] = new Wls15cAdapter(),
         };
 
     /// <summary>Returns the adapter for the specified WebLogic version.</summary>

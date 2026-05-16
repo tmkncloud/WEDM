@@ -1,0 +1,441 @@
+{
+  "files": [
+    {
+      "fileName": "./runtimes/win-arm64/native/microsoft.management.infrastructure.native.unmanaged.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm64-native-microsoft.management.infrastructure.native.unmanaged.dll-AE54842A859686015460B9BC16653DB6EB11F9AC",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "02672d11cedfb7b1b91581c7cabc76b6cdec1646e2c9cbeda04f54a244999a2b"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "ae54842a859686015460b9bc16653db6eb11f9ac"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-arm64/lib/netstandard1.6/microsoft.management.infrastructure.native.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm64-lib-netstandard1.6-microsoft.management.infrastructure.native.dll-2416369EA08DEBACB18C240C72D5E6B7034F844F",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "53198434c0133b36e6eb6b2ff4ee30b700b1c960e2b1af94545846c1732d7c25"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "2416369ea08debacb18c240c72d5e6b7034f844f"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x86/lib/netstandard1.6/microsoft.management.infrastructure.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x86-lib-netstandard1.6-microsoft.management.infrastructure.dll-19FCE12F0C57CE190705C6F442658D7E57257C1E",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8a0dffa7fef0a09f49afd46eee3d0f1007e08e07ce300e58f6a73730de14b1d2"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "19fce12f0c57ce190705c6f442658d7e57257c1e"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x86/lib/net451/microsoft.management.infrastructure.native.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x86-lib-net451-microsoft.management.infrastructure.native.dll-1A3292632CB4883EC8A8803AEFFC575142197FCA",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ae696b14ac19aa1c1e514c35cd52b8b6c3e3fe19f9219136dad8639dc7f7a9ef"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "1a3292632cb4883ec8a8803aeffc575142197fca"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-arm64/lib/netstandard1.6/microsoft.management.infrastructure.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm64-lib-netstandard1.6-microsoft.management.infrastructure.dll-A29A5B924BD5B5A35BF9541C71861739FB4655AD",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "07a7688bbecc1f4c8787b0fa51f1d31573df73b45fe49bc3536103ec51b55fda"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "a29a5b924bd5b5a35bf9541c71861739fb4655ad"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x64/lib/net451/microsoft.management.infrastructure.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x64-lib-net451-microsoft.management.infrastructure.dll-56241DC9E297A0271035BBC24FC63158A51DDA2B",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "da87f33f8e7c4752e90e5f6cee3453fa282f89bc1042557ffcbfdb4fe3eb30aa"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "56241dc9e297a0271035bbc24fc63158a51dda2b"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x86/lib/net451/microsoft.management.infrastructure.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x86-lib-net451-microsoft.management.infrastructure.dll-884BDB203C6622BFD9F9AF4A94DF5EB5A542354A",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "45af508b43d400e423cbf22d75cdf6e8c668c7db538a45429523d251ccb47195"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "884bdb203c6622bfd9f9af4a94df5eb5a542354a"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x86/lib/netstandard1.6/microsoft.management.infrastructure.native.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x86-lib-netstandard1.6-microsoft.management.infrastructure.native.dll-D0277198158F9106CBA6149A6D7FB4479AA1F274",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e086f284fa886680761612c5d1e017f56c4d8227f69ef52cd6eede1c5d96523b"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "d0277198158f9106cba6149a6d7fb4479aa1f274"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./Microsoft.Management.Infrastructure.Runtime.Win.nuspec",
+      "SPDXID": "SPDXRef-File--Microsoft.Management.Infrastructure.Runtime.Win.nuspec-4AF16AF0727D8DF854DE6AEA288DA48B0D6EDE41",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e0b3ff915cecab9af63c36764539aa5241150bbd4ed4db1ec3d296182180e2e1"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "4af16af0727d8df854de6aea288da48b0d6ede41"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x64/lib/netstandard1.6/microsoft.management.infrastructure.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x64-lib-netstandard1.6-microsoft.management.infrastructure.dll-2C442ADF73B91E820A46F59C8F4A2AE13260E737",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "50557f6674bc1570308b3f326ae7b6b72839cc9bbac8934ab16ff563178d28f9"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "2c442adf73b91e820a46f59c8f4a2ae13260e737"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./LICENSE.txt",
+      "SPDXID": "SPDXRef-File--LICENSE.txt-9474FFF076F883435EFCB5C6844380BB02D915C9",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ee5d22efde160810352055a04f9c0ee55afd66ff0e52512b5f624e4c8297e680"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "9474fff076f883435efcb5c6844380bb02d915c9"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-arm64/lib/net451/microsoft.management.infrastructure.native.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm64-lib-net451-microsoft.management.infrastructure.native.dll-3D50586127ABEEB4C5A9B3EB0DFA0A04FD7AC967",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2f49dfd7ec647cb4f6c561036e9135b49117652accaeb5e959236f890a58da92"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "3d50586127abeeb4c5a9b3eb0dfa0a04fd7ac967"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x64/lib/net451/microsoft.management.infrastructure.native.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x64-lib-net451-microsoft.management.infrastructure.native.dll-7E501C30C79425109A50D97D3568F75BB63C971E",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "be08fe270a76c547df989e79dca6f7e196486cadea99ea063425b1a66a55e7f3"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "7e501c30c79425109a50d97d3568f75bb63c971e"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x86/native/microsoft.management.infrastructure.native.unmanaged.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x86-native-microsoft.management.infrastructure.native.unmanaged.dll-A24DBD1C45E61687C4AA3D7CF61470C29B3BA329",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8fef324494e8cb23d6f428525b307fa68f6bdfabe49ec15f28fc766e2fc40e7e"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "a24dbd1c45e61687c4aa3d7cf61470c29b3ba329"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x64/native/microsoft.management.infrastructure.native.unmanaged.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x64-native-microsoft.management.infrastructure.native.unmanaged.dll-4D36958242FF3F6E155DA73664BD10FFDCEF261E",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9bee4e35576355156f00e2e47ef57aa2c8ca64390c112f083a772f2219026293"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "4d36958242ff3f6e155da73664bd10ffdcef261e"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-arm64/lib/net451/microsoft.management.infrastructure.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-arm64-lib-net451-microsoft.management.infrastructure.dll-64195F245151EFD867C40CFA77FC3105119C5EC4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "19d50d461976db2f33f0182911167717392c43317884a0a5dd74fefc05d00d5e"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "64195f245151efd867c40cfa77fc3105119c5ec4"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./runtimes/win-x64/lib/netstandard1.6/microsoft.management.infrastructure.native.dll",
+      "SPDXID": "SPDXRef-File--runtimes-win-x64-lib-netstandard1.6-microsoft.management.infrastructure.native.dll-5EFA7EC80C303344966855B25BEDBD21CA78EF3D",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ef675cf5c7e0e4ba6291e4644d3ceba378ce9685eb179c6afa8f0bf8f9cadc32"
+        },
+        {
+          "algorithm": "SHA1",
+          "checksumValue": "5efa7ec80c303344966855b25bedbd21ca78ef3d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoInFiles": [
+        "NOASSERTION"
+      ],
+      "copyrightText": "NOASSERTION"
+    }
+  ],
+  "packages": [
+    {
+      "name": "Microsoft.Management.Infrastructure.Native",
+      "SPDXID": "SPDXRef-Package-CBBBC1D5DCDE72606807D537FA75E07B20970AA426A551EE663B9C7DE102C615",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "1.0.0-rc5",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:nuget/Microsoft.Management.Infrastructure.Native@1.0.0-rc5"
+        }
+      ],
+      "supplier": "Organization: Microsoft"
+    },
+    {
+      "name": "Microsoft.Management.Infrastructure",
+      "SPDXID": "SPDXRef-Package-7D64AC659262AC8EFB6365ECAD2C146CF4AB6872A34A41F093AFBCDB508B122E",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "1.0.0-rc2",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:nuget/Microsoft.Management.Infrastructure@1.0.0-rc2"
+        }
+      ],
+      "supplier": "Organization: Microsoft"
+    },
+    {
+      "name": "Microsoft.Management.Instrumentation",
+      "SPDXID": "SPDXRef-RootPackage",
+      "downloadLocation": "NOASSERTION",
+      "packageVerificationCode": {
+        "packageVerificationCodeValue": "7605a702670b369f95a9e04d8c6abb9a17d3fdb1"
+      },
+      "filesAnalyzed": true,
+      "licenseConcluded": "NOASSERTION",
+      "licenseInfoFromFiles": [
+        "NOASSERTION"
+      ],
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "versionInfo": "3.0.0",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:swid/Microsoft/sbom.microsoft/Microsoft.Management.Instrumentation@3.0.0?tag_id=14800076-f2f1-48fa-95c4-c40452cf9190"
+        }
+      ],
+      "supplier": "Organization: Microsoft",
+      "hasFiles": [
+        "SPDXRef-File--runtimes-win-x86-lib-netstandard1.6-microsoft.management.infrastructure.native.dll-D0277198158F9106CBA6149A6D7FB4479AA1F274",
+        "SPDXRef-File--runtimes-win-x64-lib-net451-microsoft.management.infrastructure.dll-56241DC9E297A0271035BBC24FC63158A51DDA2B",
+        "SPDXRef-File--runtimes-win-x64-lib-netstandard1.6-microsoft.management.infrastructure.native.dll-5EFA7EC80C303344966855B25BEDBD21CA78EF3D",
+        "SPDXRef-File--runtimes-win-arm64-lib-net451-microsoft.management.infrastructure.dll-64195F245151EFD867C40CFA77FC3105119C5EC4",
+        "SPDXRef-File--runtimes-win-x64-native-microsoft.management.infrastructure.native.unmanaged.dll-4D36958242FF3F6E155DA73664BD10FFDCEF261E",
+        "SPDXRef-File--runtimes-win-arm64-lib-net451-microsoft.management.infrastructure.native.dll-3D50586127ABEEB4C5A9B3EB0DFA0A04FD7AC967",
+        "SPDXRef-File--runtimes-win-arm64-native-microsoft.management.infrastructure.native.unmanaged.dll-AE54842A859686015460B9BC16653DB6EB11F9AC",
+        "SPDXRef-File--runtimes-win-x86-native-microsoft.management.infrastructure.native.unmanaged.dll-A24DBD1C45E61687C4AA3D7CF61470C29B3BA329",
+        "SPDXRef-File--runtimes-win-x64-lib-net451-microsoft.management.infrastructure.native.dll-7E501C30C79425109A50D97D3568F75BB63C971E",
+        "SPDXRef-File--LICENSE.txt-9474FFF076F883435EFCB5C6844380BB02D915C9",
+        "SPDXRef-File--runtimes-win-x64-lib-netstandard1.6-microsoft.management.infrastructure.dll-2C442ADF73B91E820A46F59C8F4A2AE13260E737",
+        "SPDXRef-File--Microsoft.Management.Infrastructure.Runtime.Win.nuspec-4AF16AF0727D8DF854DE6AEA288DA48B0D6EDE41",
+        "SPDXRef-File--runtimes-win-x86-lib-netstandard1.6-microsoft.management.infrastructure.dll-19FCE12F0C57CE190705C6F442658D7E57257C1E",
+        "SPDXRef-File--runtimes-win-x86-lib-net451-microsoft.management.infrastructure.dll-884BDB203C6622BFD9F9AF4A94DF5EB5A542354A",
+        "SPDXRef-File--runtimes-win-arm64-lib-netstandard1.6-microsoft.management.infrastructure.dll-A29A5B924BD5B5A35BF9541C71861739FB4655AD",
+        "SPDXRef-File--runtimes-win-x86-lib-net451-microsoft.management.infrastructure.native.dll-1A3292632CB4883EC8A8803AEFFC575142197FCA",
+        "SPDXRef-File--runtimes-win-arm64-lib-netstandard1.6-microsoft.management.infrastructure.native.dll-2416369EA08DEBACB18C240C72D5E6B7034F844F"
+      ]
+    }
+  ],
+  "externalDocumentRefs": [],
+  "relationships": [
+    {
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-RootPackage",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-7D64AC659262AC8EFB6365ECAD2C146CF4AB6872A34A41F093AFBCDB508B122E",
+      "spdxElementId": "SPDXRef-RootPackage"
+    },
+    {
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-CBBBC1D5DCDE72606807D537FA75E07B20970AA426A551EE663B9C7DE102C615",
+      "spdxElementId": "SPDXRef-RootPackage"
+    }
+  ],
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "Microsoft.Management.Instrumentation 3.0.0",
+  "documentNamespace": "https://sbom.microsoft/1:2QSF7qZlbE-F7QrUJlEo7g:pHp_nUFvDUijZ4LrJ4RhoQ/2412:423346/Microsoft.Management.Instrumentation:3.0.0:Qj925bT04UK9QXj6fE5JLg",
+  "creationInfo": {
+    "created": "2023-11-03T19:58:24Z",
+    "creators": [
+      "Organization: Microsoft",
+      "Tool: Microsoft.SBOMTool-1.8.1"
+    ]
+  },
+  "documentDescribes": [
+    "SPDXRef-RootPackage"
+  ]
+}

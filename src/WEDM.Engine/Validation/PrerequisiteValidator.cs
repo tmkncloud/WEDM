@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using WEDM.Domain.Enums;
 using WEDM.Engine.Opatch;
+using WEDM.Engine.Versioning;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 
@@ -32,22 +33,6 @@ public sealed class PrerequisiteValidator : IValidationEngine
     private readonly ILoggingService _log;
     private readonly Infrastructure.Registry.WindowsRegistryService _registry;
     private readonly IPayloadAcquisitionService _payloads;
-
-    // Minimum hardware requirements per version
-    private static readonly Dictionary<WebLogicVersion, (long MinRamMb, int MinCores, long MinDiskGb)> HwRequirements = new()
-    {
-        { WebLogicVersion.WLS_11g, (4096, 2, 20) },
-        { WebLogicVersion.WLS_12c, (8192, 2, 30) },
-        { WebLogicVersion.WLS_14c, (8192, 4, 40) },
-    };
-
-    // Required JDK version ranges per WebLogic version
-    private static readonly Dictionary<WebLogicVersion, (int MinMajor, int MaxMajor)> JdkRequirements = new()
-    {
-        { WebLogicVersion.WLS_11g, (7, 8) },
-        { WebLogicVersion.WLS_12c, (8, 8) },
-        { WebLogicVersion.WLS_14c, (21, 21) },
-    };
 
     public PrerequisiteValidator(
         ILoggingService log,
@@ -156,8 +141,7 @@ public sealed class PrerequisiteValidator : IValidationEngine
         DeploymentConfiguration config, CancellationToken ct = default)
     {
         var result = new PrerequisiteValidationResult();
-        if (!HwRequirements.TryGetValue(config.WebLogicVersion, out var req))
-            req = (8192, 2, 30);
+        var adapter = WebLogicVersionAdapterFactory.For(config.WebLogicVersion);
 
         // RAM
         try
@@ -167,13 +151,13 @@ public sealed class PrerequisiteValidator : IValidationEngine
             {
                 var totalKb = Convert.ToInt64(obj["TotalVisibleMemorySize"]);
                 var totalMb = totalKb / 1024;
-                if (totalMb >= req.MinRamMb)
+                if (totalMb >= adapter.MinRamMb)
                     result.Pass("RAM", $"RAM: {totalMb:N0} MB — Sufficient ✔", totalMb);
                 else
                     result.Fail("RAM",
-                        $"Insufficient RAM: {totalMb:N0} MB detected, minimum {req.MinRamMb:N0} MB required.",
-                        $"Add at least {req.MinRamMb - totalMb:N0} MB of RAM.",
-                        totalMb, req.MinRamMb);
+                        $"Insufficient RAM: {totalMb:N0} MB detected, minimum {adapter.MinRamMb:N0} MB required.",
+                        $"Add at least {adapter.MinRamMb - totalMb:N0} MB of RAM.",
+                        totalMb, adapter.MinRamMb);
             }
         }
         catch (Exception ex)
@@ -184,13 +168,13 @@ public sealed class PrerequisiteValidator : IValidationEngine
 
         // CPU
         var coreCount = Environment.ProcessorCount;
-        if (coreCount >= req.MinCores)
+        if (coreCount >= adapter.MinCpuCores)
             result.Pass("CPU", $"CPU: {coreCount} logical cores ✔", coreCount);
         else
             result.Warn("CPU",
-                $"Only {coreCount} CPU core(s) detected; {req.MinCores} recommended for {config.WebLogicVersion}.",
+                $"Only {coreCount} CPU core(s) detected; {adapter.MinCpuCores} recommended for {config.WebLogicVersion}.",
                 "WebLogic performance may be degraded. Add CPU resources if possible.",
-                coreCount, req.MinCores);
+                coreCount, adapter.MinCpuCores);
 
         return Task.FromResult(result);
     }
@@ -201,12 +185,11 @@ public sealed class PrerequisiteValidator : IValidationEngine
         DeploymentConfiguration config, CancellationToken ct = default)
     {
         var result = new PrerequisiteValidationResult();
-        if (!HwRequirements.TryGetValue(config.WebLogicVersion, out var req))
-            req = (8192, 2, 30);
+        var adapter = WebLogicVersionAdapterFactory.For(config.WebLogicVersion);
 
         var checkPaths = new Dictionary<string, long>
         {
-            { config.Paths.OracleRoot,       req.MinDiskGb * 1024L * 1024L * 1024L },
+            { config.Paths.OracleRoot,       adapter.MinDiskGb * 1024L * 1024L * 1024L },
             { config.Paths.TempDirectory,    2L * 1024 * 1024 * 1024 },   // 2 GB temp
             { config.Paths.LogDirectory,     512L * 1024 * 1024 },         // 512 MB logs
         };
@@ -281,8 +264,8 @@ public sealed class PrerequisiteValidator : IValidationEngine
         DeploymentConfiguration config, CancellationToken ct = default)
     {
         var result = new PrerequisiteValidationResult();
-        if (!JdkRequirements.TryGetValue(config.WebLogicVersion, out var req))
-            req = (8, 8);
+        var adapter = WebLogicVersionAdapterFactory.For(config.WebLogicVersion);
+        var (minMajor, maxMajor) = ParseJdkMajorRange(adapter);
 
         // Try registry detection first
         var javaHome = _registry.DetectInstalledJdk() ?? config.Java.JavaHome;
@@ -297,7 +280,7 @@ public sealed class PrerequisiteValidator : IValidationEngine
                     "JDK not found and JDK installation is disabled.",
                     "Enable JDK installation in the wizard, or install Temurin/OpenJDK manually and set JAVA_HOME.",
                     actual: "Not installed",
-                    expected: $"JDK {req.MinMajor}");
+                    expected: $"JDK {minMajor}");
             return Task.FromResult(result);
         }
 
@@ -326,13 +309,14 @@ public sealed class PrerequisiteValidator : IValidationEngine
                 var major = int.Parse(match.Groups[1].Value);
                 if (major == 1) major = int.Parse(match.Groups[2].Value); // 1.8 → 8
 
-                if (major >= req.MinMajor && major <= req.MaxMajor)
-                    result.Pass("JDK", $"JDK {major} at '{javaHome}' — compatible with {config.WebLogicVersion} ✔", major);
+                var supported = adapter.SupportedJdkVersions.Select(ParseJdkMajorToken).ToHashSet();
+                if (supported.Contains(major) || (major >= minMajor && major <= maxMajor))
+                    result.Pass("JDK", $"JDK {major} at '{javaHome}' — compatible with {adapter.VersionLabel} ✔", major);
                 else
                     result.Fail("JDK",
-                        $"JDK {major} is not compatible with {config.WebLogicVersion} (requires JDK {req.MinMajor}–{req.MaxMajor}).",
-                        $"Install JDK {req.MinMajor} for {config.WebLogicVersion}.",
-                        major, $"JDK {req.MinMajor}-{req.MaxMajor}");
+                        $"JDK {major} is not compatible with {adapter.VersionLabel} (supported: {string.Join(", ", adapter.SupportedJdkVersions)}).",
+                        $"Install a supported JDK for {adapter.VersionLabel}.",
+                        major, string.Join(",", adapter.SupportedJdkVersions));
             }
             else
             {
@@ -452,5 +436,20 @@ public sealed class PrerequisiteValidator : IValidationEngine
             return props.GetActiveTcpListeners().Any(ep => ep.Port == port);
         }
         catch { return false; }
+    }
+
+    private static (int MinMajor, int MaxMajor) ParseJdkMajorRange(Versioning.IWebLogicVersionAdapter adapter)
+    {
+        var min = ParseJdkMajorToken(adapter.MinJdkVersion);
+        var max = ParseJdkMajorToken(adapter.MaxJdkVersion ?? adapter.MinJdkVersion);
+        if (max < min) max = min;
+        return (min, max);
+    }
+
+    private static int ParseJdkMajorToken(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version)) return 8;
+        var parts = version.TrimStart('1', '.').Split('.', StringSplitOptions.RemoveEmptyEntries);
+        return int.TryParse(parts[0], out var major) ? major : 8;
     }
 }

@@ -18,6 +18,16 @@ public interface IWorkflowOrchestrator
         IReadOnlyList<DeploymentStep> steps,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Execute with optional resume context — skips steps already succeeded/skipped in <paramref name="context"/>.
+    /// Invokes <see cref="DeploymentWorkflowRunContext.CheckpointAsync"/> after each step when provided.
+    /// </summary>
+    Task<DeploymentReport> RunAsync(
+        DeploymentConfiguration config,
+        IReadOnlyList<DeploymentStep> steps,
+        DeploymentWorkflowRunContext? context,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Execute a single named step (for retry / resume scenarios).</summary>
     Task<StepExecutionResult> RunStepAsync(
         DeploymentStep step,

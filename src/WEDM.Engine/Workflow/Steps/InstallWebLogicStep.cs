@@ -149,26 +149,31 @@ exit $exitCode
 
     private static string? ResolveInstallerJar(DeploymentConfiguration config)
     {
-        var versionFolder = config.WebLogicVersion switch
-        {
-            Domain.Enums.WebLogicVersion.WLS_11g => "11g",
-            Domain.Enums.WebLogicVersion.WLS_12c => "12c",
-            Domain.Enums.WebLogicVersion.WLS_14c => "14c",
-            _ => "12c"
-        };
+        if (!string.IsNullOrWhiteSpace(config.InfrastructureInstallerPath)
+            && File.Exists(config.InfrastructureInstallerPath))
+            return config.InfrastructureInstallerPath;
 
-        var payloadDir = Path.Combine(config.PayloadBasePath, versionFolder);
-        if (!Directory.Exists(payloadDir)) return null;
+        if (!string.IsNullOrWhiteSpace(config.WebLogicInstallerPath)
+            && File.Exists(config.WebLogicInstallerPath))
+            return config.WebLogicInstallerPath;
 
-        // Prefer Infrastructure JAR (includes JRF), fall back to WLS-only JAR
-        var patterns = new[] { "*infrastructure*.jar", "*_wls*.jar", "wls*.jar" };
-        foreach (var pattern in patterns)
+        if (!config.PayloadAcquisition.UseLocalRepositoryOnly)
         {
-            var jar = Directory.GetFiles(payloadDir, pattern, SearchOption.TopDirectoryOnly)
-                               .OrderByDescending(f => new FileInfo(f).Length)
-                               .FirstOrDefault();
-            if (jar is not null) return jar;
+            var versionFolder = config.WebLogicVersion switch
+            {
+                Domain.Enums.WebLogicVersion.WLS_11g => "11g",
+                Domain.Enums.WebLogicVersion.WLS_12c => "12c",
+                Domain.Enums.WebLogicVersion.WLS_14c => "14c",
+                Domain.Enums.WebLogicVersion.WLS_15c => "15c",
+                _ => "12c"
+            };
+
+            var infraDir = Path.Combine(config.PayloadBasePath, versionFolder, "infrastructure");
+            var wlsDir   = Path.Combine(config.PayloadBasePath, versionFolder, "weblogic");
+            return WEDM.Engine.Payload.LocalPayloadPatternMatcher.FindBestMatch(infraDir, ["*infrastructure*.jar", "*.jar"])
+                ?? WEDM.Engine.Payload.LocalPayloadPatternMatcher.FindBestMatch(wlsDir, ["*wls*.jar", "*.jar"]);
         }
+
         return null;
     }
 

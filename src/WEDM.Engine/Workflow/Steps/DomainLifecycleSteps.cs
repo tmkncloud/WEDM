@@ -330,13 +330,40 @@ public sealed class ConfigureWebUtilStep : IStepExecutor
 
 public sealed class RunRcuStep : IStepExecutor
 {
-    public Task<StepExecutionResult> ExecuteAsync(
+    private readonly IRcuAutomationService _rcu;
+    private readonly ILoggingService       _log;
+
+    public RunRcuStep(IRcuAutomationService rcu, ILoggingService log)
+    {
+        _rcu = rcu;
+        _log = log;
+    }
+
+    public async Task<StepExecutionResult> ExecuteAsync(
         DeploymentStep step,
         DeploymentConfiguration config,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(StepExecutionResult.Fail(
-            "Automated RCU is not enabled in this build. Run RCU manually against your database, export a response file, " +
-            "then set database.runRcu to false for silent WEDM runs, or extend RunRcuStep with your approved RCU property file."));
+    {
+        if (!config.Database.RunRcu)
+            return StepExecutionResult.Ok("RCU disabled — skipped.");
+
+        var dryRun = string.Equals(Environment.GetEnvironmentVariable("WEDM_RCU_DRY_RUN"), "1", StringComparison.Ordinal);
+        var pre = await _rcu.PrecheckAsync(config, cancellationToken).ConfigureAwait(false);
+        if (!pre.CanProceed && !pre.SchemasExist)
+            return StepExecutionResult.Fail(string.Join("; ", pre.Messages));
+
+        if (pre.SchemasExist)
+        {
+            _log.Info($"RCU idempotent skip — schemas exist: {string.Join(", ", pre.ExistingSchemas)}", "RCU");
+            return StepExecutionResult.Ok("RCU schemas already present — skipped (no overwrite).");
+        }
+
+        var result = await _rcu.ExecuteAsync(config, dryRun, cancellationToken).ConfigureAwait(false);
+        if (result.Skipped || result.Success)
+            return StepExecutionResult.Ok(result.Output);
+
+        return StepExecutionResult.Fail(result.Error, result.ExitCode);
+    }
 }
 
 public sealed class PostInstallValidationStep : IStepExecutor
