@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using WEDM.Domain.Enums;
 
+// AutoRemediationMode lives in WEDM.Domain.Enums
+
 namespace WEDM.Domain.Models;
 
 /// <summary>Configuration for Remove WebLogic Environment / decommission workflows.</summary>
@@ -233,4 +235,54 @@ public sealed class OracleLifecycleConfiguration
     /// </summary>
     [JsonPropertyName("processShutdownTimeoutSeconds")]
     public int ProcessShutdownTimeoutSeconds { get; set; } = 30;
+
+    // ── Auto remediation ─────────────────────────────────────────────────────
+
+    [JsonPropertyName("enableAutoRemediation")]
+    public bool EnableAutoRemediation { get; set; } = true;
+
+    [JsonPropertyName("autoRemediationMode")]
+    public AutoRemediationMode AutoRemediationMode { get; set; } = AutoRemediationMode.AutomaticSafeOnly;
+
+    [JsonPropertyName("safeCleanupOnly")]
+    public bool SafeCleanupOnly { get; set; } = true;
+
+    [JsonPropertyName("autoContinueAfterRemediation")]
+    public bool AutoContinueAfterRemediation { get; set; } = true;
+
+    [JsonPropertyName("maxRemediationAttempts")]
+    public int MaxRemediationAttempts { get; set; } = 2;
+
+    [JsonPropertyName("cleanupRetryIsolationArtifacts")]
+    public bool CleanupRetryIsolationArtifacts { get; set; } = true;
+
+    [JsonPropertyName("cleanupGeneratedFiles")]
+    public bool CleanupGeneratedFiles { get; set; } = true;
+
+    [JsonPropertyName("cleanupInventoryArtifacts")]
+    public bool CleanupInventoryArtifacts { get; set; } = true;
+
+    /// <summary>Minimum age (minutes) before installer activity is considered stale.</summary>
+    [JsonPropertyName("staleInstallActivityMinutes")]
+    public int StaleInstallActivityMinutes { get; set; } = 15;
+
+    // ── Inventory bootstrap ───────────────────────────────────────────────────
+
+    [JsonPropertyName("enableAutomaticInventoryBootstrap")]
+    public bool EnableAutomaticInventoryBootstrap { get; set; } = true;
+
+    [JsonPropertyName("allowBootstrapOnCleanInstall")]
+    public bool AllowBootstrapOnCleanInstall { get; set; } = true;
+
+    [JsonPropertyName("allowBootstrapAfterDecommission")]
+    public bool AllowBootstrapAfterDecommission { get; set; } = true;
+
+    [JsonPropertyName("bootstrapRetryInventories")]
+    public bool BootstrapRetryInventories { get; set; } = true;
+
+    [JsonPropertyName("bootstrapDryRun")]
+    public bool BootstrapDryRun { get; set; }
+
+    [JsonPropertyName("bootstrapVersionStrategy")]
+    public BootstrapVersionStrategy BootstrapVersionStrategy { get; set; } = BootstrapVersionStrategy.VersionSpecific;
 }

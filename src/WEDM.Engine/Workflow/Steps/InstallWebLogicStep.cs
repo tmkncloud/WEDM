@@ -1,8 +1,10 @@
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
+using WEDM.Domain.Enums;
 using WEDM.Engine.Diagnostics;
 using WEDM.Engine.EnvironmentIsolation;
 using WEDM.Engine.Installer;
+using WEDM.Engine.Remediation;
 using WEDM.Engine.ResponseFiles;
 
 namespace WEDM.Engine.Workflow.Steps;
@@ -31,6 +33,8 @@ public sealed class InstallWebLogicStep : IStepExecutor
     private readonly IOracleInventoryService       _inventory;
     private readonly IInstallRetryIsolationService _retryIsolation;
     private readonly IEnvironmentIsolationService  _envIsolation;
+    private readonly IOracleRemediationService       _remediation;
+    private readonly IOracleInventoryBootstrapService? _inventoryBootstrap;
 
     public InstallWebLogicStep(
         IPowerShellExecutor ps,
@@ -38,7 +42,9 @@ public sealed class InstallWebLogicStep : IStepExecutor
         ResponseFileGenerator rspGen,
         IOracleInventoryService inventory,
         IInstallRetryIsolationService retryIsolation,
-        IEnvironmentIsolationService envIsolation)
+        IEnvironmentIsolationService envIsolation,
+        IOracleRemediationService remediation,
+        IOracleInventoryBootstrapService? inventoryBootstrap = null)
     {
         _ps             = ps;
         _log            = log;
@@ -46,6 +52,8 @@ public sealed class InstallWebLogicStep : IStepExecutor
         _inventory      = inventory;
         _retryIsolation = retryIsolation;
         _envIsolation   = envIsolation;
+        _remediation    = remediation;
+        _inventoryBootstrap = inventoryBootstrap;
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -93,12 +101,47 @@ public sealed class InstallWebLogicStep : IStepExecutor
         foreach (var a in preflight.ActionsTaken)
             _log.Info($"  [Preflight] {a}", "Install.WLS");
 
+        // ── Phase 1b: Bootstrap central inventory when missing ─────────────
+        if (_inventoryBootstrap is not null)
+        {
+            var bootAssessment = _inventoryBootstrap.Assess(config);
+            if (_inventoryBootstrap.ShouldAutoBootstrap(config, bootAssessment))
+            {
+                var pointerScope = attemptNumber > 1
+                    ? InventoryPointerScope.RetryIsolation
+                    : InventoryPointerScope.DefaultCentral;
+                var bootResult = await _inventoryBootstrap.EnsureInventoryReadyAsync(
+                    config,
+                    new InventoryBootstrapExecutionOptions
+                    {
+                        Trigger       = "InstallInfrastructure",
+                        PointerScope  = pointerScope,
+                    },
+                    cancellationToken);
+                foreach (var dir in bootResult.Report.CreatedDirectories)
+                    _log.Info($"  [InventoryBootstrap] Created: {dir}", "Install.WLS");
+                if (!bootResult.Success)
+                {
+                    RecordFailureClass(config, InstallerFailureClass.InventoryConflict);
+                    return StepExecutionResult.Fail(
+                        $"Oracle central inventory bootstrap failed: {string.Join("; ", bootResult.Report.Errors)}",
+                        exitCode: -10);
+                }
+            }
+        }
+
         // ── Phase 2: Pre-install Oracle inventory validation (hard gate) ───
         var preCheck = _inventory.ValidateForInstall(
             config.Paths.MiddlewareHome,
             config.Paths.OracleInventory);
 
         LogInventoryValidation(preCheck, "Pre-install");
+
+        if (!preCheck.CanProceed)
+        {
+            preCheck = await TryAutoRemediateAndRevalidateAsync(config, preCheck, cancellationToken)
+                       ?? preCheck;
+        }
 
         if (!preCheck.CanProceed)
         {
@@ -445,6 +488,57 @@ exit $exitCode
         paths.AddRange(ctx.CleanupPaths.Where(p => !paths.Contains(p, StringComparer.OrdinalIgnoreCase)));
 
         return paths;
+    }
+
+    private async Task<OracleInventoryValidationResult?> TryAutoRemediateAndRevalidateAsync(
+        DeploymentConfiguration config,
+        OracleInventoryValidationResult failedCheck,
+        CancellationToken cancellationToken)
+    {
+        var assessment = _remediation.Assess(config, "InstallInfrastructure");
+        if (!_remediation.ShouldAutoRemediate(config, assessment))
+        {
+            _log.Warning(
+                $"[Remediation] Partial install detected (state={failedCheck.HomeState}) but auto-remediation is " +
+                $"disabled or unsafe (classification={assessment.Classification}, mode={config.OracleLifecycle.AutoRemediationMode}).",
+                "Install.WLS");
+            return null;
+        }
+
+        var attempts = config.RemediationReports.Count(r => !r.DryRun);
+        if (attempts >= config.OracleLifecycle.MaxRemediationAttempts)
+        {
+            _log.Warning(
+                $"[Remediation] Max remediation attempts ({config.OracleLifecycle.MaxRemediationAttempts}) reached.",
+                "Install.WLS");
+            return null;
+        }
+
+        _log.Info(
+            $"[Remediation] Auto-remediating partial install before OUI (classification={assessment.Classification})...",
+            "Install.WLS");
+
+        var result = await _remediation.ExecuteAsync(
+            config,
+            new RemediationExecutionOptions
+            {
+                DryRun  = false,
+                Trigger = "InstallInfrastructure",
+            },
+            cancellationToken);
+
+        foreach (var action in result.Report.ExecutedActions)
+            _log.Info($"  [Remediation] {action.ActionType}: {action.Outcome} — {action.TargetPath}", "Install.WLS");
+
+        if (!result.Success || !config.OracleLifecycle.AutoContinueAfterRemediation)
+            return null;
+
+        var revalidated = _inventory.ValidateForInstall(
+            config.Paths.MiddlewareHome,
+            config.Paths.OracleInventory);
+
+        LogInventoryValidation(revalidated, "Post-remediation");
+        return revalidated.CanProceed ? revalidated : null;
     }
 
     private void LogInventoryValidation(OracleInventoryValidationResult result, string phase)

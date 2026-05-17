@@ -303,6 +303,12 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
         }
         sb.AppendLine("</table></div>");
 
+        // ── Oracle remediation ─────────────────────────────────────────────────
+        AppendRemediationSection(sb, report);
+
+        // ── Oracle inventory bootstrap ─────────────────────────────────────────
+        AppendBootstrapSection(sb, report);
+
         // ── Rollback summary ───────────────────────────────────────────────────
         AppendRollbackSection(sb, report);
 
@@ -371,6 +377,52 @@ public sealed class SerilogLoggingService : ILoggingService, IDisposable
 
                 sb.AppendLine("</div>");
             }
+            sb.AppendLine("</div>");
+        }
+
+        static void AppendRemediationSection(StringBuilder sb, DeploymentReport report)
+        {
+            if (report.RemediationReports.Count == 0) return;
+
+            sb.AppendLine("<div class='card' style='border-color:#58A6FF60'>");
+            sb.AppendLine("<h2 style='color:#58A6FF'>Oracle Remediation</h2>");
+
+            foreach (var r in report.RemediationReports)
+            {
+                var ok = r.Success ? "#3FB950" : "#F85149";
+                sb.AppendLine("<div class='finding'>");
+                sb.AppendLine($"<div class='finding-hdr'><span style='color:{ok};font-weight:700'>[{(r.Success ? "OK" : "FAIL")}]</span><h3>{HtmlEncode(r.Trigger)} - {HtmlEncode(r.Classification.ToString())}</h3></div>");
+                sb.AppendLine($"<p>Dry-run: {r.DryRun} | Mode: {HtmlEncode(r.Mode.ToString())}</p>");
+                if (r.DeletedPaths.Count > 0)
+                    sb.AppendLine($"<p><strong>Deleted:</strong> {HtmlEncode(string.Join("; ", r.DeletedPaths))}</p>");
+                if (r.Verification is not null)
+                    sb.AppendLine($"<p><strong>Verification:</strong> {(r.Verification.Passed ? "Passed" : "Failed")}</p>");
+                sb.AppendLine("</div>");
+            }
+
+            sb.AppendLine("</div>");
+        }
+
+        static void AppendBootstrapSection(StringBuilder sb, DeploymentReport report)
+        {
+            if (report.BootstrapReports.Count == 0) return;
+
+            sb.AppendLine("<div class='card' style='border-color:#3FB95060'>");
+            sb.AppendLine("<h2 style='color:#3FB950'>Oracle Inventory Bootstrap</h2>");
+
+            foreach (var b in report.BootstrapReports)
+            {
+                var ok = b.Success ? "#3FB950" : "#F85149";
+                sb.AppendLine("<div class='finding'>");
+                sb.AppendLine($"<div class='finding-hdr'><span style='color:{ok};font-weight:700'>[{(b.Success ? "OK" : "FAIL")}]</span><h3>{HtmlEncode(b.InventoryRoot)}</h3></div>");
+                sb.AppendLine($"<p>Strategy: {HtmlEncode(b.Strategy.ToString())} | Version: {HtmlEncode(b.VersionProfile)} | Dry-run: {b.DryRun}</p>");
+                if (b.CreatedDirectories.Count > 0)
+                    sb.AppendLine($"<p><strong>Created:</strong> {HtmlEncode(string.Join("; ", b.CreatedDirectories))}</p>");
+                if (b.WrittenFiles.Count > 0)
+                    sb.AppendLine($"<p><strong>Written:</strong> {HtmlEncode(string.Join("; ", b.WrittenFiles))}</p>");
+                sb.AppendLine("</div>");
+            }
+
             sb.AppendLine("</div>");
         }
 

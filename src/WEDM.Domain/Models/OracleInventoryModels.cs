@@ -65,6 +65,12 @@ public enum OracleCentralInventoryState
 
     /// <summary>Valid inventory with a mix of present and missing registered home paths.</summary>
     Partial = 6,
+
+    /// <summary>Central inventory structure is absent but bootstrap is eligible on a clean install.</summary>
+    BootstrapRequired = 7,
+
+    /// <summary>Automatic inventory bootstrap was attempted and failed.</summary>
+    BootstrapFailed = 8,
 }
 
 // ── Validation results ────────────────────────────────────────────────────────

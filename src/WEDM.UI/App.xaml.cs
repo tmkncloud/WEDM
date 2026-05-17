@@ -182,6 +182,19 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IOracleHomeValidator, OracleHomeValidator>();
         services.AddSingleton<IOracleCleanupService, OracleCleanupService>();
         services.AddSingleton<IEnvironmentDiscoveryService, EnvironmentDiscoveryService>();
+        services.AddSingleton<IOracleHomeSafetyAnalyzer, WEDM.Engine.Remediation.OracleHomeSafetyAnalyzer>();
+        services.AddSingleton<IPartialInstallClassifier, WEDM.Engine.Remediation.PartialInstallClassifier>();
+        services.AddSingleton<IRemediationPlanBuilder, WEDM.Engine.Remediation.RemediationPlanBuilder>();
+        services.AddSingleton<IOraclePartialInstallRemediator, WEDM.Engine.Remediation.OraclePartialInstallRemediator>();
+        services.AddSingleton<IRemediationVerificationService, WEDM.Engine.Remediation.RemediationVerificationService>();
+        services.AddSingleton<IRemediationReportBuilder, WEDM.Engine.Remediation.RemediationReportBuilder>();
+        services.AddSingleton<WEDM.Engine.Remediation.RemediationExecutionEngine>();
+        services.AddSingleton<IOracleRemediationService, WEDM.Engine.Remediation.OracleRemediationService>();
+        services.AddSingleton<IOracleInventoryPathResolver, WEDM.Engine.OracleInventoryBootstrap.OracleInventoryPathResolver>();
+        services.AddSingleton<IOracleInventorySkeletonFactory, WEDM.Engine.OracleInventoryBootstrap.OracleInventorySkeletonFactory>();
+        services.AddSingleton<IOracleInventoryBootstrapValidator, WEDM.Engine.OracleInventoryBootstrap.OracleInventoryBootstrapValidator>();
+        services.AddSingleton<IOracleInventoryBootstrapReportBuilder, WEDM.Engine.OracleInventoryBootstrap.OracleInventoryBootstrapReportBuilder>();
+        services.AddSingleton<IOracleInventoryBootstrapService, WEDM.Engine.OracleInventoryBootstrap.OracleInventoryBootstrapService>();
         services.AddSingleton<IDeployOracleConflictDetector, DeployOracleConflictDetector>();
         services.AddSingleton<IInstallRetryIsolationService, InstallRetryIsolationService>();
         services.AddSingleton<IEnvironmentIsolationService, EnvironmentIsolationService>();
@@ -203,7 +216,8 @@ public partial class App : System.Windows.Application
             sp.GetRequiredService<ILoggingService>(),
             sp.GetRequiredService<WindowsRegistryService>(),
             sp.GetRequiredService<IPayloadAcquisitionService>(),
-            sp.GetRequiredService<IDeployOracleConflictDetector>()));
+            sp.GetRequiredService<IDeployOracleConflictDetector>(),
+            sp.GetRequiredService<IOracleInventoryBootstrapService>()));
 
         // Step executors (transient — stateless automation workers)
         services.AddTransient<ValidatePrerequisitesStep>();

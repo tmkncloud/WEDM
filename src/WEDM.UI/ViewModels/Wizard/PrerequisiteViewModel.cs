@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using WEDM.Application.Services;
 using WEDM.Domain.Enums;
+using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.UI.ViewModels.Base;
 
@@ -15,8 +16,10 @@ namespace WEDM.UI.ViewModels.Wizard;
 /// </summary>
 public sealed partial class PrerequisiteViewModel : WizardStepViewModel
 {
-    private readonly DeploymentOrchestrator _orchestrator;
-    private DeploymentConfiguration?        _config;
+    private readonly DeploymentOrchestrator      _orchestrator;
+    private readonly IOracleRemediationService?      _remediation;
+    private readonly IOracleInventoryBootstrapService? _inventoryBootstrap;
+    private DeploymentConfiguration?                  _config;
 
     // ── Observable state ──────────────────────────────────────────────────────
 
@@ -43,13 +46,33 @@ public sealed partial class PrerequisiteViewModel : WizardStepViewModel
     [ObservableProperty]
     private bool _forceCleanInstall;
 
+    [ObservableProperty]
+    private bool _enableAutomaticInventoryBootstrap = true;
+
+    [ObservableProperty]
+    private string _bootstrapPreview = "Run checks to assess inventory bootstrap options.";
+
+    [ObservableProperty]
+    private bool _enableAutoRemediation = true;
+
+    [ObservableProperty]
+    private bool _safeCleanupOnly = true;
+
+    [ObservableProperty]
+    private string _remediationPreview = "Run checks to assess Oracle remediation options.";
+
     public ObservableCollection<FindingRowViewModel> Findings { get; } = new();
 
     public override bool CanProceed => HasRun && AllPassed;
 
-    public PrerequisiteViewModel(DeploymentOrchestrator orchestrator)
+    public PrerequisiteViewModel(
+        DeploymentOrchestrator orchestrator,
+        IOracleRemediationService? remediation = null,
+        IOracleInventoryBootstrapService? inventoryBootstrap = null)
     {
-        _orchestrator   = orchestrator;
+        _orchestrator = orchestrator;
+        _remediation  = remediation;
+        _inventoryBootstrap = inventoryBootstrap;
         StepTitle       = "Prerequisites";
         StepDescription = "Validate system requirements before deployment begins.";
         StepIcon        = "✅";
@@ -60,7 +83,10 @@ public sealed partial class PrerequisiteViewModel : WizardStepViewModel
     public override async Task OnNavigatingToAsync(DeploymentConfiguration config)
     {
         _config = config;
-        ForceCleanInstall = config.OracleLifecycle.ForceCleanInstall;
+        ForceCleanInstall      = config.OracleLifecycle.ForceCleanInstall;
+        EnableAutomaticInventoryBootstrap = config.OracleLifecycle.EnableAutomaticInventoryBootstrap;
+        EnableAutoRemediation  = config.OracleLifecycle.EnableAutoRemediation;
+        SafeCleanupOnly        = config.OracleLifecycle.SafeCleanupOnly;
         if (!HasRun)
             await RunChecksAsync();
     }
@@ -94,6 +120,8 @@ public sealed partial class PrerequisiteViewModel : WizardStepViewModel
                 : $"✘  {result.ErrorCount} error(s) and {result.Fatals} fatal issue(s) detected. Resolve before proceeding.";
 
             HasRun = true;
+            RefreshRemediationPreview();
+            RefreshBootstrapPreview();
         }
         catch (Exception ex)
         {
@@ -106,9 +134,108 @@ public sealed partial class PrerequisiteViewModel : WizardStepViewModel
         }
     }
 
+    [RelayCommand]
+    private async Task PreviewRemediationAsync()
+    {
+        if (_config is null || _remediation is null) return;
+
+        ApplyToConfiguration(_config);
+        SetBusy(true, "Running remediation dry-run preview...");
+        try
+        {
+            var assessment = _remediation.Assess(_config, "PrerequisitePreview");
+            var result = await _remediation.ExecuteAsync(
+                _config,
+                new RemediationExecutionOptions { DryRun = true, Trigger = "PrerequisitePreview" });
+
+            var plan = assessment.RecommendedPlan;
+            RemediationPreview =
+                $"Classification: {assessment.Classification} | Safe: {assessment.Safety.IsSafeToRemediate} | " +
+                $"Actions: {plan?.Actions.Count ?? 0} | Risk: {assessment.Safety.Risk} | " +
+                $"Confidence: {assessment.Safety.Confidence}\n" +
+                string.Join("\n", result.Report.ExecutedActions.Select(a => $"  • {a.ActionType}: {a.TargetPath}"));
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void RefreshRemediationPreview()
+    {
+        if (_config is null || _remediation is null)
+        {
+            RemediationPreview = "Remediation engine not available.";
+            return;
+        }
+
+        var assessment = _remediation.Assess(_config, "ValidatePrerequisites");
+        if (!assessment.RequiresRemediation)
+        {
+            RemediationPreview = "No Oracle partial-install remediation required.";
+            return;
+        }
+
+        var plan = assessment.RecommendedPlan;
+        RemediationPreview =
+            $"{assessment.Classification}: {assessment.Issues.FirstOrDefault()?.Message}\n" +
+            $"Planned actions: {plan?.Actions.Count ?? 0} | Safe auto-repair: {assessment.CanAutoRemediate} | " +
+            $"{assessment.Safety.Recommendation}";
+    }
+
+    [RelayCommand]
+    private async Task PreviewBootstrapAsync()
+    {
+        if (_config is null || _inventoryBootstrap is null) return;
+
+        ApplyToConfiguration(_config);
+        SetBusy(true, "Running inventory bootstrap dry-run...");
+        try
+        {
+            var result = await _inventoryBootstrap.EnsureInventoryReadyAsync(
+                _config,
+                new InventoryBootstrapExecutionOptions { DryRun = true, Trigger = "PrerequisitePreview" });
+
+            BootstrapPreview =
+                $"Success: {result.Success} | Root: {result.Report.InventoryRoot}\n" +
+                $"Version: {result.Report.VersionProfile}\n" +
+                string.Join("\n", result.Report.WrittenFiles.Select(f => $"  • {f}"));
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void RefreshBootstrapPreview()
+    {
+        if (_config is null || _inventoryBootstrap is null)
+        {
+            BootstrapPreview = "Inventory bootstrap engine not available.";
+            return;
+        }
+
+        var assessment = _inventoryBootstrap.Assess(_config);
+        if (!assessment.RequiresBootstrap)
+        {
+            BootstrapPreview = "Central Oracle inventory is present — no bootstrap required.";
+            return;
+        }
+
+        BootstrapPreview =
+            $"State: {assessment.State} | Safe: {assessment.Safety.IsSafe} | " +
+            $"Auto-bootstrap: {assessment.CanAutoBootstrap}\n" +
+            $"{assessment.Plan?.Summary}";
+    }
+
     public override void ApplyToConfiguration(DeploymentConfiguration config)
     {
-        config.OracleLifecycle.ForceCleanInstall = ForceCleanInstall;
+        config.OracleLifecycle.ForceCleanInstall     = ForceCleanInstall;
+        config.OracleLifecycle.EnableAutomaticInventoryBootstrap = EnableAutomaticInventoryBootstrap;
+        config.OracleLifecycle.EnableAutoRemediation = EnableAutoRemediation;
+        config.OracleLifecycle.SafeCleanupOnly       = SafeCleanupOnly;
+        if (EnableAutoRemediation && config.OracleLifecycle.AutoRemediationMode == AutoRemediationMode.Disabled)
+            config.OracleLifecycle.AutoRemediationMode = AutoRemediationMode.AutomaticSafeOnly;
     }
 }
 

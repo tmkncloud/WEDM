@@ -10,6 +10,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -34,7 +35,28 @@
             </Grid>
         </Border>
 
-        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,16">
+        <Border Grid.Row="1" CornerRadius="8" Padding="14" Margin="0,0,0,16"
+                Background="{StaticResource BackgroundElevatedBrush}">
+            <StackPanel>
+                <TextBlock Text="Oracle Auto-Repair" Style="{StaticResource TypeH2}" Margin="0,0,0,8"/>
+                <CheckBox Content="Auto-repair detected issues (safe cleanup only)"
+                          IsChecked="{Binding EnableAutoRemediation}" Margin="0,0,0,4"/>
+                <CheckBox Content="Safe cleanup only (never delete registered healthy homes)"
+                          IsChecked="{Binding SafeCleanupOnly}" Margin="0,0,0,8"/>
+                <TextBlock Text="{Binding RemediationPreview}" Style="{StaticResource TypeCaption}"
+                           TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                <Button Content="Preview Remediation (Dry-Run)" Style="{StaticResource BtnSecondary}"
+                        Command="{Binding PreviewRemediationCommand}" HorizontalAlignment="Left" Width="220" Margin="0,0,0,12"/>
+                <CheckBox Content="Initialize missing Oracle inventory automatically"
+                          IsChecked="{Binding EnableAutomaticInventoryBootstrap}" Margin="0,0,0,4"/>
+                <TextBlock Text="{Binding BootstrapPreview}" Style="{StaticResource TypeCaption}"
+                           TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                <Button Content="Preview Inventory Bootstrap (Dry-Run)" Style="{StaticResource BtnSecondary}"
+                        Command="{Binding PreviewBootstrapCommand}" HorizontalAlignment="Left" Width="260"/>
+            </StackPanel>
+        </Border>
+
+        <UniformGrid Grid.Row="2" Columns="3" Margin="0,0,0,16">
             <Border CornerRadius="6" Padding="14" Margin="0,0,8,0" Background="{StaticResource SuccessSubtleBrush}">
                 <StackPanel>
                     <TextBlock Text="{Binding PassCount}" Style="{StaticResource TypeH1}" Foreground="{StaticResource SuccessBrush}"/>
@@ -55,7 +77,7 @@
             </Border>
         </UniformGrid>
 
-        <Border Grid.Row="2" CornerRadius="8" Background="{StaticResource BackgroundPanelBrush}">
+        <Border Grid.Row="3" CornerRadius="8" Background="{StaticResource BackgroundPanelBrush}">
             <DataGrid ItemsSource="{Binding Findings}"
                       AutoGenerateColumns="False"
                       HeadersVisibility="Column"

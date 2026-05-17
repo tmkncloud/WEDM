@@ -53,6 +53,21 @@ public sealed class OracleHomeValidator : IOracleHomeValidator
             blocking.Add("Central inventory.xml is missing — cannot install until inventory is initialized.");
             checks.Add("FAIL: Central inventory.xml missing.");
         }
+        else if (analysis.State == OracleCentralInventoryState.BootstrapRequired)
+        {
+            if (config.OracleLifecycle.EnableAutomaticInventoryBootstrap)
+                checks.Add("INFO: Central inventory bootstrap required — will initialize automatically if safe.");
+            else
+            {
+                blocking.Add("Central inventory bootstrap required but automatic bootstrap is disabled.");
+                checks.Add("FAIL: Bootstrap required.");
+            }
+        }
+        else if (analysis.State == OracleCentralInventoryState.BootstrapFailed)
+        {
+            blocking.Add("Oracle central inventory bootstrap failed.");
+            checks.Add("FAIL: Inventory bootstrap failed.");
+        }
         else if (analysis.State == OracleCentralInventoryState.Corrupted)
         {
             blocking.Add($"Central inventory.xml is corrupt or unreadable: {string.Join("; ", analysis.CorruptionWarnings)}");

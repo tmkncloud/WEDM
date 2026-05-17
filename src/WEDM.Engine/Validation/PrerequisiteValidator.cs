@@ -35,17 +35,20 @@ public sealed class PrerequisiteValidator : IValidationEngine
     private readonly Infrastructure.Registry.WindowsRegistryService _registry;
     private readonly IPayloadAcquisitionService _payloads;
     private readonly IDeployOracleConflictDetector? _oracleConflicts;
+    private readonly IOracleInventoryBootstrapService? _inventoryBootstrap;
 
     public PrerequisiteValidator(
         ILoggingService log,
         Infrastructure.Registry.WindowsRegistryService registry,
         IPayloadAcquisitionService payloads,
-        IDeployOracleConflictDetector? oracleConflicts = null)
+        IDeployOracleConflictDetector? oracleConflicts = null,
+        IOracleInventoryBootstrapService? inventoryBootstrap = null)
     {
-        _log             = log;
-        _registry        = registry;
-        _payloads        = payloads;
-        _oracleConflicts = oracleConflicts;
+        _log                = log;
+        _registry           = registry;
+        _payloads           = payloads;
+        _oracleConflicts    = oracleConflicts;
+        _inventoryBootstrap = inventoryBootstrap;
     }
 
     // ── Full validation suite ─────────────────────────────────────────────────
@@ -432,15 +435,41 @@ public sealed class PrerequisiteValidator : IValidationEngine
         return result;
     }
 
-    private Task<PrerequisiteValidationResult> ValidateOracleLifecycleConflictsAsync(
+    private async Task<PrerequisiteValidationResult> ValidateOracleLifecycleConflictsAsync(
         DeploymentConfiguration config,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var result = PrerequisiteValidationResult.New(config.Id);
 
+        if (_inventoryBootstrap is not null)
+        {
+            var assessment = _inventoryBootstrap.Assess(config);
+            if (_inventoryBootstrap.ShouldAutoBootstrap(config, assessment))
+            {
+                var bootstrapResult = await _inventoryBootstrap.EnsureInventoryReadyAsync(
+                    config,
+                    new InventoryBootstrapExecutionOptions { Trigger = "ValidatePrerequisites" },
+                    cancellationToken);
+
+                if (bootstrapResult.Success)
+                {
+                    result.Pass(
+                        "OracleLifecycle.Inventory.Bootstrap",
+                        $"Central inventory initialized at '{bootstrapResult.Report.InventoryRoot}' ({bootstrapResult.Report.VersionProfile}).");
+                }
+                else
+                {
+                    result.Fatal(
+                        "OracleLifecycle.Inventory.BootstrapFailed",
+                        "Oracle central inventory bootstrap failed.",
+                        string.Join("; ", bootstrapResult.Report.Errors));
+                }
+            }
+        }
+
         if (_oracleConflicts is null)
-            return Task.FromResult(result);
+            return result;
 
         var report = _oracleConflicts.DetectConflicts(config);
 
@@ -477,7 +506,7 @@ public sealed class PrerequisiteValidator : IValidationEngine
                 "Select Remove WebLogic Environment from the operation screen to decommission and sanitize.");
         }
 
-        return Task.FromResult(result);
+        return result;
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

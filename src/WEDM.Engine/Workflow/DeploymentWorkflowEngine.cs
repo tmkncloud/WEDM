@@ -348,6 +348,8 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
                             "Rollback");
                 }
 
+                report.RemediationReports.AddRange(config.RemediationReports);
+                report.BootstrapReports.AddRange(config.BootstrapReports);
                 return report;
             }
         }
@@ -357,6 +359,8 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
             : DeploymentStatus.PartialFail;
 
         report.CompletedAt = DateTimeOffset.UtcNow;
+        report.RemediationReports.AddRange(config.RemediationReports);
+        report.BootstrapReports.AddRange(config.BootstrapReports);
         _log.Info($"=== Deployment {report.FinalStatus}: {report.StepsSucceeded}/{report.TotalSteps} steps succeeded ===", "Workflow");
         ReportProgress(steps.Count, steps.Count);
         return report;

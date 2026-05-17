@@ -164,6 +164,21 @@ public sealed class DeploymentConfiguration
     [JsonIgnore]
     public InstallerExecutionContext? CurrentInstallerContext { get; set; }
 
+    /// <summary>Remediation reports produced during this deployment session (auto-repair, pre-flight, retry).</summary>
+    [JsonIgnore]
+    public List<OracleRemediationReport> RemediationReports { get; } = [];
+
+    /// <summary>Latest assessment from the remediation engine (not persisted to JSON plan files).</summary>
+    [JsonIgnore]
+    public OracleRemediationAssessment? LastRemediationAssessment { get; set; }
+
+    /// <summary>Inventory bootstrap reports for this deployment session.</summary>
+    [JsonIgnore]
+    public List<OracleInventoryBootstrapReport> BootstrapReports { get; } = [];
+
+    [JsonIgnore]
+    public InventoryBootstrapAssessment? LastBootstrapAssessment { get; set; }
+
     /// <summary>
     /// Oracle rollback report accumulated by Oracle-aware rollback executors during a rollback pass.
     /// Each Oracle rollback executor (OracleInstallRollbackExecutor, OracleFormsReportsRollbackExecutor, etc.)

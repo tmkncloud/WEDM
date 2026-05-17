@@ -2,6 +2,7 @@ using WEDM.Domain.Enums;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.OracleInventory;
+using WEDM.Engine.Remediation;
 
 namespace WEDM.Engine.Decommissioning;
 
@@ -12,11 +13,19 @@ public sealed class DeployOracleConflictDetector : IDeployOracleConflictDetector
 {
     private readonly IOracleInventoryAnalyzer _inventory;
     private readonly IOracleHomeValidator    _homeValidator;
+    private readonly IOracleRemediationService? _remediation;
+    private readonly IOracleInventoryBootstrapService? _bootstrap;
 
-    public DeployOracleConflictDetector(IOracleInventoryAnalyzer inventory, IOracleHomeValidator homeValidator)
+    public DeployOracleConflictDetector(
+        IOracleInventoryAnalyzer inventory,
+        IOracleHomeValidator homeValidator,
+        IOracleRemediationService? remediation = null,
+        IOracleInventoryBootstrapService? bootstrap = null)
     {
         _inventory    = inventory;
         _homeValidator = homeValidator;
+        _remediation  = remediation;
+        _bootstrap    = bootstrap;
     }
 
     public OracleConflictReport DetectConflicts(DeploymentConfiguration config)
@@ -51,6 +60,8 @@ public sealed class DeployOracleConflictDetector : IDeployOracleConflictDetector
         }
 
         AddInventoryStateFindings(findings, analysis);
+        AddRemediationFindings(findings, config);
+        AddBootstrapFindings(findings, config, analysis);
 
         var hasBlocking = findings.Any(f => f.Severity == OracleConflictSeverity.Blocking);
         var suggestDecommission = hasBlocking && config.OracleLifecycle.SuggestDecommissionOnConflict;
@@ -74,7 +85,29 @@ public sealed class DeployOracleConflictDetector : IDeployOracleConflictDetector
                     Code        = "Inventory.Missing",
                     Severity    = OracleConflictSeverity.Error,
                     Message     = string.Join("; ", analysis.CorruptionWarnings),
-                    Remediation = "Create or restore ContentsXML/inventory.xml under the Oracle central inventory directory.",
+                    Remediation = "Configure Oracle inventory path or enable automatic inventory bootstrap.",
+                    Path        = analysis.InventoryRoot,
+                });
+                break;
+
+            case OracleCentralInventoryState.BootstrapRequired:
+                findings.Add(new OracleConflictFinding
+                {
+                    Code        = "Inventory.BootstrapRequired",
+                    Severity    = OracleConflictSeverity.Warning,
+                    Message     = string.Join("; ", analysis.CorruptionWarnings),
+                    Remediation = "WEDM can initialize a clean central inventory automatically when bootstrap is enabled.",
+                    Path        = analysis.InventoryRoot,
+                });
+                break;
+
+            case OracleCentralInventoryState.BootstrapFailed:
+                findings.Add(new OracleConflictFinding
+                {
+                    Code        = "Inventory.BootstrapFailed",
+                    Severity    = OracleConflictSeverity.Error,
+                    Message     = string.Join("; ", analysis.CorruptionWarnings),
+                    Remediation = "Review bootstrap report and repair inventory before continuing.",
                     Path        = analysis.InventoryRoot,
                 });
                 break;
@@ -121,6 +154,66 @@ public sealed class DeployOracleConflictDetector : IDeployOracleConflictDetector
                 Message     = $"Stale inventory registration: {stale.Path}",
                 Remediation = "Detach stale home from oraInventory or run Remove Environment.",
                 Path        = stale.Path,
+            });
+        }
+    }
+
+    private void AddBootstrapFindings(
+        List<OracleConflictFinding> findings,
+        DeploymentConfiguration config,
+        OracleInventoryAnalysis analysis)
+    {
+        if (_bootstrap is null || analysis.State != OracleCentralInventoryState.BootstrapRequired)
+            return;
+
+        var assessment = _bootstrap.Assess(config);
+        if (config.OracleLifecycle.EnableAutomaticInventoryBootstrap && assessment.CanAutoBootstrap)
+        {
+            findings.Add(new OracleConflictFinding
+            {
+                Code     = "Inventory.BootstrapAvailable",
+                Severity = OracleConflictSeverity.Informational,
+                Message  = "Automatic Oracle central inventory bootstrap is available for this clean install.",
+                Path     = analysis.InventoryRoot,
+            });
+        }
+    }
+
+    private void AddRemediationFindings(List<OracleConflictFinding> findings, DeploymentConfiguration config)
+    {
+        if (_remediation is null)
+            return;
+
+        var assessment = _remediation.Assess(config, "ValidatePrerequisites");
+        if (!assessment.RequiresRemediation)
+            return;
+
+        var plan = assessment.RecommendedPlan;
+        var actionCount = plan?.Actions.Count ?? 0;
+        var severity = assessment.CanAutoRemediate && config.OracleLifecycle.EnableAutoRemediation
+            ? OracleConflictSeverity.Warning
+            : OracleConflictSeverity.Warning;
+
+        findings.Add(new OracleConflictFinding
+        {
+            Code        = "Remediation.PartialInstall",
+            Severity    = severity,
+            Message     = $"{assessment.Classification}: {assessment.Issues.FirstOrDefault()?.Message ?? "Oracle state requires cleanup before install."} " +
+                          $"({actionCount} automated action(s) available, confidence={assessment.Safety.Confidence}).",
+            Remediation = assessment.Safety.Recommendation,
+            Path        = config.Paths.MiddlewareHome,
+        });
+
+        if (config.OracleLifecycle.EnableAutoRemediation
+            && config.OracleLifecycle.AutoRemediationMode == AutoRemediationMode.AutomaticSafeOnly
+            && assessment.CanAutoRemediate)
+        {
+            findings.Add(new OracleConflictFinding
+            {
+                Code     = "Remediation.AutoRepairAvailable",
+                Severity = OracleConflictSeverity.Informational,
+                Message  = "Safe auto-repair is available during InstallInfrastructure if pre-check blocks OUI.",
+                Path     = config.Paths.MiddlewareHome,
             });
         }
     }

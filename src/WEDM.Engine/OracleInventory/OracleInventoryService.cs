@@ -78,9 +78,9 @@ public sealed class OracleInventoryService : IOracleInventoryService
             return new OracleInventorySnapshot
             {
                 InventoryLoc     = oracleInventoryPath,
-                InventoryState   = OracleCentralInventoryState.Missing,
+                InventoryState   = OracleCentralInventoryState.BootstrapRequired,
                 InventoryHealthy = false,
-                InventoryWarning = $"inventory.xml not found under '{oracleInventoryPath}'.",
+                InventoryWarning = $"inventory.xml not found under '{oracleInventoryPath}' — bootstrap required.",
             };
         }
 
@@ -300,9 +300,15 @@ public sealed class OracleInventoryService : IOracleInventoryService
                 switch (snapshot.InventoryState)
                 {
                     case OracleCentralInventoryState.Missing:
+                    case OracleCentralInventoryState.BootstrapRequired:
                         canProceed = false;
                         findings.Add($"BLOCKED: Central inventory.xml is missing under '{oracleInventoryPath}'.");
-                        remediation.Add("Create or restore ContentsXML/inventory.xml before running OUI.");
+                        remediation.Add("Enable automatic inventory bootstrap or create ContentsXML/inventory.xml manually.");
+                        break;
+                    case OracleCentralInventoryState.BootstrapFailed:
+                        canProceed = false;
+                        findings.Add("BLOCKED: Oracle central inventory bootstrap failed.");
+                        remediation.Add("Review bootstrap report and repair inventory structure before retrying.");
                         break;
                     case OracleCentralInventoryState.Corrupted:
                         canProceed = false;

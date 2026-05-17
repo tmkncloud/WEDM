@@ -50,6 +50,12 @@ public sealed class DeploymentReport
     /// </summary>
     public ProcessLifecycleReport? ProcessLifecycle { get; set; }
 
+    /// <summary>Oracle partial-install remediation actions executed during this session.</summary>
+    public List<OracleRemediationReport> RemediationReports { get; set; } = [];
+
+    /// <summary>Oracle central inventory bootstrap operations executed during this session.</summary>
+    public List<OracleInventoryBootstrapReport> BootstrapReports { get; set; } = [];
+
     public int TotalSteps     => Steps.Count;
     public int StepsSucceeded => Steps.Count(s => s.Status == StepStatus.Succeeded);
     public int StepsFailed    => Steps.Count(s => s.Status == StepStatus.Failed);

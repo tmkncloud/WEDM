@@ -12,13 +12,18 @@ public static class OracleCentralInventoryClassifier
         "Central inventory is initialized but currently empty (clean-install state).";
 
     public static bool IsInstallBlocking(OracleCentralInventoryState state) =>
-        state is OracleCentralInventoryState.Missing or OracleCentralInventoryState.Corrupted;
+        state is OracleCentralInventoryState.Missing
+            or OracleCentralInventoryState.Corrupted
+            or OracleCentralInventoryState.BootstrapFailed;
 
     public static bool IsXmlReadable(OracleCentralInventoryState state) =>
         state is OracleCentralInventoryState.Empty
             or OracleCentralInventoryState.Healthy
             or OracleCentralInventoryState.Stale
             or OracleCentralInventoryState.Partial;
+
+    public static bool IsBootstrapEligible(OracleCentralInventoryState state) =>
+        state is OracleCentralInventoryState.BootstrapRequired;
 
     public static OracleCentralInventoryState RefineFromHomes(
         OracleCentralInventoryState baseState,

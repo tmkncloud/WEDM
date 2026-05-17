@@ -35,7 +35,7 @@ public sealed class OracleInventoryService : IOracleInventoryAnalyzer
         var centralXml = Path.Combine(inventoryRoot, "ContentsXML", "inventory.xml");
         if (!File.Exists(centralXml))
         {
-            analysis.State = OracleCentralInventoryState.Missing;
+            analysis.State = OracleCentralInventoryState.BootstrapRequired;
             analysis.XmlValid = false;
             analysis.CorruptionWarnings.Add($"Central inventory.xml missing: {centralXml}");
             return analysis;
