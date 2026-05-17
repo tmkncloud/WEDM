@@ -7,6 +7,7 @@ using WEDM.Engine.Discovery;
 using WEDM.Engine.Migration;
 using WEDM.Engine.Execution;
 using WEDM.Engine.Transformation;
+using WEDM.Engine.EnvironmentIsolation;
 using WEDM.Engine.Opatch;
 using WEDM.Engine.PowerShell;
 using WEDM.Engine.ResponseFiles;
@@ -168,13 +169,17 @@ public partial class App : System.Windows.Application
         services.AddSingleton<WEDM.Engine.Jdk.JdkInstallationService>();
 
         // ── Decommissioning / Oracle lifecycle ───────────────────────────────
-        services.AddSingleton<IOracleInventoryService, OracleInventoryService>();
+        // IOracleInventoryAnalyzer: decommissioning-specific Analyze/DetachHome operations
+        services.AddSingleton<IOracleInventoryAnalyzer, WEDM.Engine.Decommissioning.OracleInventoryService>();
+        // IOracleInventoryService: full install lifecycle (pre/post validation, XML mutation, rollback)
+        services.AddSingleton<IOracleInventoryService, WEDM.Engine.OracleInventory.OracleInventoryService>();
         services.AddSingleton<IOracleProcessManager, OracleProcessManager>();
         services.AddSingleton<IOracleHomeValidator, OracleHomeValidator>();
         services.AddSingleton<IOracleCleanupService, OracleCleanupService>();
         services.AddSingleton<IEnvironmentDiscoveryService, EnvironmentDiscoveryService>();
         services.AddSingleton<IDeployOracleConflictDetector, DeployOracleConflictDetector>();
         services.AddSingleton<IInstallRetryIsolationService, InstallRetryIsolationService>();
+        services.AddSingleton<IEnvironmentIsolationService, EnvironmentIsolationService>();
         services.AddSingleton<IDecommissionWorkflowEngine, DecommissionWorkflowEngine>();
         services.AddSingleton<MiddlewareRemovalOrchestrator>();
         services.AddSingleton<DecommissionOrchestrator>();
@@ -252,6 +257,12 @@ public partial class App : System.Windows.Application
         services.AddTransient<RemoveFormsReportsRollbackStep>();
         services.AddTransient<DropRcuSchemasRollbackStep>();
 
+        // Oracle-aware rollback executors — supersede basic Remove-* steps for Oracle homes
+        services.AddTransient<OracleInstallRollbackExecutor>();
+        services.AddTransient<OracleFormsReportsRollbackExecutor>();
+        services.AddTransient<OracleOhsWebTierRollbackExecutor>();
+        services.AddTransient<OracleJavaHomeRollbackExecutor>();
+
         services.AddSingleton<IStepExecutorFactory>(sp =>
         {
             var regWin = sp.GetRequiredService<RegisterWindowsServicesStep>();
@@ -314,13 +325,14 @@ public partial class App : System.Windows.Application
                 ["RollbackOpatchApply"]       = sp.GetRequiredService<RollbackOpatchApplyStep>(),
                 ["Remove-OracleFolders"]      = sp.GetRequiredService<RemoveOracleFoldersStep>(),
                 ["Remove-JDK"]                = sp.GetRequiredService<RemoveJdkStep>(),
-                ["Remove-JavaEnvVars"]        = sp.GetRequiredService<RemoveJavaEnvVarsStep>(),
-                ["Remove-MiddlewareHome"]      = removeMw,
+                // Oracle-aware rollback executors — use compensation record for precise reversal
+                ["Remove-JavaEnvVars"]        = sp.GetRequiredService<OracleJavaHomeRollbackExecutor>(),
+                ["Remove-MiddlewareHome"]     = sp.GetRequiredService<OracleInstallRollbackExecutor>(),
+                ["Remove-FormsReports"]       = sp.GetRequiredService<OracleFormsReportsRollbackExecutor>(),
+                ["Remove-OHS"]               = sp.GetRequiredService<OracleOhsWebTierRollbackExecutor>(),
                 ["Remove-Domain"]            = removeDomain,
                 ["Remove-OracleRegistryKeys"] = removeReg,
                 ["Remove-VCRedist"]          = sp.GetRequiredService<RemoveVcRedistRollbackStep>(),
-                ["Remove-FormsReports"]      = sp.GetRequiredService<RemoveFormsReportsRollbackStep>(),
-                ["Remove-OHS"]               = sp.GetRequiredService<RemoveOhsWebTierRollbackStep>(),
                 ["Drop-RCUSchemas"]          = sp.GetRequiredService<DropRcuSchemasRollbackStep>(),
             };
 

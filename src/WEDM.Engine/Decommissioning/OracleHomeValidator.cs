@@ -6,10 +6,10 @@ namespace WEDM.Engine.Decommissioning;
 
 public sealed class OracleHomeValidator : IOracleHomeValidator
 {
-    private readonly IOracleInventoryService _inventory;
+    private readonly IOracleInventoryAnalyzer _inventory;
     private readonly IOracleProcessManager   _processes;
 
-    public OracleHomeValidator(IOracleInventoryService inventory, IOracleProcessManager processes)
+    public OracleHomeValidator(IOracleInventoryAnalyzer inventory, IOracleProcessManager processes)
     {
         _inventory = inventory;
         _processes = processes;

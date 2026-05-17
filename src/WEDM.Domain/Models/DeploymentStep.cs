@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using WEDM.Domain.Enums;
 
 namespace WEDM.Domain.Models;
@@ -37,6 +38,16 @@ public sealed class DeploymentStep
 
     // Rollback action (name of rollback script/command for this step)
     public string? RollbackAction { get; init; }
+
+    /// <summary>
+    /// Oracle-aware compensation record populated immediately after this step succeeds.
+    /// Consumed by Oracle rollback executors to precisely reverse the Oracle state created here.
+    /// Null when the step hasn't succeeded, the step is not Oracle-specific, or when the
+    /// step did not produce Oracle state changes requiring compensation.
+    /// [JsonIgnore] — runtime-only; never serialised.
+    /// </summary>
+    [JsonIgnore]
+    public OracleRollbackCompensation? RollbackCompensation { get; set; }
 
     public void MarkStarted()
     {

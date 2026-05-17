@@ -5,11 +5,15 @@ namespace WEDM.Engine.Diagnostics;
 /// </summary>
 public static class OracleInstallLogScanner
 {
-    /// <summary>Returns the newest matching log file, if any.</summary>
+    /// <summary>
+    /// Returns the newest matching log file across all known OUI log locations.
+    /// <paramref name="extraSearchDirs"/> allows callers to supply additional directories
+    /// (e.g. the per-attempt <c>OuiLogDirectory</c> from <see cref="WEDM.Domain.Models.InstallerExecutionContext"/>).
+    /// </summary>
     public static string? FindLatestOuiStyleLog(
         string oracleInventory,
         string middlewareHome,
-        string tempDirectory)
+        params string?[] extraSearchDirs)
     {
         var files = new List<(string Path, DateTime Time)>();
 
@@ -26,7 +30,11 @@ public static class OracleInstallLogScanner
 
         AddDir(Path.Combine(oracleInventory, "logs"), "install*.log");
         AddDir(Path.Combine(oracleInventory, "logs"), "oraInstall*.log");
-        AddDir(tempDirectory, "oraInstall*.log");
+
+        // Extra search directories supplied by caller (e.g. per-attempt OuiLogDirectory)
+        foreach (var extra in extraSearchDirs)
+            AddDir(extra, "oraInstall*.log");
+
         AddDir(Path.GetTempPath(), "oraInstall*.log");
 
         var cfg = Path.Combine(middlewareHome, "cfgtoollogs");

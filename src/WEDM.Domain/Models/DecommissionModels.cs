@@ -207,4 +207,29 @@ public sealed class OracleLifecycleConfiguration
 
     [JsonPropertyName("isolateRetries")]
     public bool IsolateRetries { get; set; } = true;
+
+    // ── Rollback Safety ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// When true, Oracle rollback executors log every operation but skip all destructive actions
+    /// (process termination, home directory deletion, inventory mutation, service removal).
+    /// Safe to enable on production environments before committing to a real rollback.
+    /// </summary>
+    [JsonPropertyName("dryRunRollback")]
+    public bool DryRunRollback { get; set; } = false;
+
+    /// <summary>
+    /// When true, Oracle/JVM processes that do not stop within <see cref="ProcessShutdownTimeoutSeconds"/>
+    /// are force-killed (TerminateProcess / kill -9) during rollback.
+    /// When false, rollback records them as residual warnings and continues.
+    /// </summary>
+    [JsonPropertyName("forceKillProcessesOnRollback")]
+    public bool ForceKillProcessesOnRollback { get; set; } = true;
+
+    /// <summary>
+    /// Graceful shutdown window (seconds) given to each Oracle process before it is force-killed
+    /// (only effective when <see cref="ForceKillProcessesOnRollback"/> is true).
+    /// </summary>
+    [JsonPropertyName("processShutdownTimeoutSeconds")]
+    public int ProcessShutdownTimeoutSeconds { get; set; } = 30;
 }

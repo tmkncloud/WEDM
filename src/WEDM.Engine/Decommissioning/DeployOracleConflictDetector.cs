@@ -9,10 +9,10 @@ namespace WEDM.Engine.Decommissioning;
 /// </summary>
 public sealed class DeployOracleConflictDetector : IDeployOracleConflictDetector
 {
-    private readonly IOracleInventoryService _inventory;
+    private readonly IOracleInventoryAnalyzer _inventory;
     private readonly IOracleHomeValidator    _homeValidator;
 
-    public DeployOracleConflictDetector(IOracleInventoryService inventory, IOracleHomeValidator homeValidator)
+    public DeployOracleConflictDetector(IOracleInventoryAnalyzer inventory, IOracleHomeValidator homeValidator)
     {
         _inventory    = inventory;
         _homeValidator = homeValidator;

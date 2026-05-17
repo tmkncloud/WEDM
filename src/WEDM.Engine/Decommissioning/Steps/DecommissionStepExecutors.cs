@@ -138,9 +138,9 @@ public sealed class DecommissionServiceCleanupStep : IDecommissionStepExecutor
 
 public sealed class DecommissionInventoryDetachStep : IDecommissionStepExecutor
 {
-    private readonly IOracleInventoryService _inventory;
+    private readonly IOracleInventoryAnalyzer _inventory;
 
-    public DecommissionInventoryDetachStep(IOracleInventoryService inventory) => _inventory = inventory;
+    public DecommissionInventoryDetachStep(IOracleInventoryAnalyzer inventory) => _inventory = inventory;
 
     public async Task<StepExecutionResult> ExecuteAsync(
         DeploymentStep step,
@@ -274,9 +274,9 @@ public sealed class DecommissionRegistryStep : IDecommissionStepExecutor
 public sealed class DecommissionPostValidateStep : IDecommissionStepExecutor
 {
     private readonly IOracleProcessManager _processes;
-    private readonly IOracleInventoryService _inventory;
+    private readonly IOracleInventoryAnalyzer _inventory;
 
-    public DecommissionPostValidateStep(IOracleProcessManager processes, IOracleInventoryService inventory)
+    public DecommissionPostValidateStep(IOracleProcessManager processes, IOracleInventoryAnalyzer inventory)
     {
         _processes = processes;
         _inventory = inventory;

@@ -10,7 +10,11 @@ public interface IEnvironmentDiscoveryService
         CancellationToken cancellationToken = default);
 }
 
-public interface IOracleInventoryService
+/// <summary>
+/// Decommission-specific Oracle inventory analysis and home detachment operations.
+/// Distinct from <see cref="IOracleInventoryService"/> which handles the full install lifecycle.
+/// </summary>
+public interface IOracleInventoryAnalyzer
 {
     OracleInventoryAnalysis Analyze(string? inventoryRoot, string? middlewareHome = null);
 
@@ -56,7 +60,32 @@ public interface IDeployOracleConflictDetector
 
 public interface IInstallRetryIsolationService
 {
+    /// <summary>
+    /// Legacy entry point used by the workflow engine retry loop.
+    /// Mutates <paramref name="config"/> paths and returns basic isolation metadata.
+    /// </summary>
     RetryIsolationContext PrepareRetryAttempt(
+        DeploymentConfiguration config,
+        string stepName,
+        int attemptNumber);
+
+    /// <summary>
+    /// Builds a rich per-attempt <see cref="InstallerExecutionContext"/> with isolated
+    /// temp, extraction, response file, and OUI log directories.
+    /// Also sets <see cref="DeploymentConfiguration.CurrentInstallerContext"/> on
+    /// <paramref name="config"/> so that OUI steps can consume it.
+    /// </summary>
+    InstallerExecutionContext BuildInstallerContext(
+        DeploymentConfiguration config,
+        string stepName,
+        int attemptNumber,
+        InstallerFailureClass previousFailureClass = InstallerFailureClass.Unknown);
+
+    /// <summary>
+    /// Runs pre-flight validation before an OUI attempt and logs results.
+    /// Returns the validation result without blocking (callers decide on action).
+    /// </summary>
+    InstallerRetryPreflightResult RunPreflight(
         DeploymentConfiguration config,
         string stepName,
         int attemptNumber);

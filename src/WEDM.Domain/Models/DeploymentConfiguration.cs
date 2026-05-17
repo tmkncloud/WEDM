@@ -153,6 +153,42 @@ public sealed class DeploymentConfiguration
     /// <summary>Oracle inventory conflict detection, force clean install, and retry isolation.</summary>
     [JsonPropertyName("oracleLifecycle")]
     public OracleLifecycleConfiguration OracleLifecycle { get; set; } = new();
+
+    // ── Runtime-only (session-scoped, never serialised) ─────────────────────
+
+    /// <summary>
+    /// Per-attempt installer execution context set by <see cref="WEDM.Domain.Interfaces.IInstallRetryIsolationService"/>
+    /// before each OUI step invocation.  Null on first attempt when isolation is disabled.
+    /// Not serialised — rebuilt fresh on each engine startup / retry.
+    /// </summary>
+    [JsonIgnore]
+    public InstallerExecutionContext? CurrentInstallerContext { get; set; }
+
+    /// <summary>
+    /// Oracle rollback report accumulated by Oracle-aware rollback executors during a rollback pass.
+    /// Each Oracle rollback executor (OracleInstallRollbackExecutor, OracleFormsReportsRollbackExecutor, etc.)
+    /// writes its per-step results here.  The workflow engine attaches this to
+    /// <see cref="RollbackSummary.OracleDetails"/> after the full rollback pass completes.
+    /// Null until the first Oracle rollback executor runs.
+    /// Not serialised — runtime-only.
+    /// </summary>
+    [JsonIgnore]
+    public OracleRollbackReport? OracleRollback { get; set; }
+
+    /// <summary>
+    /// Per-session environment isolation context.
+    /// Built once at session start by <see cref="WEDM.Domain.Interfaces.IEnvironmentIsolationService.BuildContext"/>
+    /// and stored here so that all step executors can access the sanitized JavaHome, PATH, TempRoot, and
+    /// per-tool isolation preambles without re-reading machine environment state.
+    ///
+    /// Null when the environment isolation subsystem is not initialised (e.g. in unit tests that
+    /// construct DeploymentConfiguration directly without the full DI stack).  Step executors that
+    /// consume this must guard against null and fall back to ambient environment variables when absent.
+    ///
+    /// Not serialised — runtime-only; rebuilt from config on each engine startup.
+    /// </summary>
+    [JsonIgnore]
+    public DeploymentEnvironmentContext? EnvironmentContext { get; set; }
 }
 
 // ── Sub-models ─────────────────────────────────────────────────────────────────

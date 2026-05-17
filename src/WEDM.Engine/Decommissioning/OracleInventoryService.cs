@@ -4,7 +4,7 @@ using WEDM.Engine.Discovery.Parsers;
 
 namespace WEDM.Engine.Decommissioning;
 
-public sealed class OracleInventoryService : IOracleInventoryService
+public sealed class OracleInventoryService : IOracleInventoryAnalyzer
 {
     public OracleInventoryAnalysis Analyze(string? inventoryRoot, string? middlewareHome = null)
     {

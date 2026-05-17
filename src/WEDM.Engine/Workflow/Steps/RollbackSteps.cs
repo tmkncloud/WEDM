@@ -10,15 +10,25 @@ namespace WEDM.Engine.Workflow.Steps;
 
 /// <summary>
 /// Rollback for CreateOracleFolders.
-/// Removes the Oracle inventory directory and Oracle root if they are empty or
-/// contain only WEDM-created artefacts.  Skips removal if a live WLS installation
-/// is detected inside the middleware home.
+///
+/// Sequence:
+///   1. Remove stale Oracle Central Inventory registration for the target home (if any)
+///   2. Remove the Oracle inventory directory (if WEDM-created)
+///   3. Remove the Oracle root directory only if it contains no live installations
+///
+/// Uses <see cref="IOracleInventoryService"/> to surgically remove any stale inventory
+/// registration before filesystem deletion, preventing INST-07319 on retry.
 /// </summary>
 public sealed class RemoveOracleFoldersStep : IStepExecutor
 {
-    private readonly ILoggingService _log;
+    private readonly ILoggingService         _log;
+    private readonly IOracleInventoryService _inventory;
 
-    public RemoveOracleFoldersStep(ILoggingService log) => _log = log;
+    public RemoveOracleFoldersStep(ILoggingService log, IOracleInventoryService inventory)
+    {
+        _log       = log;
+        _inventory = inventory;
+    }
 
     public Task<StepExecutionResult> ExecuteAsync(
         DeploymentStep step,
@@ -29,20 +39,64 @@ public sealed class RemoveOracleFoldersStep : IStepExecutor
         {
             var removed = new List<string>();
             var skipped = new List<string>();
+            var messages = new List<string>();
 
-            // Oracle Inventory
-            var inventory = config.Paths.OracleInventory;
-            if (Directory.Exists(inventory))
+            // ── Step 1: Oracle inventory registration cleanup ──────────────
+            // Must happen BEFORE filesystem deletion so the XML can still be parsed.
+            var inventoryPath = config.Paths.OracleInventory;
+            var mwHome        = config.Paths.MiddlewareHome;
+
+            if (!string.IsNullOrWhiteSpace(mwHome) && !string.IsNullOrWhiteSpace(inventoryPath))
             {
-                TryRemoveDirectory(inventory, removed, skipped, "Oracle inventory");
+                _log.Info(
+                    $"Remove-OracleFolders: Checking Central Inventory for '{mwHome}' registration.",
+                    "Rollback");
+
+                var removalResult = _inventory.RemoveHomeEntry(mwHome, inventoryPath);
+
+                if (removalResult.HomeWasRegistered)
+                {
+                    if (removalResult.Success)
+                    {
+                        messages.Add(
+                            $"Oracle inventory: removed registration for '{mwHome}'. " +
+                            $"Backup: '{removalResult.BackupPath}'. " +
+                            $"Removed entries: {string.Join(", ", removalResult.RemovedEntries)}");
+                        _log.Info(
+                            $"Remove-OracleFolders: Inventory registration removed ✔ " +
+                            $"(before: {removalResult.SnapshotBefore?.OracleHomes.Count} homes, " +
+                            $"after: {removalResult.SnapshotAfter?.OracleHomes.Count} homes)",
+                            "Rollback");
+                    }
+                    else
+                    {
+                        messages.Add($"WARNING: Inventory removal failed — {removalResult.Error}. Filesystem cleanup will still proceed.");
+                        _log.Warning(
+                            $"Remove-OracleFolders: Inventory removal failed: {removalResult.Error}. " +
+                            "Continuing with filesystem cleanup.",
+                            "Rollback");
+                    }
+                }
+                else
+                {
+                    _log.Info(
+                        $"Remove-OracleFolders: '{mwHome}' was not registered in Central Inventory — no inventory cleanup needed.",
+                        "Rollback");
+                    messages.Add("Oracle inventory: target home was not registered — no inventory cleanup required.");
+                }
             }
 
-            // Oracle Root (e.g. C:\Oracle) — only if empty after inventory removal
+            // ── Step 2: Oracle inventory directory ────────────────────────
+            if (Directory.Exists(inventoryPath))
+            {
+                TryRemoveDirectory(inventoryPath, removed, skipped, "Oracle inventory");
+            }
+
+            // ── Step 3: Oracle root directory ─────────────────────────────
             var oracleRoot = config.Paths.OracleRoot;
             if (Directory.Exists(oracleRoot))
             {
                 // Check for a live WLS installation marker inside root
-                var mwHome = config.Paths.MiddlewareHome;
                 var wlserver = Path.Combine(mwHome, "wlserver");
                 if (Directory.Exists(wlserver))
                 {
@@ -80,15 +134,14 @@ public sealed class RemoveOracleFoldersStep : IStepExecutor
                 }
             }
 
-            var msg = new List<string>();
             if (removed.Count > 0)
-                msg.Add($"Removed: {string.Join(", ", removed)}");
+                messages.Add($"Removed directories: {string.Join(", ", removed)}");
             if (skipped.Count > 0)
-                msg.Add($"Skipped: {string.Join(", ", skipped)}");
-            if (msg.Count == 0)
-                msg.Add("No Oracle directories found — already clean.");
+                messages.Add($"Skipped directories: {string.Join(", ", skipped)}");
+            if (messages.Count == 0)
+                messages.Add("No Oracle directories found — already clean.");
 
-            return Task.FromResult(StepExecutionResult.Ok(string.Join(". ", msg)));
+            return Task.FromResult(StepExecutionResult.Ok(string.Join(". ", messages)));
         }
         catch (Exception ex)
         {
@@ -294,33 +347,93 @@ public sealed class RemoveJavaEnvVarsStep : IStepExecutor
 
 /// <summary>
 /// Rollback for InstallInfrastructure / InstallWebLogic.
+///
+/// Sequence:
+///   1. Remove stale Oracle Central Inventory registration for the MW home (if any)
+///   2. Check for active Windows services referencing the MW home (abort if found)
+///   3. Warn if domain home is nested under MW home
+///   4. Delete the middleware home directory tree
+///
 /// HIGH RISK: checks for active Windows services referencing the MW home before
 /// attempting deletion.  Returns Fail with remediation instructions if services
 /// are still running.
+///
+/// Uses <see cref="IOracleInventoryService"/> to surgically remove any stale inventory
+/// registration before filesystem deletion, preventing INST-07319 on retry.
 /// </summary>
 public sealed class RemoveMiddlewareHomeStep : IStepExecutor
 {
-    private readonly ILoggingService _log;
+    private readonly ILoggingService         _log;
+    private readonly IOracleInventoryService _inventory;
 
-    public RemoveMiddlewareHomeStep(ILoggingService log) => _log = log;
+    public RemoveMiddlewareHomeStep(ILoggingService log, IOracleInventoryService inventory)
+    {
+        _log       = log;
+        _inventory = inventory;
+    }
 
     public Task<StepExecutionResult> ExecuteAsync(
         DeploymentStep step,
         DeploymentConfiguration config,
         CancellationToken cancellationToken = default)
     {
-        var mwHome = config.Paths.MiddlewareHome;
+        var mwHome        = config.Paths.MiddlewareHome;
+        var inventoryPath = config.Paths.OracleInventory;
+        var messages      = new List<string>();
 
         try
         {
+            // ── Step 1: Oracle inventory registration cleanup ──────────────────
+            // Must happen BEFORE filesystem deletion so inventory.xml is still readable.
+            if (!string.IsNullOrWhiteSpace(mwHome) && !string.IsNullOrWhiteSpace(inventoryPath))
+            {
+                _log.Info(
+                    $"Remove-MiddlewareHome: Checking Central Inventory for '{mwHome}' registration.",
+                    "Rollback");
+
+                var removalResult = _inventory.RemoveHomeEntry(mwHome, inventoryPath);
+
+                if (removalResult.HomeWasRegistered)
+                {
+                    if (removalResult.Success)
+                    {
+                        messages.Add(
+                            $"Oracle inventory: removed registration for '{mwHome}'. " +
+                            $"Backup: '{removalResult.BackupPath}'. " +
+                            $"Removed entries: {string.Join(", ", removalResult.RemovedEntries)}");
+                        _log.Info(
+                            $"Remove-MiddlewareHome: Inventory registration removed ✔ " +
+                            $"(before: {removalResult.SnapshotBefore?.OracleHomes.Count} homes, " +
+                            $"after: {removalResult.SnapshotAfter?.OracleHomes.Count} homes)",
+                            "Rollback");
+                    }
+                    else
+                    {
+                        messages.Add($"WARNING: Inventory removal failed — {removalResult.Error}. Filesystem cleanup will still proceed.");
+                        _log.Warning(
+                            $"Remove-MiddlewareHome: Inventory removal failed: {removalResult.Error}. " +
+                            "Continuing with filesystem cleanup.",
+                            "Rollback");
+                    }
+                }
+                else
+                {
+                    _log.Info(
+                        $"Remove-MiddlewareHome: '{mwHome}' was not registered in Central Inventory — no inventory cleanup needed.",
+                        "Rollback");
+                    messages.Add("Oracle inventory: target home was not registered — no inventory cleanup required.");
+                }
+            }
+
+            // ── Step 2: Early-exit if MW home is already gone ─────────────────
             if (!Directory.Exists(mwHome))
             {
                 _log.Info($"Remove-MiddlewareHome: '{mwHome}' does not exist — already clean.", "Rollback");
-                return Task.FromResult(StepExecutionResult.Ok(
-                    $"Middleware home '{mwHome}' not found — already clean."));
+                messages.Add($"Middleware home '{mwHome}' not found — already clean.");
+                return Task.FromResult(StepExecutionResult.Ok(string.Join(". ", messages)));
             }
 
-            // ── Active service check ───────────────────────────────────────────
+            // ── Step 3: Active service check ───────────────────────────────────
             var activeServices = FindServicesReferencingPath(mwHome);
             if (activeServices.Count > 0)
             {
@@ -334,7 +447,7 @@ public sealed class RemoveMiddlewareHomeStep : IStepExecutor
                     1, retryRecommended: true));
             }
 
-            // ── Domain-under-MW warning ────────────────────────────────────────
+            // ── Step 4: Domain-under-MW warning ────────────────────────────────
             var domainHome = Path.Combine(config.Paths.DomainBase, config.Domain.DomainName);
             if (IsSubPath(mwHome, domainHome))
             {
@@ -344,12 +457,13 @@ public sealed class RemoveMiddlewareHomeStep : IStepExecutor
                     "Rollback");
             }
 
-            // ── Deletion ───────────────────────────────────────────────────────
+            // ── Step 5: Deletion ───────────────────────────────────────────────
             try
             {
                 Directory.Delete(mwHome, recursive: true);
                 _log.Info($"Remove-MiddlewareHome: Removed middleware home '{mwHome}'.", "Rollback");
-                return Task.FromResult(StepExecutionResult.Ok($"Middleware home '{mwHome}' removed."));
+                messages.Add($"Middleware home '{mwHome}' removed.");
+                return Task.FromResult(StepExecutionResult.Ok(string.Join(". ", messages)));
             }
             catch (IOException ioEx)
             {

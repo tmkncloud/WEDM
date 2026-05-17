@@ -5,6 +5,7 @@ using WEDM.Domain.Models;
 using WEDM.Engine.Decommissioning;
 using WEDM.Engine.Validation;
 using WEDM.Engine.Workflow.Steps;
+using WEDM.Engine.EnvironmentIsolation;
 
 namespace WEDM.Engine.Workflow;
 
@@ -25,10 +26,11 @@ namespace WEDM.Engine.Workflow;
 /// </summary>
 public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
 {
-    private readonly ILoggingService           _log;
-    private readonly IStepExecutorFactory      _stepFactory;
-    private readonly IDeploymentPlanAccessor   _planAccessor;
+    private readonly ILoggingService                _log;
+    private readonly IStepExecutorFactory           _stepFactory;
+    private readonly IDeploymentPlanAccessor        _planAccessor;
     private readonly IInstallRetryIsolationService? _retryIsolation;
+    private readonly IEnvironmentIsolationService?  _envIsolation;
 
     public event EventHandler<DeploymentStep>? StepStarted;
     public event EventHandler<DeploymentStep>? StepCompleted;
@@ -38,12 +40,14 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
         ILoggingService log,
         IStepExecutorFactory stepFactory,
         IDeploymentPlanAccessor planAccessor,
-        IInstallRetryIsolationService? retryIsolation = null)
+        IInstallRetryIsolationService? retryIsolation = null,
+        IEnvironmentIsolationService?  envIsolation   = null)
     {
         _log            = log;
-        _stepFactory      = stepFactory;
-        _planAccessor     = planAccessor;
-        _retryIsolation   = retryIsolation;
+        _stepFactory    = stepFactory;
+        _planAccessor   = planAccessor;
+        _retryIsolation = retryIsolation;
+        _envIsolation   = envIsolation;
     }
 
     // ── Step Plan Builder ─────────────────────────────────────────────────────
@@ -209,6 +213,32 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
         };
 
         _log.Info($"=== Deployment STARTED: {config.Name} ({steps.Count} steps) ===", "Workflow");
+
+        // ── Environment isolation: capture pre-deployment snapshot + build session context ──
+        // Must happen before any step executes so that step executors can read
+        // config.EnvironmentContext for tool-specific preamble injection.
+        if (_envIsolation is not null && config.EnvironmentContext is null)
+        {
+            try
+            {
+                var sessionId    = context?.SessionId ?? Guid.NewGuid();
+                var preSnapshot  = _envIsolation.CaptureSnapshot(SnapshotKind.PreDeployment, sessionId);
+                config.EnvironmentContext = _envIsolation.BuildContext(config, preSnapshot);
+                _log.Info(
+                    $"[Workflow] Environment isolation context initialised — " +
+                    $"session={config.EnvironmentContext.SessionId:N}, " +
+                    $"JavaHome={config.EnvironmentContext.JavaHome}, " +
+                    $"TempRoot={config.EnvironmentContext.TempRoot}",
+                    "Workflow");
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(
+                    $"[Workflow] Environment isolation context failed to initialise: {ex.Message} " +
+                    $"— continuing without isolation.",
+                    "Workflow");
+            }
+        }
 
         ApplyResumeState(steps, context?.ResumeState);
 
@@ -467,6 +497,15 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
         summary.FullyRolledBack = summary.StepsFailed == 0
             && summary.StepsNoExecutor == 0
             && summary.StepsManualInterventionRequired == 0;
+
+        // ── Attach Oracle rollback details ────────────────────────────────────
+        // config.OracleRollback is accumulated by Oracle rollback executors during the pass above.
+        // Copy it into the summary so the HTML report and deployment report can surface it.
+        if (config.OracleRollback is not null)
+        {
+            config.OracleRollback.GeneratedAt = DateTimeOffset.UtcNow;
+            summary.OracleDetails = config.OracleRollback;
+        }
 
         var hasProgress = summary.StepsRolledBack > 0 || summary.StepsManualInterventionRequired > 0;
         var disposition = summary.FullyRolledBack ? "COMPLETED"

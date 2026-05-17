@@ -37,6 +37,14 @@ public sealed class RollbackSummary
 
     /// <summary>Ordered records, one per eligible step (reverse execution order).</summary>
     public List<RollbackStepRecord> Records { get; init; } = new();
+
+    /// <summary>
+    /// Oracle-specific rollback narrative accumulated by Oracle rollback executors during the rollback pass.
+    /// Populated by <c>DeploymentWorkflowEngine</c> after the full rollback pass completes by copying
+    /// <c>DeploymentConfiguration.OracleRollback</c>.
+    /// Null when no Oracle rollback executors ran (e.g. rollback of non-Oracle steps only).
+    /// </summary>
+    public OracleRollbackReport? OracleDetails { get; set; }
 }
 
 /// <summary>Individual rollback outcome for one deployment step.</summary>

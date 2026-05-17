@@ -10,12 +10,12 @@ namespace WEDM.Engine.Decommissioning;
 
 public sealed class EnvironmentDiscoveryService : IEnvironmentDiscoveryService
 {
-    private readonly IOracleInventoryService _inventory;
+    private readonly IOracleInventoryAnalyzer _inventory;
     private readonly IOracleProcessManager   _processes;
     private readonly WindowsRegistryService  _registry;
 
     public EnvironmentDiscoveryService(
-        IOracleInventoryService inventory,
+        IOracleInventoryAnalyzer inventory,
         IOracleProcessManager processes,
         WindowsRegistryService registry)
     {
