@@ -1,5 +1,42 @@
 namespace WEDM.Domain.Models;
 
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Indicates how the <see cref="OracleRollbackCompensation"/> record was obtained
+/// for a given rollback operation.  Used for diagnostics, audit logging, and the
+/// rollback report to distinguish live-captured from checkpoint-restored state.
+/// </summary>
+public enum CompensationSource
+{
+    /// <summary>No compensation record was available for this step (non-Oracle step).</summary>
+    None = 0,
+
+    /// <summary>
+    /// Compensation was captured live during the current execution session,
+    /// immediately after the corresponding install step succeeded.
+    /// This is the normal case for a fresh deployment that hasn't crashed.
+    /// </summary>
+    Runtime = 1,
+
+    /// <summary>
+    /// Compensation was restored from a persisted deployment session checkpoint.
+    /// Indicates the deployment session was resumed after a process crash or restart.
+    /// Rollback paths are the original install-time paths, not the current config paths.
+    /// </summary>
+    Restored = 2,
+
+    /// <summary>
+    /// No compensation record was available — rollback is using config-derived paths as a fallback.
+    /// This occurs when rolling back a session whose checkpoint predates compensation serialisation,
+    /// or when the step's compensation was never captured (e.g. install step never reached success).
+    /// Paths may differ from what was actually installed if retry isolation changed TempDirectory.
+    /// </summary>
+    Fallback = 3,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /// <summary>
 /// Per-step compensation record populated by each Oracle installer step immediately after it succeeds.
 /// Stored on <see cref="DeploymentStep.RollbackCompensation"/> so that Oracle rollback executors
@@ -9,12 +46,24 @@ namespace WEDM.Domain.Models;
 /// Lifecycle:
 ///   • Created by OUI-launching steps (InstallWebLogic, InstallFormsReports, InstallOHSWebTier, ConfigureJavaHome)
 ///     before returning <see cref="StepExecutionResult.Ok"/>.
+///   • Serialised into <see cref="DeploymentStepSnapshot"/> at each workflow checkpoint so that
+///     rollback after a process crash uses the original captured paths rather than config-derived fallbacks.
 ///   • Read by the corresponding Oracle rollback executor during rollback.
-///   • Null when the step has not yet succeeded or isolation is disabled.
-///   • Never serialised — rebuilt fresh on each engine execution.
+///   • Null when the step has not yet succeeded or the step is not Oracle-specific.
 /// </summary>
 public sealed class OracleRollbackCompensation
 {
+    // ── Provenance ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Indicates how this compensation record was obtained.
+    /// Set to <see cref="CompensationSource.Runtime"/> when captured live.
+    /// Changed to <see cref="CompensationSource.Restored"/> by
+    /// <see cref="DeploymentStepSnapshot.ToDeploymentStep"/> when deserialized from a checkpoint.
+    /// </summary>
+    public CompensationSource Source { get; set; } = CompensationSource.Runtime;
+
+
     // ── Oracle Homes ──────────────────────────────────────────────────────────
 
     /// <summary>

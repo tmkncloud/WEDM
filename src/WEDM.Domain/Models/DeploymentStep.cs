@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using WEDM.Domain.Enums;
 
 namespace WEDM.Domain.Models;
@@ -42,11 +41,14 @@ public sealed class DeploymentStep
     /// <summary>
     /// Oracle-aware compensation record populated immediately after this step succeeds.
     /// Consumed by Oracle rollback executors to precisely reverse the Oracle state created here.
-    /// Null when the step hasn't succeeded, the step is not Oracle-specific, or when the
+    /// Serialised into <see cref="DeploymentStepSnapshot"/> at each workflow checkpoint so that
+    /// rollback after a process crash uses the original captured paths, not config-derived fallbacks.
+    /// Null when the step has not yet succeeded, the step is not Oracle-specific, or when the
     /// step did not produce Oracle state changes requiring compensation.
-    /// [JsonIgnore] — runtime-only; never serialised.
+    /// When restored from a checkpoint, <see cref="OracleRollbackCompensation.Source"/> is
+    /// <see cref="CompensationSource.Restored"/>; when captured live it is
+    /// <see cref="CompensationSource.Runtime"/>.
     /// </summary>
-    [JsonIgnore]
     public OracleRollbackCompensation? RollbackCompensation { get; set; }
 
     public void MarkStarted()

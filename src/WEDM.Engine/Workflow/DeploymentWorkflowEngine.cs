@@ -256,6 +256,12 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
             if (step.Status is StepStatus.Succeeded or StepStatus.Skipped)
             {
                 _log.Info($"Resume: skipping completed step '{step.Name}' ({step.Status}).", "Workflow");
+                if (step.RollbackCompensation is { } comp)
+                    _log.Info(
+                        $"Resume: '{step.Name}' carries compensation " +
+                        $"(source={comp.Source}, homes={comp.OracleHomePaths.Count}) — " +
+                        "available for rollback if a later step fails.",
+                        "Workflow.Resume");
                 completedCount++;
                 ReportProgress(completedCount, steps.Count);
                 continue;
@@ -404,11 +410,31 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
 
         foreach (var step in rollbackSteps)
         {
+            // Determine compensation source for diagnostics.
+            // If compensation is present, use its tagged source.
+            // If absent, the rollback executor will use config-derived fallback paths.
+            var compensationSource = step.RollbackCompensation?.Source
+                ?? CompensationSource.Fallback;
+
+            if (step.RollbackCompensation is not null)
+                _log.Info(
+                    $"[Rollback] '{step.Name}': compensation source={compensationSource}, " +
+                    $"homes={step.RollbackCompensation.OracleHomePaths.Count}, " +
+                    $"capturedAt={step.RollbackCompensation.CapturedAt:u}.",
+                    "Rollback");
+            else
+                _log.Warning(
+                    $"[Rollback] '{step.Name}': no compensation record — " +
+                    "will use config-derived paths as fallback (source=Fallback). " +
+                    "If retry isolation was active, fallback paths may differ from actual install paths.",
+                    "Rollback");
+
             var record = new RollbackStepRecord
             {
-                Sequence       = step.Sequence,
-                StepName       = step.Name,
-                RollbackAction = step.RollbackAction!
+                Sequence            = step.Sequence,
+                StepName            = step.Name,
+                RollbackAction      = step.RollbackAction!,
+                CompensationSource  = compensationSource,
             };
 
             var rollbackExecutor = _stepFactory.GetRollbackExecutor(step.RollbackAction!);
@@ -530,7 +556,7 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
         ProgressUpdated?.Invoke(this, pct);
     }
 
-    private static void ApplyResumeState(IReadOnlyList<DeploymentStep> steps, DeploymentSessionState? resume)
+    private void ApplyResumeState(IReadOnlyList<DeploymentStep> steps, DeploymentSessionState? resume)
     {
         if (resume?.Steps is null || resume.Steps.Count == 0) return;
         var byName = resume.Steps.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
@@ -545,6 +571,28 @@ public sealed class DeploymentWorkflowEngine : IWorkflowOrchestrator
             step.ProgressPercent = snap.ProgressPercent;
             step.StartedAt       = snap.StartedAt;
             step.CompletedAt     = snap.CompletedAt;
+
+            // ── Restore Oracle rollback compensation from checkpoint ────────────
+            // ApplyResumeState reads directly from the snapshot object (not via
+            // ToDeploymentStep()), so the Runtime → Restored tagging must be
+            // performed here explicitly.  This mirrors the same transition in
+            // DeploymentStepSnapshot.ToDeploymentStep().
+            if (snap.RollbackCompensation is not null)
+            {
+                step.RollbackCompensation = snap.RollbackCompensation;
+
+                // Tag as Restored: the record was captured live (Runtime) but is
+                // now being re-activated from a crash-recovery checkpoint.
+                if (step.RollbackCompensation.Source == CompensationSource.Runtime)
+                    step.RollbackCompensation.Source = CompensationSource.Restored;
+
+                _log.Info(
+                    $"[Resume] Compensation restored for '{step.Name}': " +
+                    $"source={step.RollbackCompensation.Source}, " +
+                    $"homes={step.RollbackCompensation.OracleHomePaths.Count}, " +
+                    $"capturedAt={step.RollbackCompensation.CapturedAt:u}.",
+                    "Workflow.Resume");
+            }
         }
     }
 

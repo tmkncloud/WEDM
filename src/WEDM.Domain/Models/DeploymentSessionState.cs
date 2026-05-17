@@ -89,7 +89,14 @@ public sealed class DeploymentSessionState
             : null;
 }
 
-/// <summary>JSON-serializable step snapshot for checkpoint restore.</summary>
+/// <summary>
+/// JSON-serializable step snapshot for checkpoint restore.
+/// Includes <see cref="RollbackCompensation"/> so that rollback after a process crash
+/// uses the original captured Oracle paths rather than config-derived fallbacks.
+/// Old checkpoint files that pre-date compensation serialisation will have
+/// <see cref="RollbackCompensation"/> == null, which the rollback executors handle
+/// gracefully by falling back to <see cref="DeploymentConfiguration"/> paths.
+/// </summary>
 public sealed class DeploymentStepSnapshot
 {
     public Guid   Id             { get; set; }
@@ -110,47 +117,71 @@ public sealed class DeploymentStepSnapshot
     public DateTimeOffset? StartedAt   { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
 
+    /// <summary>
+    /// Persisted Oracle rollback compensation data captured when the step succeeded.
+    /// Null for non-Oracle steps or when the step has not yet succeeded.
+    /// When present and this snapshot is restored via <see cref="ToDeploymentStep"/>,
+    /// the compensation's <see cref="OracleRollbackCompensation.Source"/> is changed from
+    /// <see cref="CompensationSource.Runtime"/> to <see cref="CompensationSource.Restored"/>
+    /// so diagnostics can distinguish crash-recovery from live execution.
+    /// Old checkpoint files without this field deserialise with null — the rollback
+    /// executors fall back to config-derived paths in that case (<see cref="CompensationSource.Fallback"/>).
+    /// </summary>
+    public OracleRollbackCompensation? RollbackCompensation { get; set; }
+
     public static DeploymentStepSnapshot FromStep(DeploymentStep step) => new()
     {
-        Id              = step.Id,
-        Sequence        = step.Sequence,
-        Name            = step.Name,
-        Description     = step.Description,
-        Category        = step.Category,
-        Status          = step.Status,
-        AttemptCount    = step.AttemptCount,
-        MaxRetries      = step.MaxRetries,
-        IsRequired      = step.IsRequired,
-        CanRollback     = step.CanRollback,
-        RollbackAction  = step.RollbackAction,
-        OutputLog       = step.OutputLog,
-        ErrorMessage    = step.ErrorMessage,
-        ExitCode        = step.ExitCode,
-        ProgressPercent = step.ProgressPercent,
-        StartedAt       = step.StartedAt,
-        CompletedAt     = step.CompletedAt
+        Id                   = step.Id,
+        Sequence             = step.Sequence,
+        Name                 = step.Name,
+        Description          = step.Description,
+        Category             = step.Category,
+        Status               = step.Status,
+        AttemptCount         = step.AttemptCount,
+        MaxRetries           = step.MaxRetries,
+        IsRequired           = step.IsRequired,
+        CanRollback          = step.CanRollback,
+        RollbackAction       = step.RollbackAction,
+        OutputLog            = step.OutputLog,
+        ErrorMessage         = step.ErrorMessage,
+        ExitCode             = step.ExitCode,
+        ProgressPercent      = step.ProgressPercent,
+        StartedAt            = step.StartedAt,
+        CompletedAt          = step.CompletedAt,
+        RollbackCompensation = step.RollbackCompensation,
     };
 
-    public DeploymentStep ToDeploymentStep() => new()
+    public DeploymentStep ToDeploymentStep()
     {
-        Id              = Id,
-        Sequence        = Sequence,
-        Name            = Name,
-        Description     = Description,
-        Category        = Category,
-        Status          = Status,
-        AttemptCount    = AttemptCount,
-        MaxRetries      = MaxRetries,
-        IsRequired      = IsRequired,
-        CanRollback     = CanRollback,
-        RollbackAction  = RollbackAction,
-        OutputLog       = OutputLog,
-        ErrorMessage    = ErrorMessage,
-        ExitCode        = ExitCode,
-        ProgressPercent = ProgressPercent,
-        StartedAt       = StartedAt,
-        CompletedAt     = CompletedAt
-    };
+        var step = new DeploymentStep
+        {
+            Id              = Id,
+            Sequence        = Sequence,
+            Name            = Name,
+            Description     = Description,
+            Category        = Category,
+            Status          = Status,
+            AttemptCount    = AttemptCount,
+            MaxRetries      = MaxRetries,
+            IsRequired      = IsRequired,
+            CanRollback     = CanRollback,
+            RollbackAction  = RollbackAction,
+            OutputLog       = OutputLog,
+            ErrorMessage    = ErrorMessage,
+            ExitCode        = ExitCode,
+            ProgressPercent = ProgressPercent,
+            StartedAt       = StartedAt,
+            CompletedAt     = CompletedAt,
+            RollbackCompensation = RollbackCompensation,
+        };
+
+        // Tag compensation as Restored so diagnostics distinguish checkpoint-recovery
+        // from live capture. Only Runtime → Restored; leave None and Fallback unchanged.
+        if (step.RollbackCompensation is { Source: CompensationSource.Runtime })
+            step.RollbackCompensation.Source = CompensationSource.Restored;
+
+        return step;
+    }
 }
 
 public sealed class StepAttemptRecord

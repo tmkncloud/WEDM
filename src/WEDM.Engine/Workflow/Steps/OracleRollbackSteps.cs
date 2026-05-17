@@ -74,12 +74,18 @@ public sealed class OracleInstallRollbackExecutor : IStepExecutor
         var          report   = new OracleRollbackReport { DryRunMode = dryRun };
         var          messages = new List<string>();
 
+        // Log compensation provenance for diagnostics.
+        var compSource = comp?.Source ?? CompensationSource.Fallback;
         _log.Info(
             $"{tag}: Starting Oracle install rollback for step '{step.Name}'" +
-            (dryRun ? " [DRY-RUN — no destructive actions]" : "") + ".",
+            (dryRun ? " [DRY-RUN — no destructive actions]" : "") +
+            $" [compensation={compSource}" +
+            (comp is not null ? $", homes={comp.OracleHomePaths.Count}, capturedAt={comp.CapturedAt:u}" : "") +
+            "].",
             "Rollback");
 
-        // Resolve home paths — prefer compensation data, fall back to config
+        // Resolve home paths — prefer compensation data (precise), fall back to config (may differ
+        // from actual install paths when retry isolation was active).
         var homePaths = comp?.OracleHomePaths.Count > 0
             ? comp.OracleHomePaths
             : [config.Paths.MiddlewareHome];
@@ -250,12 +256,16 @@ public sealed class OracleFormsReportsRollbackExecutor : IStepExecutor
         var report          = new OracleRollbackReport { DryRunMode = dryRun };
         var messages        = new List<string>();
 
+        var compSource = comp?.Source ?? CompensationSource.Fallback;
         _log.Info(
             $"{tag}: Starting Forms/Reports rollback" +
-            (dryRun ? " [DRY-RUN]" : "") + ".",
+            (dryRun ? " [DRY-RUN]" : "") +
+            $" [compensation={compSource}" +
+            (comp is not null ? $", homes={comp.OracleHomePaths.Count}, capturedAt={comp.CapturedAt:u}" : "") +
+            "].",
             "Rollback");
 
-        // Resolve paths from compensation or config
+        // Resolve paths from compensation (precise) or config (fallback)
         var homePaths = comp?.OracleHomePaths.Count > 0
             ? comp.OracleHomePaths
             : ResolveFormsHomePaths(config);
@@ -412,9 +422,13 @@ public sealed class OracleOhsWebTierRollbackExecutor : IStepExecutor
         var report       = new OracleRollbackReport { DryRunMode = dryRun };
         var messages     = new List<string>();
 
+        var compSource = comp?.Source ?? CompensationSource.Fallback;
         _log.Info(
             $"{tag}: Starting OHS/WebTier rollback" +
-            (dryRun ? " [DRY-RUN]" : "") + ".",
+            (dryRun ? " [DRY-RUN]" : "") +
+            $" [compensation={compSource}" +
+            (comp is not null ? $", homes={comp.OracleHomePaths.Count}, capturedAt={comp.CapturedAt:u}" : "") +
+            "].",
             "Rollback");
 
         var homePaths = comp?.OracleHomePaths.Count > 0
@@ -557,14 +571,19 @@ public sealed class OracleJavaHomeRollbackExecutor : IStepExecutor
         var report       = new OracleRollbackReport { DryRunMode = dryRun };
         var messages     = new List<string>();
 
+        var compSource = comp?.Source ?? CompensationSource.Fallback;
         _log.Info(
             $"{tag}: Starting JavaHome rollback" +
-            (dryRun ? " [DRY-RUN]" : "") + ".",
+            (dryRun ? " [DRY-RUN]" : "") +
+            $" [compensation={compSource}" +
+            (comp is not null ? $", envVars={comp.SetEnvironmentVariableNames.Count}, capturedAt={comp.CapturedAt:u}" : "") +
+            "].",
             "Rollback");
 
         var javaHome = config.Java.JavaHome;
 
-        // Determine which env vars to remove — prefer compensation list
+        // Determine which env vars to remove — prefer compensation list (precise),
+        // fall back to ["JAVA_HOME"] default
         var envVarNames = comp?.SetEnvironmentVariableNames.Count > 0
             ? comp.SetEnvironmentVariableNames
             : ["JAVA_HOME"];

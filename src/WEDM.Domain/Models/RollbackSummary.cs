@@ -63,4 +63,13 @@ public sealed class RollbackStepRecord
     public string  Output          { get; set;  } = string.Empty;
     public string  Error           { get; set;  } = string.Empty;
     public TimeSpan Duration       { get; set;  }
+
+    /// <summary>
+    /// How the rollback compensation data was obtained for this step.
+    /// <see cref="CompensationSource.Runtime"/>  — captured live; most precise.
+    /// <see cref="CompensationSource.Restored"/> — recovered from crash-recovery checkpoint.
+    /// <see cref="CompensationSource.Fallback"/> — no compensation available; config paths used.
+    /// <see cref="CompensationSource.None"/>     — step had no Oracle state to reverse.
+    /// </summary>
+    public CompensationSource CompensationSource { get; set; } = CompensationSource.None;
 }
