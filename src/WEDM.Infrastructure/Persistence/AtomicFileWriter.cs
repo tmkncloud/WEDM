@@ -323,7 +323,7 @@ public static class AtomicFileWriter
             if (entry.IsDisposed) continue;
 
             // Skip any entry still in use.
-            if (Interlocked.Read(ref entry._refCount) > 0) continue;
+            if (Volatile.Read(ref entry._refCount) > 0) continue;
 
             // Skip entries that are still within their idle grace period,
             // unless we're doing a forced trim.
@@ -340,7 +340,7 @@ public static class AtomicFileWriter
             // its increment, leaving refCount at 0 again — safe to dispose.
             // If AcquireEntry's Increment happened after our CAS, we will see
             // refCount > 0 here and must NOT dispose.
-            if (Interlocked.Read(ref entry._refCount) > 0)
+            if (Volatile.Read(ref entry._refCount) > 0)
             {
                 // AcquireEntry beat us — restore the flag and leave the entry live.
                 // The increment by AcquireEntry guarantees another Release will
