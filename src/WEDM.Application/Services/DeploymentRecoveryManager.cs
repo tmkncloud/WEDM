@@ -9,18 +9,21 @@ namespace WEDM.Application.Services;
 /// </summary>
 public sealed class DeploymentRecoveryManager
 {
-    private readonly IDeploymentSessionStore _sessions;
-    private readonly IDeploymentLockService  _locks;
-    private readonly ILoggingService         _log;
+    private readonly IDeploymentSessionStore    _sessions;
+    private readonly IDeploymentLockService     _locks;
+    private readonly ILoggingService            _log;
+    private readonly ISecretRehydrationService? _rehydration;
 
     public DeploymentRecoveryManager(
         IDeploymentSessionStore sessions,
         IDeploymentLockService locks,
-        ILoggingService log)
+        ILoggingService log,
+        ISecretRehydrationService? rehydration = null)
     {
-        _sessions = sessions;
-        _locks    = locks;
-        _log      = log;
+        _sessions    = sessions;
+        _locks       = locks;
+        _log         = log;
+        _rehydration = rehydration;
     }
 
     public Task<IReadOnlyList<DeploymentSessionState>> ListRecoverableAsync(CancellationToken ct = default)
@@ -44,7 +47,7 @@ public sealed class DeploymentRecoveryManager
         var state = await _sessions.LoadAsync(sessionId, ct).ConfigureAwait(false);
         if (state is null) return;
         state.LifecycleStatus = DeploymentLifecycleStatus.Interrupted;
-        state.FailureReason     = reason ?? "Application closed before deployment completed.";
+        state.FailureReason   = reason ?? "Application closed before deployment completed.";
         await _sessions.SaveAsync(state, ct).ConfigureAwait(false);
         await _locks.ReleaseAsync(sessionId, ct).ConfigureAwait(false);
     }
@@ -56,7 +59,9 @@ public sealed class DeploymentRecoveryManager
         _log.Info($"Deployment session {sessionId:N} discarded.", "Recovery");
     }
 
-    public async Task<DeploymentRecoveryDiagnostics> BuildDiagnosticsAsync(Guid sessionId, CancellationToken ct = default)
+    public async Task<DeploymentRecoveryDiagnostics> BuildDiagnosticsAsync(
+        Guid sessionId,
+        CancellationToken ct = default)
     {
         var state = await GetSessionAsync(sessionId, ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Session {sessionId:N} not found.");
@@ -65,20 +70,37 @@ public sealed class DeploymentRecoveryManager
         var failed    = state.Steps.Count(s => s.Status == StepStatus.Failed);
         var pending   = state.Steps.Count(s => s.Status == StepStatus.Pending);
 
+        // ── Secret diagnostics (R-03) ──────────────────────────────────────────
+        SecretRehydrationDiagnostics? secretDiag = null;
+        if (_rehydration is not null)
+        {
+            try
+            {
+                secretDiag = _rehydration.GetDiagnostics(state.Configuration, state.SessionId);
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(
+                    $"Secret rehydration diagnostics failed for session {sessionId:N}: {ex.Message}",
+                    "Recovery");
+            }
+        }
+
         return new DeploymentRecoveryDiagnostics
         {
-            SessionId           = sessionId,
-            LifecycleStatus     = state.LifecycleStatus,
-            CanResume           = state.CanResume,
-            CompletedStepCount  = completed,
-            FailedStepCount     = failed,
-            PendingStepCount    = pending,
-            LastCheckpointAt    = state.LastCheckpointAt,
-            FailureReason       = state.FailureReason,
-            CurrentStepName     = state.CurrentStepName,
+            SessionId              = sessionId,
+            LifecycleStatus        = state.LifecycleStatus,
+            CanResume              = state.CanResume,
+            CompletedStepCount     = completed,
+            FailedStepCount        = failed,
+            PendingStepCount       = pending,
+            LastCheckpointAt       = state.LastCheckpointAt,
+            FailureReason          = state.FailureReason,
+            CurrentStepName        = state.CurrentStepName,
             OverallProgressPercent = state.OverallProgressPercent,
-            AttemptHistory      = state.AttemptHistory,
-            ActiveLocks         = await _locks.ListActiveLocksAsync(ct).ConfigureAwait(false)
+            AttemptHistory         = state.AttemptHistory,
+            ActiveLocks            = await _locks.ListActiveLocksAsync(ct).ConfigureAwait(false),
+            SecretDiagnostics      = secretDiag,
         };
     }
 }
@@ -97,4 +119,17 @@ public sealed class DeploymentRecoveryDiagnostics
     public double OverallProgressPercent { get; init; }
     public IReadOnlyList<StepAttemptRecord> AttemptHistory { get; init; } = [];
     public IReadOnlyList<DeploymentLockDescriptor> ActiveLocks { get; init; } = [];
+
+    /// <summary>
+    /// Secret rehydration diagnostics for this session.
+    /// Null when the rehydration service is not available or diagnostics failed.
+    /// NEVER contains plaintext values, encrypted blobs, or credential material.
+    /// </summary>
+    public SecretRehydrationDiagnostics? SecretDiagnostics { get; init; }
+
+    /// <summary>
+    /// True when all secrets are vault-bound and resolvable AND the session is otherwise resumable.
+    /// </summary>
+    public bool SecureResumeReady
+        => CanResume && (SecretDiagnostics?.ResumeReady ?? true);
 }

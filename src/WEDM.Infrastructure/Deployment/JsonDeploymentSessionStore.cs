@@ -7,13 +7,36 @@ using WEDM.Infrastructure.Security;
 
 namespace WEDM.Infrastructure.Deployment;
 
+/// <summary>
+/// Atomic JSON session store for crash recovery, deployment resume, and operator diagnostics.
+///
+/// Secret handling — R-03 fix:
+///   Old behavior: <c>DeploymentConfigurationSanitizer.RedactSecrets()</c> wrote
+///   "***REDACTED***" to every credential field, making resumes permanently broken.
+///
+///   New behavior: <see cref="ISecretRehydrationService.PersistAndBind"/> is called on
+///   the cloned config before serialization.  Each plaintext value is encrypted into the
+///   DPAPI vault and replaced in the config clone with a sentinel of the form
+///   "__WEDM_VAULT_REF:{alias}__".  The sentinel is safe to serialize to disk.
+///   On resume, <see cref="ISecretRehydrationService.Rehydrate"/> reverses this —
+///   sentinels are looked up in the vault and replaced with decrypted plaintext.
+///
+/// Fallback: when <paramref name="rehydration"/> is null (e.g. in tests or legacy callers),
+///   the store falls back to the original redaction-based sanitizer to preserve backward
+///   compatibility.  This fallback should never be reached in production after wiring.
+/// </summary>
 public sealed class JsonDeploymentSessionStore : IDeploymentSessionStore
 {
     public const string SessionsSubdir = "sessions";
     public const string CorruptSubdir  = "corrupt";
 
-    public JsonDeploymentSessionStore(string? rootDirectory = null)
+    private readonly ISecretRehydrationService? _rehydration;
+
+    public JsonDeploymentSessionStore(
+        string? rootDirectory = null,
+        ISecretRehydrationService? rehydration = null)
     {
+        _rehydration = rehydration;
         RootDirectory = rootDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
             "WEDM", "deployments");
@@ -28,10 +51,30 @@ public sealed class JsonDeploymentSessionStore : IDeploymentSessionStore
         state.LastCheckpointAt = DateTimeOffset.UtcNow;
         state.SchemaVersion    = DeploymentSessionState.CurrentSchemaVersion;
 
+        // Clone the configuration for safe serialization — the original live config
+        // must retain its plaintext values so the running workflow can continue.
         var safeConfig = JsonSerializer.Deserialize<DeploymentConfiguration>(
             JsonSerializer.Serialize(state.Configuration, DeploymentJsonOptions.Create()),
             DeploymentJsonOptions.Create())!;
-        DeploymentConfigurationSanitizer.RedactSecrets(safeConfig);
+
+        if (_rehydration is not null)
+        {
+            // R-03 fix: vault each secret and replace with a recoverable sentinel.
+            var bindings = _rehydration.PersistAndBind(safeConfig, state.SessionId);
+
+            // Persist binding metadata alongside the session (no secret values).
+            state.SecretReferences = bindings
+                .Where(b => b.IsResolved && b.Source == SecretResolutionSource.DpapiVault)
+                .Select(b => b.Reference)
+                .ToList();
+        }
+        else
+        {
+            // Legacy fallback: redact secrets so no plaintext leaks to disk.
+            // This path should not be reached in production after DI wiring.
+            DeploymentConfigurationSanitizer.RedactSecrets(safeConfig);
+        }
+
         state.Configuration = safeConfig;
 
         var path = SessionPath(state.SessionId);
@@ -39,14 +82,16 @@ public sealed class JsonDeploymentSessionStore : IDeploymentSessionStore
         await AtomicFileWriter.WriteAllTextAsync(path, json, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<DeploymentSessionState?> LoadAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    public async Task<DeploymentSessionState?> LoadAsync(
+        Guid sessionId,
+        CancellationToken cancellationToken = default)
     {
         var path = SessionPath(sessionId);
         if (!File.Exists(path)) return null;
 
         try
         {
-            var json = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
+            var json  = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
             var state = JsonSerializer.Deserialize<DeploymentSessionState>(json, DeploymentJsonOptions.Create());
             if (state is null)
                 throw new InvalidDataException("Session file deserialized to null.");
@@ -62,7 +107,8 @@ public sealed class JsonDeploymentSessionStore : IDeploymentSessionStore
         }
     }
 
-    public async Task<IReadOnlyList<DeploymentSessionState>> ListRecoverableAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<DeploymentSessionState>> ListRecoverableAsync(
+        CancellationToken cancellationToken = default)
     {
         var dir = Path.Combine(RootDirectory, SessionsSubdir);
         if (!Directory.Exists(dir)) return [];
@@ -81,7 +127,7 @@ public sealed class JsonDeploymentSessionStore : IDeploymentSessionStore
             }
             catch
             {
-                // skip unreadable entries in list view
+                // Skip unreadable entries in list view
             }
         }
 
@@ -107,7 +153,9 @@ public sealed class JsonDeploymentSessionStore : IDeploymentSessionStore
     {
         try
         {
-            var dest = Path.Combine(RootDirectory, CorruptSubdir, $"{sessionId:N}-{DateTime.UtcNow:yyyyMMddHHmmss}.json");
+            var dest = Path.Combine(
+                RootDirectory, CorruptSubdir,
+                $"{sessionId:N}-{DateTime.UtcNow:yyyyMMddHHmmss}.json");
             File.Move(path, dest, overwrite: true);
         }
         catch

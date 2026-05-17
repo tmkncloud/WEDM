@@ -111,6 +111,32 @@
         <member name="T:WEDM.Domain.Enums.MigrationEffortCategory">
             <summary>Estimated migration effort category for planning and staffing models.</summary>
         </member>
+        <member name="T:WEDM.Domain.Interfaces.IOracleInventoryAnalyzer">
+            <summary>
+            Decommission-specific Oracle inventory analysis and home detachment operations.
+            Distinct from <see cref="T:WEDM.Domain.Interfaces.IOracleInventoryService"/> which handles the full install lifecycle.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IInstallRetryIsolationService.PrepareRetryAttempt(WEDM.Domain.Models.DeploymentConfiguration,System.String,System.Int32)">
+            <summary>
+            Legacy entry point used by the workflow engine retry loop.
+            Mutates <paramref name="config"/> paths and returns basic isolation metadata.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IInstallRetryIsolationService.BuildInstallerContext(WEDM.Domain.Models.DeploymentConfiguration,System.String,System.Int32,WEDM.Domain.Models.InstallerFailureClass)">
+            <summary>
+            Builds a rich per-attempt <see cref="T:WEDM.Domain.Models.InstallerExecutionContext"/> with isolated
+            temp, extraction, response file, and OUI log directories.
+            Also sets <see cref="P:WEDM.Domain.Models.DeploymentConfiguration.CurrentInstallerContext"/> on
+            <paramref name="config"/> so that OUI steps can consume it.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IInstallRetryIsolationService.RunPreflight(WEDM.Domain.Models.DeploymentConfiguration,System.String,System.Int32)">
+            <summary>
+            Runs pre-flight validation before an OUI attempt and logs results.
+            Returns the validation result without blocking (callers decide on action).
+            </summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.IDeploymentEngine">
             <summary>
             Core deployment engine contract.
@@ -149,6 +175,67 @@
         <member name="T:WEDM.Domain.Interfaces.IDeploymentLockService">
             <summary>Machine-wide mutex for Oracle Home, domain, and central inventory paths.</summary>
         </member>
+        <member name="M:WEDM.Domain.Interfaces.IDeploymentLockService.ReconcileAsync(System.Threading.CancellationToken)">
+            <summary>
+            Perform a full lock-directory reconciliation: remove orphaned provisional files,
+            legacy v1 <c>.lock</c> sentinels, stale and corrupt <c>.meta</c> files, and
+            cross-machine abandonments.  Returns a structured report of every action taken.
+            Should be called once on application startup before the first <see cref="M:WEDM.Domain.Interfaces.IDeploymentLockService.TryAcquireAsync(WEDM.Domain.Models.DeploymentConfiguration,System.Guid,System.Threading.CancellationToken)"/>.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.LockReconciliationAction">
+            <summary>
+            What action the reconciler took on a given lock file during a reconciliation pass.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Interfaces.LockReconciliationAction.Kept">
+            <summary>File is valid and currently held — no action taken.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Interfaces.LockReconciliationAction.RemovedStale">
+            <summary>File removed because the heartbeat exceeded the stale threshold and the owning process is gone.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Interfaces.LockReconciliationAction.RemovedCorrupt">
+            <summary>File removed because the JSON content was invalid or could not be parsed.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Interfaces.LockReconciliationAction.RemovedOrphanedProvisional">
+            <summary>
+            Orphaned provisional file (<c>.meta.tmp</c>) removed.
+            Left by a process that crashed after writing the provisional but before the atomic rename.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Interfaces.LockReconciliationAction.RemovedLegacySentinel">
+            <summary>
+            Legacy v1 empty <c>.lock</c> sentinel removed.
+            These files have no metadata and were written by the pre-R02 lock protocol.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Interfaces.LockReconciliationAction.RemovedCrossMachineAbandoned">
+            <summary>
+            File removed because the owning machine name does not match the current machine and
+            the heartbeat has expired.  The remote process is presumed gone.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.LockDiagnosticRecord">
+            <summary>Diagnostics for a single file examined or acted upon during reconciliation.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Interfaces.LockDiagnosticRecord.FilePath">
+            <summary>Absolute path of the file examined.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Interfaces.LockDiagnosticRecord.ResourceKey">
+            <summary>Resource key extracted from the file name (empty for legacy sentinels with no readable metadata).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Interfaces.LockDiagnosticRecord.Action">
+            <summary>What the reconciler did with this file.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Interfaces.LockDiagnosticRecord.Reason">
+            <summary>Human-readable explanation of why this action was taken.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Interfaces.LockDiagnosticRecord.HeartbeatAge">
+            <summary>Age of the last heartbeat at the time this record was examined.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.LockReconciliationReport">
+            <summary>Structured output from a full lock-directory reconciliation pass.</summary>
+        </member>
         <member name="T:WEDM.Domain.Interfaces.IDeploymentPlanAccessor">
             <summary>
             Holds the currently executing deployment step plan so late-stage executors
@@ -158,6 +245,196 @@
         </member>
         <member name="T:WEDM.Domain.Interfaces.IDeploymentSessionStore">
             <summary>Persists deployment session checkpoints for crash recovery and resume.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IEnvironmentIsolationService">
+             <summary>
+             Manages deterministic environment isolation for every Oracle tool WEDM launches.
+            
+             Guarantees:
+               • Every OUI / WLST / OPatch / Forms / OHS invocation executes inside an explicitly
+                 controlled, sanitized environment — never inheriting ambient machine state.
+               • Stale ORACLE_HOME, WL_HOME, MW_HOME, CLASSPATH, WLST_HOME, OPatch residuals,
+                 and JVM override variables are cleared before each tool runs.
+               • TEMP / TMP is scoped to the current deployment session, preventing cross-session
+                 contamination from OUI JAR extraction residue.
+               • PATH is reconstructed from scratch: Windows system directories + JavaHome\bin
+                 + tool-specific additions. Stale Oracle entries are excluded.
+               • All mutations are process-scoped (PowerShell $env: injection) — machine-level
+                 PATH and registry are never modified by this service.
+               • Pre/post deployment snapshots enable drift detection after each phase.
+            
+             The primary integration pattern is <see cref="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.BuildIsolatedEnvironment(WEDM.Domain.Models.OracleTool,WEDM.Domain.Models.DeploymentEnvironmentContext)"/> →
+             use <see cref="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.PowerShellPreamble"/> as the first
+             block in every PowerShell script body that launches an Oracle tool.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.CaptureSnapshot(WEDM.Domain.Models.SnapshotKind,System.Guid)">
+             <summary>
+             Captures a point-in-time snapshot of all Oracle-relevant environment variables
+             from the current process environment (process + machine scope on Windows).
+            
+             Call at three lifecycle points:
+               <list type="bullet">
+                 <item>Before any deployment step runs — <see cref="F:WEDM.Domain.Models.SnapshotKind.PreDeployment"/></item>
+                 <item>After all forward steps complete — <see cref="F:WEDM.Domain.Models.SnapshotKind.PostDeployment"/></item>
+                 <item>After rollback completes — <see cref="F:WEDM.Domain.Models.SnapshotKind.PostRollback"/></item>
+               </list>
+            
+             Never throws — any read error is silently recorded in the snapshot.
+             </summary>
+             <param name="kind">The lifecycle point at which this snapshot is taken.</param>
+             <param name="sessionId">Session ID to embed in the snapshot for correlation.</param>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.BuildContext(WEDM.Domain.Models.DeploymentConfiguration,WEDM.Domain.Models.EnvironmentSnapshot)">
+             <summary>
+             Builds a <see cref="T:WEDM.Domain.Models.DeploymentEnvironmentContext"/> for the given deployment session.
+            
+             The context is the authoritative source of truth for all environment variables
+             injected into Oracle tool subprocesses.  It is constructed once at session start
+             and mutated only to record path discoveries (e.g. after the OUI step resolves
+             <see cref="P:WEDM.Domain.Models.DeploymentEnvironmentContext.MiddlewareHome"/>).
+            
+             Steps performed:
+               <list type="number">
+                 <item>Resolve JavaHome, MiddlewareHome, OracleHome from config paths.</item>
+                 <item>Create session-scoped TEMP root under config.Paths.TempDirectory.</item>
+                 <item>Build sanitized PATH (system dirs + JavaHome\bin).</item>
+                 <item>Apply isolation flags from the deployment config.</item>
+               </list>
+             </summary>
+             <param name="config">The deployment configuration for this session.</param>
+             <param name="preDeploymentSnapshot">
+               The snapshot captured before any deployment action ran.
+               Used to initialise the context's baseline knowledge.
+             </param>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.BuildIsolatedEnvironment(WEDM.Domain.Models.OracleTool,WEDM.Domain.Models.DeploymentEnvironmentContext)">
+             <summary>
+             Produces a fully isolated, ready-to-inject environment variable set for the
+             specified Oracle tool.
+            
+             The returned <see cref="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.PowerShellPreamble"/> is the
+             primary output: prepend it verbatim to any PowerShell script body before the
+             tool command.  It contains:
+               <list type="bullet">
+                 <item><c>Remove-Item Env:VAR -ErrorAction SilentlyContinue</c> for every variable in <see cref="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.ClearVariables"/></item>
+                 <item><c>$env:VAR = 'value'</c> for every variable in <see cref="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.SetVariables"/></item>
+               </list>
+            
+             Tool-specific variable sets:
+               <list type="bullet">
+                 <item><see cref="F:WEDM.Domain.Models.OracleTool.OUI"/>  — sets JAVA_HOME, TEMP, TMP, PATH; clears MW/WL/ORACLE vars</item>
+                 <item><see cref="F:WEDM.Domain.Models.OracleTool.WLST"/> — sets ORACLE_HOME, JAVA_HOME, TEMP, PATH; clears WLST residuals</item>
+                 <item><see cref="F:WEDM.Domain.Models.OracleTool.OPatch"/> — sets ORACLE_HOME, JAVA_HOME, PATH (with OPatch dir); clears OPATCH_DEBUG</item>
+                 <item><see cref="F:WEDM.Domain.Models.OracleTool.NodeManager"/> — sets JAVA_HOME, WL_HOME, TEMP; clears CLASSPATH</item>
+                 <item><see cref="F:WEDM.Domain.Models.OracleTool.Forms"/>  — sets ORACLE_HOME, JAVA_HOME, PATH; clears Forms residuals</item>
+                 <item><see cref="F:WEDM.Domain.Models.OracleTool.OHS"/>    — sets ORACLE_HOME, JAVA_HOME, PATH; clears OHS residuals</item>
+                 <item>All tools: clear CLASSPATH, stale Oracle vars, JVM override vars</item>
+               </list>
+             </summary>
+             <param name="tool">Which Oracle tool is being launched.</param>
+             <param name="context">The session environment context.</param>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.ValidateBeforeLaunch(WEDM.Domain.Models.OracleTool,WEDM.Domain.Models.IsolatedEnvironmentVariables,WEDM.Domain.Models.DeploymentEnvironmentContext)">
+             <summary>
+             Validates that the environment is safe and correct for launching the specified
+             Oracle tool.  Call this immediately before handing off to the tool.
+            
+             Checks performed:
+               <list type="bullet">
+                 <item>JavaHome is set, non-empty, and java.exe exists at the expected path.</item>
+                 <item>Tool-specific home (MiddlewareHome / OracleHome) is set and is a directory.</item>
+                 <item>PATH does not contain stale Oracle or JDK entries that could shadow the intended runtime.</item>
+                 <item>TEMP/TMP is the session-scoped directory (not %USERPROFILE% or system temp).</item>
+                 <item>CLASSPATH is absent (to prevent classpath-based class loading surprises).</item>
+                 <item>Tool-specific invariants (e.g. for OPatch: OPatch directory exists under OracleHome).</item>
+               </list>
+            
+             Returns <see cref="P:WEDM.Domain.Models.EnvironmentValidationResult.IsValid"/> = false when any blocker is found.
+             Warnings are non-fatal; blockers prevent the tool from being launched.
+             </summary>
+             <param name="tool">The tool about to be launched.</param>
+             <param name="env">The isolated environment variables that will be injected.</param>
+             <param name="context">The session environment context.</param>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.DetectDrift(WEDM.Domain.Models.EnvironmentSnapshot,WEDM.Domain.Models.EnvironmentSnapshot,WEDM.Domain.Models.DeploymentEnvironmentContext)">
+             <summary>
+             Compares <paramref name="baseline"/> to <paramref name="current"/> and returns
+             a structured report of all detected environment mutations.
+            
+             Mutations are classified as <em>expected</em> (e.g. WEDM itself set JAVA_HOME) or
+             <em>unexpected</em> (e.g. an Oracle installer modified PATH or left TNS_ADMIN behind).
+            
+             The list of expected variable names is derived from <paramref name="context"/>:
+             any variable that appears in the session's <see cref="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.SetVariables"/>
+             or <see cref="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.ClearVariables"/> is treated as expected.
+            
+             Oracle-installer-introduced additions to PATH are always flagged as unexpected drift
+             regardless of whether they match expected patterns.
+             </summary>
+             <param name="baseline">The earlier snapshot (typically <see cref="F:WEDM.Domain.Models.SnapshotKind.PreDeployment"/>).</param>
+             <param name="current">The later snapshot (typically <see cref="F:WEDM.Domain.Models.SnapshotKind.PostDeployment"/>).</param>
+             <param name="context">Used to classify mutations as expected or unexpected.</param>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.ApplyScopedVariables(WEDM.Domain.Models.IsolatedEnvironmentVariables)">
+             <summary>
+             Applies the variables in <paramref name="env"/> to the current process environment
+             for the duration of the deployment step.
+            
+             Scope rules:
+               <list type="bullet">
+                 <item><strong>Process-scoped (preferred)</strong> — written to <c>Environment.SetEnvironmentVariable(name, value, Process)</c>.
+                       Automatically cleaned up when the engine process exits.</item>
+                 <item><strong>Session-scoped (rare)</strong> — written via PowerShell preamble injection only.
+                       Never persisted to machine or user scope.</item>
+               </list>
+            
+             The returned <see cref="T:System.IDisposable"/> restores all variables to their pre-call values
+             when disposed.  Always wrap usage in a <c>using</c> block.
+            
+             <para>IMPORTANT: This method only applies variables to the <em>current process</em>.
+             It does NOT affect subprocesses launched from PowerShell — those require the
+             <see cref="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.PowerShellPreamble"/> injection pattern.</para>
+             </summary>
+             <param name="env">The isolated environment variables to apply.</param>
+             <returns>
+               A disposable scope that reverts all applied variables on disposal.
+             </returns>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.GenerateDiagnostics(WEDM.Domain.Models.DeploymentEnvironmentContext,WEDM.Domain.Models.EnvironmentSnapshot)">
+             <summary>
+             Produces a structured diagnostics report for the completed deployment session.
+            
+             The report includes:
+               <list type="bullet">
+                 <item>Count of Oracle tool invocations that had isolation preamble applied.</item>
+                 <item>Full list of variables cleared and injected during the session.</item>
+                 <item>Environment drift report (pre vs post-deployment snapshot comparison).</item>
+                 <item>Any validation warnings raised before tool launches.</item>
+                 <item>PATH analysis: segment count, Oracle/Java segments, duplicates, stale entries.</item>
+               </list>
+            
+             Call after the last deployment step completes (or after rollback) to capture
+             the full session diagnostic picture.
+             </summary>
+             <param name="context">The session environment context.</param>
+             <param name="postDeploymentSnapshot">
+               Snapshot taken after all steps finished (or after rollback).
+               When null, drift detection is skipped.
+             </param>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.AnalysePath(System.String,WEDM.Domain.Models.DeploymentEnvironmentContext)">
+             <summary>
+             Analyses a raw PATH string and classifies each segment.
+            
+             Returns segment-level detail including: Oracle segments, Java segments,
+             system segments, duplicates, stale entries, and any required entries that
+             are missing from the PATH.
+            
+             Used for diagnostics and for validating the sanitized PATH before injection.
+             </summary>
+             <param name="rawPath">The PATH string to analyse (semicolon-separated on Windows).</param>
+             <param name="context">Session context; used to determine which paths are "expected".</param>
         </member>
         <member name="T:WEDM.Domain.Interfaces.ILoggingService">
             <summary>
@@ -228,6 +505,287 @@
         <member name="T:WEDM.Domain.Interfaces.IOperationalTelemetrySink">
             <summary>
             Future hook for deployment analytics / metrics exporters. Default implementation is a no-op.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IOracleInventoryService">
+             <summary>
+             Manages the Oracle Central Inventory lifecycle for a deployment session.
+            
+             Responsibilities:
+               • Read and parse ContentsXML/inventory.xml
+               • Detect registered Oracle homes (including stale/orphaned entries)
+               • Detect active inventory lock files
+               • Backup inventory.xml before any mutation
+               • Surgically remove home entries without corrupting the XML
+               • Validate pre-install and post-install inventory state
+               • Log all inventory operations with structured diagnostics
+            
+             This service is the single authority for all Oracle Central Inventory interactions.
+             No step executor or rollback executor should read/write inventory.xml directly.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.ReadSnapshot(System.String)">
+            <summary>
+            Parses the Oracle Central Inventory XML at the given inventory directory.
+            Returns null when the inventory directory or inventory.xml does not exist.
+            Never throws — parse errors are captured in <see cref="P:WEDM.Domain.Models.OracleInventorySnapshot.InventoryWarning"/>.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.ResolveInventoryXmlPath(System.String)">
+            <summary>
+            Resolves the inventory.xml path inside the given inventory directory.
+            Returns null when inventory.xml cannot be found.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.IsHomeRegistered(System.String,System.String)">
+            <summary>
+            Returns true when the given <paramref name="middlewareHome"/> path appears in
+            the Central Inventory at <paramref name="oracleInventoryPath"/>.
+            Path comparison is case-insensitive and normalised (trailing slashes removed).
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.DetectHomeState(System.String,System.String)">
+            <summary>
+            Determines the current state of <paramref name="middlewareHome"/> with respect to
+            both the filesystem and the Central Inventory.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.FindOrphanedHomes(System.String)">
+            <summary>
+            Returns all homes that are registered in the Central Inventory but whose
+            target directories no longer exist (orphaned/stale registrations).
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.IsPartialInstall(System.String)">
+            <summary>
+            Returns true when the given <paramref name="middlewareHome"/> directory exists
+            but has an incomplete Oracle installation structure (i.e. partial/failed OUI).
+            Checks for the presence of key marker directories: wlserver/, oracle_common/, inventory/.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.DetectLocks(System.String)">
+            <summary>
+            Detects any active Oracle inventory lock files inside the inventory directory.
+            Returns an empty list when the inventory is not locked.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.ValidateForInstall(System.String,System.String)">
+             <summary>
+             Validates the Oracle inventory state before launching OUI.
+             Checks that:
+               1. The target home is NOT already registered
+               2. No inventory lock is active
+               3. No partial or orphaned install exists at the target path
+            
+             Returns a <see cref="T:WEDM.Domain.Models.OracleInventoryValidationResult"/> with <c>CanProceed=true</c>
+             when the inventory is clean and OUI may be safely launched.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.ValidateAfterInstall(System.String,System.String)">
+             <summary>
+             Validates the Oracle inventory state after a successful OUI exit.
+             Checks that:
+               1. The target home IS now registered in the inventory
+               2. The inventory.xml is parseable
+               3. The target home directory structure is complete
+            
+             Returns a <see cref="T:WEDM.Domain.Models.OracleInventoryValidationResult"/> with <c>CanProceed=true</c>
+             when the post-install state is consistent.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.BackupInventoryXml(System.String)">
+            <summary>
+            Creates a timestamped backup of inventory.xml before any mutation.
+            Returns the backup file path, or null when the inventory.xml does not exist.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleInventoryService.RemoveHomeEntry(System.String,System.String)">
+             <summary>
+             Surgically removes all HOME and COMPOSITEHOME elements whose LOC attribute
+             matches <paramref name="middlewareHome"/> (case-insensitive) from inventory.xml.
+            
+             Sequence:
+               1. Snapshot inventory state before removal
+               2. Create backup of inventory.xml
+               3. Load and mutate the XML (remove matching HOME elements)
+               4. Write updated XML back atomically
+               5. Snapshot inventory state after removal
+               6. Return full audit trail in <see cref="T:WEDM.Domain.Models.OracleInventoryRemovalResult"/>
+            
+             Never throws — errors are captured in <see cref="P:WEDM.Domain.Models.OracleInventoryRemovalResult.Error"/>.
+             </summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.IOracleProcessLifecycleService">
+             <summary>
+             Governs the full lifecycle of Oracle middleware processes launched by WEDM.
+            
+             Responsibilities:
+               • Record ownership when WEDM launches an Oracle tool process.
+               • Detect and classify all Oracle-related processes on the machine.
+               • Build parent-child process trees via PPID relationships.
+               • Execute staged shutdown (graceful → escalate → force-kill tree).
+               • Detect orphan processes from prior WEDM sessions or crashed deployments.
+               • Reconcile orphans: terminate WEDM-owned; report external ones for review.
+               • Verify cleanup: confirm all target processes have exited.
+               • Generate structured diagnostics for the deployment report.
+            
+             Critical invariant:
+               WEDM must never automatically terminate a process classified as
+               <see cref="F:WEDM.Domain.Models.ProcessOwnership.External"/>. Such processes may belong to a
+               running customer Oracle environment. They are flagged for operator review only.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.RegisterLaunch(WEDM.Domain.Models.ProcessLaunchContext,System.Int32)">
+             <summary>
+             Records that WEDM has launched a process with the given PID.
+             Must be called immediately after the process is started, before any
+             await or delay that would allow the OS to reuse the PID.
+            
+             The ownership record is persisted in the deployment session state so
+             crash recovery can identify WEDM-owned orphans on next startup.
+             </summary>
+             <param name="context">Launch metadata: session, deployment, tool, Oracle home, temp root.</param>
+             <param name="pid">The PID of the launched process.</param>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.TrackChildProcess(System.Int32,System.Int32)">
+            <summary>
+            Adds a known child PID to an existing ownership record.
+            Call when a launcher process spawns a child that WEDM tracks separately
+            (e.g. OUI spawning a detached java subprocess).
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.DetectOracleProcesses">
+             <summary>
+             Scans all running processes and returns those classified as Oracle-related.
+            
+             Classification is based on:
+               • Process name (java, javaw, nodemanager, ohs, wlsvc, …)
+               • Command line analysis (JVM args, classpath entries, -D properties)
+               • Working directory (contains Oracle or WebLogic path markers)
+               • Ownership records (is this PID registered with a WEDM session?)
+            
+             Processes that cannot be classified with confidence are returned as
+             <see cref="F:WEDM.Domain.Models.OracleProcessKind.Unknown"/> and must not be killed automatically.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.GetOwnedProcesses(System.Guid)">
+            <summary>
+            Returns all processes currently registered as owned by the specified WEDM session.
+            Includes both root processes and tracked child processes.
+            Returns an empty list when the session has no registered processes.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.BuildProcessTree(System.Int32)">
+             <summary>
+             Builds the complete parent-child process tree rooted at <paramref name="rootPid"/>.
+            
+             Uses WMI <c>Win32_Process.ParentProcessId</c> relationships to enumerate
+             all descendants recursively.  Returns null when the root process does not
+             exist or has already exited.
+            
+             The returned tree may include non-Oracle children (e.g. conhost.exe spawned
+             by a PowerShell host).  Each node carries its own <see cref="T:WEDM.Domain.Models.OracleProcessKind"/>
+             so callers can filter before terminating.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.BuildSessionProcessTrees(System.Guid)">
+            <summary>
+            Builds process trees for all currently registered Oracle processes in the session.
+            Returns one tree per root process registered with <see cref="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.RegisterLaunch(WEDM.Domain.Models.ProcessLaunchContext,System.Int32)"/>.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.ShutdownAsync(System.Collections.Generic.IEnumerable{WEDM.Domain.Models.OracleProcessInfo},WEDM.Domain.Models.ShutdownPolicy,System.Threading.CancellationToken)">
+             <summary>
+             Executes staged shutdown for the specified Oracle processes:
+            
+               Stage 1 — Graceful: send WM_CLOSE / CloseMainWindow.
+               Stage 2 — Wait: pause for <see cref="P:WEDM.Domain.Models.ShutdownPolicy.GracefulTimeout"/>.
+               Stage 3 — Escalate: send SIGTERM / taskkill /IM.
+               Stage 4 — Force kill: <c>Process.Kill(entireProcessTree: true)</c>.
+            
+             External-owned processes are skipped with <see cref="F:WEDM.Domain.Models.TerminationStage.Skipped"/>
+             when <see cref="P:WEDM.Domain.Models.ShutdownPolicy.SkipExternalProcesses"/> is true.
+            
+             Returns one <see cref="T:WEDM.Domain.Models.ProcessTerminationResult"/> per input process.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.CleanupSessionAsync(System.Guid,WEDM.Domain.Models.ShutdownPolicy,System.Threading.CancellationToken)">
+            <summary>
+            Stops all processes registered as owned by the specified session,
+            then verifies they have exited.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.CleanupBeforeRetryAsync(System.Guid,System.Int32,WEDM.Domain.Models.ShutdownPolicy,System.Threading.CancellationToken)">
+             <summary>
+             Cleans up all Oracle processes from the previous attempt before the next retry begins.
+            
+             Detects:
+               • Orphan OUI Java processes from the prior attempt.
+               • Stale WLST JVMs, OPatch JVMs, NodeManager remnants.
+               • Temp directory locks from prior-attempt JARs.
+            
+             Only terminates WEDM-owned processes from the prior attempt.
+             External Oracle processes are reported but never terminated.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.DetectOrphans(System.Collections.Generic.IEnumerable{System.Guid})">
+             <summary>
+             Detects Oracle processes that appear to be orphaned from prior WEDM sessions
+             or from crashed deployments.
+            
+             Classification:
+               • <see cref="F:WEDM.Domain.Models.ProcessOwnership.WedmPriorSession"/> — launched by a known prior WEDM session.
+               • <see cref="F:WEDM.Domain.Models.ProcessOwnership.Unknown"/> — unclassified Oracle JVM; may be orphan.
+               • <see cref="F:WEDM.Domain.Models.ProcessOwnership.External"/> — NOT a WEDM orphan; do not touch.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.ReconcileOrphansAsync(WEDM.Domain.Models.OrphanReconciliationOptions,System.Threading.CancellationToken)">
+            <summary>
+            Reconciles detected orphans:
+              • Terminates WEDM-owned orphans (prior-session) according to <paramref name="options"/>.
+              • Logs external orphans for operator review without terminating them.
+              • Returns a report with recommendations for any orphan requiring manual action.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.ScanForCrashRemnantsAsync(System.Collections.Generic.IEnumerable{WEDM.Domain.Models.ProcessOwnershipRecord},System.Threading.CancellationToken)">
+             <summary>
+             Scans for stale WEDM deployment sessions and associated orphan Oracle processes.
+             Called at WEDM startup to identify and offer cleanup of crash remnants.
+            
+             Returns a report describing:
+               • Orphan processes found from prior deployment sessions.
+               • Which processes are safe to terminate automatically.
+               • Which processes require operator review before cleanup.
+               • Stale temp directories left by prior OUI extractions.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.PrepareForRollbackAsync(System.String,System.Guid,WEDM.Domain.Models.ShutdownPolicy,System.Threading.CancellationToken)">
+             <summary>
+             Performs the process cleanup required before rollback can safely proceed:
+               1. Stop Oracle processes (NodeManager, WLST, OPatch, OUI remnants).
+               2. Stop Forms / OHS / AdminServer / ManagedServer.
+               3. Verify Oracle Home is no longer locked by any process.
+            
+             Returns a report; the rollback executor inspects <see cref="P:WEDM.Domain.Models.ProcessLifecycleReport.AllCleaned"/>
+             to determine whether it is safe to delete Oracle Home directories.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.VerifyCleanup(System.Collections.Generic.IEnumerable{System.Int32})">
+            <summary>
+            Verifies that none of the specified PIDs are still running.
+            Returns the list of processes that are still alive (should be empty on success).
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.IsOracleHomeLocked(System.String)">
+            <summary>
+            Returns true when no Oracle process is holding a file handle in the given Oracle Home directory.
+            Used by rollback to confirm the home is safe to delete.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.IOracleProcessLifecycleService.GenerateSessionReport(System.Guid)">
+            <summary>
+            Generates a full process lifecycle report for the specified session.
+            Includes all detected, owned, terminated, and orphaned processes.
             </summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.IPatchExecutionState">
@@ -314,13 +872,125 @@
             <summary>Builds a compliance / security audit from configuration (no secret emission).</summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.ILocalSecretVault">
-            <summary>Persists named secrets using DPAPI (machine-local).</summary>
+             <summary>
+             DPAPI-protected local secret vault.
+            
+             Extended from the original two-method contract to support:
+               • Existence checks and key enumeration (for diagnostics)
+               • Vault-level metadata for DPAPI scope detection
+               • Entry deletion (cleanup after deployment completes)
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ILocalSecretVault.Save(System.Guid,System.String,System.String)">
+            <summary>Persists a named secret for the given deployment using DPAPI encryption.</summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ILocalSecretVault.TryLoad(System.Guid,System.String)">
+            <summary>
+            Retrieves and decrypts a named secret.
+            Returns null when the entry does not exist or decryption fails.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ILocalSecretVault.Exists(System.Guid,System.String)">
+            <summary>Returns true when a vault entry exists for the given name.</summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ILocalSecretVault.ListKeys(System.Guid)">
+            <summary>
+            Returns the list of secret names (aliases) stored for the given deployment.
+            Returns an empty list when no vault file exists.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ILocalSecretVault.Delete(System.Guid,System.String)">
+            <summary>
+            Permanently removes a named secret from the vault.
+            No-op when the entry does not exist.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ILocalSecretVault.GetDiagnostics(System.Guid)">
+            <summary>
+            Returns metadata-only diagnostics for the vault file of the given deployment.
+            NEVER exposes plaintext values or encrypted blobs.
+            </summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.ICertificateMaterialValidator">
             <summary>Validates PKCS#12 / PFX identity material (password never logged).</summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.ISecurityReportWriter">
             <summary>HTML + JSON security / compliance artefacts.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Interfaces.ISecretRehydrationService">
+             <summary>
+             Governs the vault-backed secret lifecycle for recoverable deployment sessions.
+            
+             Purpose: eliminate the R-03 bug where checkpoint persistence redacted
+             runtime secrets with "***REDACTED***", making resumed sessions unable to
+             authenticate against Oracle tools, WLST, RCU, or SSL endpoints.
+            
+             Contract:
+               • PersistAndBind()  — called on every checkpoint save; vaults each secret
+                 and replaces the config field with a vault-reference sentinel.
+               • Rehydrate()       — called on session resume; resolves every sentinel
+                 back to its plaintext value from the DPAPI vault.
+               • ValidateForResume() — called before resume; returns a blocking result
+                 if any required secret cannot be resolved.
+            
+             Invariants:
+               • Plaintext values are NEVER written to checkpoint JSON.
+               • Legacy "***REDACTED***" values produce diagnostic errors, never silent failures.
+               • DPAPI scope mismatches (different user) produce actionable operator warnings.
+               • All diagnostics output aliases and field names only — no secret values.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ISecretRehydrationService.PersistAndBind(WEDM.Domain.Models.DeploymentConfiguration,System.Guid)">
+             <summary>
+             Persists each runtime secret from <paramref name="config"/> to the DPAPI vault
+             under a deterministic alias, then replaces every secret field in <paramref name="config"/>
+             with a vault-reference sentinel of the form "__WEDM_VAULT_REF:{alias}__".
+            
+             Call this on the cloned configuration just before writing the checkpoint to disk.
+             The resulting config object is safe to serialize — it contains no plaintext secrets.
+            
+             Returns one binding per secret field processed.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ISecretRehydrationService.Rehydrate(WEDM.Domain.Models.DeploymentConfiguration,System.Guid)">
+             <summary>
+             Resolves vault-reference sentinels in <paramref name="config"/> back to their
+             plaintext values by decrypting the corresponding DPAPI vault entries.
+            
+             Mutates <paramref name="config"/> in-place: sentinel field values are replaced
+             with the decrypted plaintext.
+            
+             Returns a result describing which secrets were resolved and which were not.
+             Callers must check <see cref="P:WEDM.Domain.Models.SecretRehydrationResult.AllResolved"/> before proceeding.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ISecretRehydrationService.ValidateForResume(WEDM.Domain.Models.DeploymentConfiguration,System.Guid)">
+             <summary>
+             Validates that all required secrets in <paramref name="config"/> can be resolved
+             from the DPAPI vault without actually writing any values into the config.
+            
+             Call before <see cref="M:WEDM.Domain.Interfaces.ISecretRehydrationService.Rehydrate(WEDM.Domain.Models.DeploymentConfiguration,System.Guid)"/> to produce operator-friendly diagnostics and
+             block resume early when recovery is impossible.
+             </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ISecretRehydrationService.HasLegacyPlaceholders(WEDM.Domain.Models.DeploymentConfiguration)">
+            <summary>
+            Returns true when any secret field in <paramref name="config"/> contains a
+            legacy "***REDACTED***" placeholder that cannot be recovered from the vault.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ISecretRehydrationService.HasVaultReferences(WEDM.Domain.Models.DeploymentConfiguration)">
+            <summary>
+            Returns true when any secret field in <paramref name="config"/> contains a
+            vault-reference sentinel written by <see cref="M:WEDM.Domain.Interfaces.ISecretRehydrationService.PersistAndBind(WEDM.Domain.Models.DeploymentConfiguration,System.Guid)"/>.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Interfaces.ISecretRehydrationService.GetDiagnostics(WEDM.Domain.Models.DeploymentConfiguration,System.Guid)">
+            <summary>
+            Returns metadata-only diagnostics describing the current secret state of
+            <paramref name="config"/> and the associated DPAPI vault.
+            NEVER exposes plaintext values, encrypted blobs, or credential material.
+            </summary>
         </member>
         <member name="T:WEDM.Domain.Interfaces.IUpdateManifestReader">
             <summary>Reads update manifests from local paths only (no network).</summary>
@@ -414,6 +1084,26 @@
         <member name="T:WEDM.Domain.Models.OracleLifecycleConfiguration">
             <summary>Deploy-time Oracle lifecycle controls (conflict detection, force clean install, retry isolation).</summary>
         </member>
+        <member name="P:WEDM.Domain.Models.OracleLifecycleConfiguration.DryRunRollback">
+            <summary>
+            When true, Oracle rollback executors log every operation but skip all destructive actions
+            (process termination, home directory deletion, inventory mutation, service removal).
+            Safe to enable on production environments before committing to a real rollback.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleLifecycleConfiguration.ForceKillProcessesOnRollback">
+            <summary>
+            When true, Oracle/JVM processes that do not stop within <see cref="P:WEDM.Domain.Models.OracleLifecycleConfiguration.ProcessShutdownTimeoutSeconds"/>
+            are force-killed (TerminateProcess / kill -9) during rollback.
+            When false, rollback records them as residual warnings and continues.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleLifecycleConfiguration.ProcessShutdownTimeoutSeconds">
+            <summary>
+            Graceful shutdown window (seconds) given to each Oracle process before it is force-killed
+            (only effective when <see cref="P:WEDM.Domain.Models.OracleLifecycleConfiguration.ForceKillProcessesOnRollback"/> is true).
+            </summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentConfiguration">
             <summary>
             Root deployment configuration model.
@@ -442,8 +1132,67 @@
         <member name="P:WEDM.Domain.Models.DeploymentConfiguration.OracleLifecycle">
             <summary>Oracle inventory conflict detection, force clean install, and retry isolation.</summary>
         </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.CurrentInstallerContext">
+            <summary>
+            Per-attempt installer execution context set by <see cref="T:WEDM.Domain.Interfaces.IInstallRetryIsolationService"/>
+            before each OUI step invocation.  Null on first attempt when isolation is disabled.
+            Not serialised — rebuilt fresh on each engine startup / retry.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.OracleRollback">
+            <summary>
+            Oracle rollback report accumulated by Oracle-aware rollback executors during a rollback pass.
+            Each Oracle rollback executor (OracleInstallRollbackExecutor, OracleFormsReportsRollbackExecutor, etc.)
+            writes its per-step results here.  The workflow engine attaches this to
+            <see cref="P:WEDM.Domain.Models.RollbackSummary.OracleDetails"/> after the full rollback pass completes.
+            Null until the first Oracle rollback executor runs.
+            Not serialised — runtime-only.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentConfiguration.EnvironmentContext">
+             <summary>
+             Per-session environment isolation context.
+             Built once at session start by <see cref="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.BuildContext(WEDM.Domain.Models.DeploymentConfiguration,WEDM.Domain.Models.EnvironmentSnapshot)"/>
+             and stored here so that all step executors can access the sanitized JavaHome, PATH, TempRoot, and
+             per-tool isolation preambles without re-reading machine environment state.
+            
+             Null when the environment isolation subsystem is not initialised (e.g. in unit tests that
+             construct DeploymentConfiguration directly without the full DI stack).  Step executors that
+             consume this must guard against null and fall back to ambient environment variables when absent.
+            
+             Not serialised — runtime-only; rebuilt from config on each engine startup.
+             </summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentLockDescriptor">
-            <summary>Machine-wide deployment lock metadata for a guarded Oracle resource.</summary>
+             <summary>
+             Machine-wide deployment lock metadata for a guarded Oracle resource.
+            
+             Lock file format (v2):
+               A single <c>{sanitizedKey}.meta</c> file in the lock directory.
+               The file IS the lock — its existence means the resource is held.
+               Created via atomic provisional-then-rename protocol:
+                 1. Write <c>{sanitizedKey}-{sessionId:N}.meta.tmp</c> (provisional, fully flushed)
+                 2. <c>File.Move(provisional, meta, overwrite: false)</c> — atomic exclusive gate
+               Released by deleting the <c>.meta</c> file.
+            
+             Backward compatibility:
+               v1 locks wrote both an empty <c>.lock</c> sentinel and a <c>.meta</c> data file.
+               <see cref="P:WEDM.Domain.Models.DeploymentLockDescriptor.LockFileVersion"/> == 1 identifies these; reconciliation removes the orphaned
+               <c>.lock</c> file during startup.  The <c>.meta</c> content is otherwise identical.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentLockDescriptor.LockFileVersion">
+            <summary>
+            Lock file format version.
+            1 = legacy (empty .lock + .meta pair).
+            2 = current (single .meta file, atomic provisional-rename protocol).
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.DeploymentLockDescriptor.IsStale(System.TimeSpan)">
+            <summary>True when the heartbeat is older than <paramref name="maxAge"/>.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentLockDescriptor.IsFromDifferentMachine">
+            <summary>True when the lock was acquired by a different machine.</summary>
         </member>
         <member name="T:WEDM.Domain.Models.DeploymentReport">
             <summary>
@@ -463,6 +1212,14 @@
         <member name="P:WEDM.Domain.Models.DeploymentReport.JdkInstallation">
             <summary>JDK installer diagnostics from the InstallJDK step (if executed).</summary>
         </member>
+        <member name="P:WEDM.Domain.Models.DeploymentReport.ProcessLifecycle">
+            <summary>
+            Process lifecycle report for this deployment session.
+            Populated by <c>GenerateDeploymentReportStep</c> when
+            <see cref="T:WEDM.Domain.Interfaces.IOracleProcessLifecycleService"/> is available.
+            Null when the lifecycle service was not registered or returned no data.
+            </summary>
+        </member>
         <member name="T:WEDM.Domain.Models.LogEntry">
             <summary>
             Structured log entry for audit trail.
@@ -474,14 +1231,60 @@
             Written atomically after each workflow checkpoint.
             </summary>
         </member>
+        <member name="P:WEDM.Domain.Models.DeploymentSessionState.SecretReferences">
+             <summary>
+             Vault-backed references for each secret field that was present at checkpoint time.
+             Populated by <see cref="M:WEDM.Domain.Interfaces.ISecretRehydrationService.PersistAndBind(WEDM.Domain.Models.DeploymentConfiguration,System.Guid)"/>
+             and used by diagnostics and operator tooling.
+            
+             These references contain ONLY aliases and metadata — no secret values.
+             The actual encrypted blobs live in the DPAPI vault file, not in this session file.
+            
+             Backward compatibility: old checkpoints without this field deserialize with an empty
+             list, which the rehydration service handles by detecting legacy placeholders and
+             producing actionable remediation guidance.
+             </summary>
+        </member>
         <member name="T:WEDM.Domain.Models.DeploymentStepSnapshot">
-            <summary>JSON-serializable step snapshot for checkpoint restore.</summary>
+            <summary>
+            JSON-serializable step snapshot for checkpoint restore.
+            Includes <see cref="P:WEDM.Domain.Models.DeploymentStepSnapshot.RollbackCompensation"/> so that rollback after a process crash
+            uses the original captured Oracle paths rather than config-derived fallbacks.
+            Old checkpoint files that pre-date compensation serialisation will have
+            <see cref="P:WEDM.Domain.Models.DeploymentStepSnapshot.RollbackCompensation"/> == null, which the rollback executors handle
+            gracefully by falling back to <see cref="T:WEDM.Domain.Models.DeploymentConfiguration"/> paths.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentStepSnapshot.RollbackCompensation">
+            <summary>
+            Persisted Oracle rollback compensation data captured when the step succeeded.
+            Null for non-Oracle steps or when the step has not yet succeeded.
+            When present and this snapshot is restored via <see cref="M:WEDM.Domain.Models.DeploymentStepSnapshot.ToDeploymentStep"/>,
+            the compensation's <see cref="P:WEDM.Domain.Models.OracleRollbackCompensation.Source"/> is changed from
+            <see cref="F:WEDM.Domain.Models.CompensationSource.Runtime"/> to <see cref="F:WEDM.Domain.Models.CompensationSource.Restored"/>
+            so diagnostics can distinguish crash-recovery from live execution.
+            Old checkpoint files without this field deserialise with null — the rollback
+            executors fall back to config-derived paths in that case (<see cref="F:WEDM.Domain.Models.CompensationSource.Fallback"/>).
+            </summary>
         </member>
         <member name="T:WEDM.Domain.Models.DeploymentStep">
             <summary>
             Represents a single atomic step within a deployment workflow.
             Steps are orchestrated by the DeploymentWorkflowEngine and executed in order.
             Each step is independently retryable, loggable, and rollback-aware.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentStep.RollbackCompensation">
+            <summary>
+            Oracle-aware compensation record populated immediately after this step succeeds.
+            Consumed by Oracle rollback executors to precisely reverse the Oracle state created here.
+            Serialised into <see cref="T:WEDM.Domain.Models.DeploymentStepSnapshot"/> at each workflow checkpoint so that
+            rollback after a process crash uses the original captured paths, not config-derived fallbacks.
+            Null when the step has not yet succeeded, the step is not Oracle-specific, or when the
+            step did not produce Oracle state changes requiring compensation.
+            When restored from a checkpoint, <see cref="P:WEDM.Domain.Models.OracleRollbackCompensation.Source"/> is
+            <see cref="F:WEDM.Domain.Models.CompensationSource.Restored"/>; when captured live it is
+            <see cref="F:WEDM.Domain.Models.CompensationSource.Runtime"/>.
             </summary>
         </member>
         <member name="T:WEDM.Domain.Models.StepExecutionResult">
@@ -519,6 +1322,346 @@
         <member name="T:WEDM.Domain.Models.DomainOnlineAutomationConfiguration">
             <summary>WLST online automation after AdminServer is reachable (nmEnroll, hardening, validation).</summary>
         </member>
+        <member name="T:WEDM.Domain.Models.OracleTool">
+            <summary>
+            Identifies which Oracle tool is being launched.
+            Used to select the appropriate environment profile.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.OUI">
+            <summary>Oracle Universal Installer (java -jar installer.jar -silent)</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.WLST">
+            <summary>WebLogic Scripting Tool (wlst.cmd / wlst.sh)</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.OPatch">
+            <summary>Oracle OPatch utility (opatch.bat napply / apply)</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.NodeManager">
+            <summary>WebLogic NodeManager process</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.Forms">
+            <summary>Oracle Forms / Reports installer or runtime</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.OHS">
+            <summary>Oracle HTTP Server (OHS) component</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.JdkInstaller">
+            <summary>JDK installer (.msi / .exe)</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.RCU">
+            <summary>Repository Creation Utility (rcu.bat)</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleTool.Generic">
+            <summary>Generic Oracle tool — apply base isolation only</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.EnvironmentSnapshot">
+             <summary>
+             Point-in-time snapshot of the machine environment variables relevant to Oracle middleware.
+            
+             Captured at three lifecycle points:
+               • <see cref="F:WEDM.Domain.Models.SnapshotKind.PreDeployment"/>  — before any WEDM action runs
+               • <see cref="F:WEDM.Domain.Models.SnapshotKind.PostDeployment"/> — after all steps complete
+               • <see cref="F:WEDM.Domain.Models.SnapshotKind.PostRollback"/>   — after rollback completes
+            
+             Snapshots are compared by <c>EnvironmentDriftDetector</c> to identify
+             unexpected mutations introduced by Oracle tooling or external processes.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.EnvironmentSnapshot.OraclePathSegments">
+            <summary>
+            Returns true when a PATH segment contains a known Oracle/JVM middleware pattern.
+            Used for contamination detection.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.DeploymentEnvironmentContext">
+             <summary>
+             Per-deployment-session runtime environment context.
+             Built once at session start and stored on <see cref="P:WEDM.Domain.Models.DeploymentConfiguration.EnvironmentContext"/>.
+            
+             This is the authoritative source of truth for all environment variables
+             injected into Oracle tool subprocesses. Every tool that WEDM launches reads
+             its environment from here rather than from the ambient machine state.
+            
+             Not serialised — rebuilt from config on each engine startup.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.MiddlewareHome">
+            <summary>Middleware home (WLS_HOME parent). Set after install; empty before.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.OracleHome">
+            <summary>Oracle Home — same as MiddlewareHome for WLS 12c+; may differ for 11g.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.OpatchHome">
+            <summary>OPatch directory under OracleHome.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.InventoryLocation">
+            <summary>Oracle Central Inventory path.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.JavaHome">
+            <summary>Validated JDK home used for all Java invocations in this session.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.JavaExe">
+            <summary>Resolved java.exe path (JavaHome\bin\java.exe).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.TempRoot">
+            <summary>
+            Session-scoped temp root. All WEDM-spawned processes use this as TEMP/TMP.
+            Prevents cross-session contamination from OUI JAR extraction residue.
+            Format: &lt;config.Paths.TempDirectory&gt;\wedm-session-&lt;SessionId[..8]&gt;\
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.WorkingDirectory">
+            <summary>Working directory for OUI invocations (same as TempRoot).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.SanitizedPath">
+            <summary>
+            The sanitized PATH string for this session.
+            Contains only: JavaHome\bin + Windows system dirs.
+            Oracle tool-specific paths are added per-tool by <see cref="T:WEDM.Domain.Models.IsolatedEnvironmentVariables"/>.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.PreDeploymentSnapshot">
+            <summary>Machine environment captured before any deployment action ran.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.ClearClasspath">
+            <summary>When true, CLASSPATH is explicitly cleared for all Oracle tool invocations.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.ClearStaleOracleVars">
+            <summary>When true, stale ORACLE_HOME / WL_HOME / MW_HOME are explicitly unset.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.ClearWlstResiduals">
+            <summary>When true, WLST_HOME / WLST_PROPERTIES are cleared before WLST runs.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.ClearJvmOverrideVars">
+            <summary>When true, JAVA_OPTS / _JAVA_OPTIONS / JVM_ARGS are cleared to prevent heap override.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.DeploymentEnvironmentContext.ClearOpatchResiduals">
+            <summary>When true, OPATCH_DEBUG / related OPatch residuals are cleared.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.IsolatedEnvironmentVariables">
+             <summary>
+             Computed set of environment variables for a specific Oracle tool invocation.
+             Produced by <see cref="M:WEDM.Domain.Interfaces.IEnvironmentIsolationService.BuildIsolatedEnvironment(WEDM.Domain.Models.OracleTool,WEDM.Domain.Models.DeploymentEnvironmentContext)"/>.
+            
+             The <see cref="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.PowerShellPreamble"/> string is the key deliverable — it contains
+             all <c>$env:VAR = 'value'</c> and <c>Remove-Item Env:VAR</c> statements that
+             must be prepended to every PowerShell body that launches an Oracle tool.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.Tool">
+            <summary>The Oracle tool these variables are scoped to.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.SetVariables">
+            <summary>
+            Variables to SET in the child process environment.
+            Key = variable name, Value = value.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.ClearVariables">
+            <summary>
+            Variable names to explicitly REMOVE (unset) in the child process environment.
+            These are variables that must not be present to avoid contaminating the tool.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.PowerShellPreamble">
+            <summary>
+            Ready-to-inject PowerShell block: Remove-Item Env: + $env:VAR = statements.
+            Prepend this to any PowerShell script body before launching an Oracle tool.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.DiagnosticSummary">
+            <summary>Summary description for logging / diagnostics.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.IsolatedEnvironmentVariables.BuiltAt">
+            <summary>When built in this session.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.EnvironmentIsolationReport">
+            <summary>
+            Report produced at the end of a deployment session summarising all environment
+            isolation activity: what was cleared, what was injected, any drift detected.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.EnvironmentIsolationReport.PreambleInjectionCount">
+            <summary>Number of Oracle tool invocations that had the isolation preamble applied.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.EnvironmentIsolationReport.IsolatedToolInvocations">
+            <summary>Tools that were launched with the isolation preamble.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.EnvironmentDriftReport">
+             <summary>
+             Compares two <see cref="T:WEDM.Domain.Models.EnvironmentSnapshot"/> instances and reports unexpected mutations.
+            
+             Populated by <c>EnvironmentDriftDetector</c>.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.EnvironmentDriftReport.HasDrift">
+            <summary>True when any unexpected mutation was detected.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.EnvironmentDriftReport.Findings">
+            <summary>All detected mutations (both expected and unexpected).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.EnvironmentDriftReport.UnexpectedFindings">
+            <summary>Only the unexpected mutations — the operator should review these.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.EnvironmentDriftReport.Summary">
+            <summary>Summary string for log output.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.EnvironmentDriftFinding.IsExpected">
+            <summary>
+            True when this mutation was expected (e.g. WEDM itself set JAVA_HOME post-install).
+            False when it was introduced by an external process or Oracle installer residue.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.EnvironmentValidationResult">
+            <summary>Result of pre-launch environment validation for a given Oracle tool.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.PathAnalysisResult">
+            <summary>
+            Result of PATH analysis: what's clean, what's stale, what's missing.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.InstallerFailureClass">
+            <summary>
+            Classifies the root cause of an OUI installer failure so that the retry
+            engine can apply the correct remediation before the next attempt.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.Unknown">
+            <summary>Failure cause is undetermined (default).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.InventoryConflict">
+            <summary>
+            Oracle Central Inventory already has a registration for the target home
+            (INST-07319 / "Oracle Home already exists").
+            Remediation: remove the stale inventory entry and delete the partial directory.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.LockConflict">
+            <summary>
+            Active inventory lock file prevents OUI from starting.
+            Remediation: wait for the lock owner to finish or remove a stale lock file.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.Timeout">
+            <summary>
+            Installer did not complete within the configured timeout window.
+            Remediation: increase OuiInstallTimeoutMinutes or investigate hanging OUI process.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.PrerequisiteFailure">
+            <summary>
+            Prerequisite check failed (insufficient disk space, missing VC runtime, etc.).
+            Remediation: satisfy the blocking prerequisite before retrying.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.ResponseFileIssue">
+            <summary>
+            OUI could not parse or locate the response file / silent XML.
+            Remediation: regenerate the response file in the isolated temp directory.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.JavaLaunchFailure">
+            <summary>
+            java.exe not found or JVM crashed at startup.
+            Remediation: verify JDK is installed and JAVA_HOME is set correctly.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.ExtractionFailure">
+            <summary>
+            OUI failed to extract the installer JAR (temp directory full or locked).
+            Remediation: purge the extraction directory and retry with a clean temp path.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.InstallerFailureClass.PartialInstall">
+            <summary>
+            OUI wrote partial artifacts to the middleware home but did not complete.
+            Remediation: remove partial directory and inventory entry, then retry.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.InstallerExecutionContext">
+             <summary>
+             Immutable context for a single OUI installer execution attempt.
+            
+             Every retry gets a fresh <see cref="T:WEDM.Domain.Models.InstallerExecutionContext"/> with:
+               • Unique temp, extraction, and log directories (prevents state bleed across retries)
+               • Per-attempt response file and inventory pointer paths
+               • Previous failure classification (informs pre-flight remediation choices)
+               • Cleanup manifest (paths to delete after attempt, success or failure)
+            
+             The context is constructed by <see cref="T:WEDM.Domain.Interfaces.IInstallRetryIsolationService"/>
+             and stored on <see cref="P:WEDM.Domain.Models.DeploymentConfiguration.CurrentInstallerContext"/> before each
+             OUI step is invoked.  OUI steps read it to configure their execution paths; they never
+             create directories or response files from config paths directly when a context is present.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.AttemptNumber">
+            <summary>1-based attempt number (1 = first attempt, 2 = first retry, …).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.UniqueId">
+            <summary>Unique run identifier used to build all per-attempt path names.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.TempDirectory">
+            <summary>
+            Isolated temporary directory for this attempt.
+            Response files, inventory pointer, and scratch files are written here.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.ExtractionDirectory">
+            <summary>
+            Isolated JAR extraction directory.
+            Passed to OUI as <c>-Djava.io.tmpdir</c> to prevent extraction artefacts
+            from contaminating the system or shared temp directory.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.ResponseFilePath">
+            <summary>Absolute path of the generated .rsp response file for this attempt.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.SilentXmlPath">
+            <summary>
+            Absolute path of the WLS 11g silent XML file (null for 12c/14c).
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.InventoryPointerPath">
+            <summary>
+            Absolute path of the oraInst.loc inventory pointer written for this attempt.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.OuiLogDirectory">
+            <summary>
+            Directory where OUI log candidates are expected for this attempt.
+            Used to scope the log scanner's search.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.PreviousFailureClass">
+            <summary>
+            Failure classification from the PREVIOUS attempt (Unknown on first attempt).
+            Used by the pre-flight validator to apply targeted remediation.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerExecutionContext.CleanupPaths">
+            <summary>
+            Paths created by this context that should be purged after the attempt completes
+            (regardless of success/failure) to avoid accumulation of stale extraction artefacts.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.InstallerRetryPreflightResult">
+            <summary>
+            Result of the retry pre-flight validation performed before each OUI attempt.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerRetryPreflightResult.CanProceed">
+            <summary>True when all pre-flight checks passed and OUI may safely launch.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerRetryPreflightResult.Findings">
+            <summary>Human-readable summary of each check performed.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerRetryPreflightResult.BlockingItems">
+            <summary>Items that prevent launch (CanProceed will be false when this is non-empty).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.InstallerRetryPreflightResult.ActionsTaken">
+            <summary>Actions taken during preflight (cleanup performed, etc.).</summary>
+        </member>
         <member name="T:WEDM.Domain.Models.JdkInstallationDiagnostics">
             <summary>Captured diagnostics from a JDK install attempt (reporting + troubleshooting).</summary>
         </member>
@@ -541,6 +1684,327 @@
             <summary>
             Versioned migration session envelope for export/import and resume workflows.
             </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleHomeState">
+            <summary>
+            Describes the observed state of a target Oracle Home path with respect to
+            the Oracle Central Inventory and the local filesystem.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleHomeState.Clean">
+            <summary>Not registered in inventory and folder does not exist — safe to install.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleHomeState.RegisteredAndPresent">
+            <summary>Registered in inventory AND directory structure is complete — already installed.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleHomeState.RegisteredOrphaned">
+            <summary>Registered in inventory but target folder is absent — stale orphaned entry.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleHomeState.PartialInstall">
+            <summary>
+            Target folder exists and appears partially populated (missing key subdirectories
+            such as wlserver/, oracle_common/, or modules/), but is NOT in the inventory.
+            Indicates a previous failed or interrupted OUI session.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleHomeState.UnregisteredInstall">
+            <summary>
+            Target folder exists and contains enough structure to suggest a full install,
+            but is NOT registered in the Central Inventory — unusual state.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleHomeState.InventoryLocked">
+            <summary>A lock file exists inside the inventory directory — active OUI/OPatch operation.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleHomeState.Unknown">
+            <summary>State cannot be determined (e.g., inventory.xml is corrupt or unreadable).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleInventoryValidationResult">
+            <summary>
+            Result of an Oracle inventory pre-install or post-install validation check.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.CanProceed">
+            <summary>True when the inventory state allows OUI installation to proceed safely.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.HomeState">
+            <summary>Observed state of the target Oracle Home path.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.TargetMiddlewareHome">
+            <summary>Absolute path of the target middleware home being validated.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.OracleInventoryPath">
+            <summary>Absolute path of the Oracle Central Inventory directory.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.Snapshot">
+            <summary>Inventory snapshot captured during validation (null if inventory unreadable).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.Findings">
+            <summary>Human-readable summary of each check performed.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.RemediationSteps">
+            <summary>Operator-actionable remediation steps when <see cref="P:WEDM.Domain.Models.OracleInventoryValidationResult.CanProceed"/> is false.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.IsLocked">
+            <summary>True when an inventory lock file was detected.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.OrphanedHomes">
+            <summary>
+            Homes registered in the inventory that reference directories which no longer exist
+            (stale/orphaned registrations that should be cleaned up).
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryValidationResult.ConflictingHomes">
+            <summary>
+            Homes that appear in the inventory at the exact target path or as conflicting entries.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleInventoryRemovalResult">
+            <summary>
+            Result of an Oracle inventory home entry removal operation.
+            Captures before/after snapshots to support audit and rollback verification.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.Success">
+            <summary>True when the removal completed without error.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.Message">
+            <summary>Human-readable summary of the operation.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.BackupPath">
+            <summary>Path to the inventory.xml backup created before mutation (null if not created).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.InventoryXmlPath">
+            <summary>Path to the inventory.xml that was mutated.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.SnapshotBefore">
+            <summary>Inventory snapshot captured immediately before the removal.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.SnapshotAfter">
+            <summary>Inventory snapshot captured immediately after the removal.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.HomeWasRegistered">
+            <summary>True when the target home was actually found and removed from inventory.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.RemovedEntries">
+            <summary>XML element names/LOC values of the removed entries.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleInventoryRemovalResult.Error">
+            <summary>Error message when <see cref="P:WEDM.Domain.Models.OracleInventoryRemovalResult.Success"/> is false.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleInventoryLockDescriptor">
+            <summary>Describes an active Oracle inventory lock file.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.CompensationSource">
+            <summary>
+            Indicates how the <see cref="T:WEDM.Domain.Models.OracleRollbackCompensation"/> record was obtained
+            for a given rollback operation.  Used for diagnostics, audit logging, and the
+            rollback report to distinguish live-captured from checkpoint-restored state.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.CompensationSource.None">
+            <summary>No compensation record was available for this step (non-Oracle step).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.CompensationSource.Runtime">
+            <summary>
+            Compensation was captured live during the current execution session,
+            immediately after the corresponding install step succeeded.
+            This is the normal case for a fresh deployment that hasn't crashed.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.CompensationSource.Restored">
+            <summary>
+            Compensation was restored from a persisted deployment session checkpoint.
+            Indicates the deployment session was resumed after a process crash or restart.
+            Rollback paths are the original install-time paths, not the current config paths.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.CompensationSource.Fallback">
+            <summary>
+            No compensation record was available — rollback is using config-derived paths as a fallback.
+            This occurs when rolling back a session whose checkpoint predates compensation serialisation,
+            or when the step's compensation was never captured (e.g. install step never reached success).
+            Paths may differ from what was actually installed if retry isolation changed TempDirectory.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleRollbackCompensation">
+             <summary>
+             Per-step compensation record populated by each Oracle installer step immediately after it succeeds.
+             Stored on <see cref="P:WEDM.Domain.Models.DeploymentStep.RollbackCompensation"/> so that Oracle rollback executors
+             can precisely reverse the state this specific step created, rather than relying solely on
+             <see cref="T:WEDM.Domain.Models.DeploymentConfiguration"/> paths (which may have changed between steps).
+            
+             Lifecycle:
+               • Created by OUI-launching steps (InstallWebLogic, InstallFormsReports, InstallOHSWebTier, ConfigureJavaHome)
+                 before returning <see cref="M:WEDM.Domain.Models.StepExecutionResult.Ok(System.String,System.TimeSpan)"/>.
+               • Serialised into <see cref="T:WEDM.Domain.Models.DeploymentStepSnapshot"/> at each workflow checkpoint so that
+                 rollback after a process crash uses the original captured paths rather than config-derived fallbacks.
+               • Read by the corresponding Oracle rollback executor during rollback.
+               • Null when the step has not yet succeeded or the step is not Oracle-specific.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.Source">
+            <summary>
+            Indicates how this compensation record was obtained.
+            Set to <see cref="F:WEDM.Domain.Models.CompensationSource.Runtime"/> when captured live.
+            Changed to <see cref="F:WEDM.Domain.Models.CompensationSource.Restored"/> by
+            <see cref="M:WEDM.Domain.Models.DeploymentStepSnapshot.ToDeploymentStep"/> when deserialized from a checkpoint.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.OracleHomePaths">
+            <summary>
+            Oracle Home paths created by this step.
+            For InstallWebLogic: [config.Paths.MiddlewareHome].
+            For InstallOHSWebTier: [OHS_Home path].
+            For InstallFormsReports: [Forms/Reports home path].
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.OracleInventoryPath">
+            <summary>Oracle Central Inventory path used during this install.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.InventorySnapshotBefore">
+            <summary>
+            Oracle Central Inventory state captured immediately before OUI launched.
+            Enables before/after diffs in the rollback report and confirms which homes
+            were registered by this specific step.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.CreatedServiceNames">
+            <summary>
+            Names of Windows services registered by or for this step (as they appear in SCM).
+            For example: "WLS_AdminServer", "WLS NodeManager", "OracleOHSComponent1".
+            Rollback executors stop and remove these before deleting the home directory.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.SetEnvironmentVariableNames">
+            <summary>
+            Machine-level environment variable names set by this step.
+            For ConfigureJavaHome: ["JAVA_HOME"]. For ConfigureRegistry: ["ORACLE_HOME"].
+            Rollback executors remove these (matching the configured value to avoid false removals).
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.CreatedRegistryKeyPaths">
+            <summary>
+            Full HKLM paths of registry keys created by this step.
+            For example: @"SOFTWARE\ORACLE\KEY_WEDM_OracleMW".
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.GeneratedFilePaths">
+            <summary>
+            Response files, silent XML files, inventory pointer files, and other
+            WEDM-generated artefacts written by this step.
+            Cleaned up during rollback after the home directory is removed.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.AppliedPatchIds">
+            <summary>
+            Oracle patch IDs (PSU/RU) applied by this step.
+            When non-empty, rollback guidance includes OPatch-rollback steps.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackCompensation.CapturedAt">
+            <summary>UTC timestamp when this record was captured (immediately after step success).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleRollbackVerificationResult">
+            <summary>
+            Outcome of Oracle environment verification run after rollback completes.
+            Produced by <see cref="T:WEDM.Domain.Models.OracleRollbackVerificationResult"/> (engine) and attached to the
+            deployment report for operator review.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackVerificationResult.IsClean">
+            <summary>
+            True when all targeted Oracle state has been confirmed reversed:
+              • Target home is no longer registered in the Central Inventory
+              • No Oracle inventory lock files remain
+              • No orphan OUI / java-OUI processes detected
+              • Target home directory does not exist
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackVerificationResult.Findings">
+            <summary>
+            All verification findings — both pass (✔) and fail (✗).
+            Always populated for audit completeness even when IsClean = true.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackVerificationResult.RemainingWarnings">
+            <summary>
+            Non-fatal observations that do not prevent future installs but
+            the operator should be aware of (e.g. stale temp files, partial lock files).
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackVerificationResult.ManualActionsRequired">
+            <summary>
+            Actions the operator must complete manually before the environment is
+            considered fully clean and ready for a fresh install attempt.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleRollbackReport">
+             <summary>
+             Oracle-specific rollback narrative surfaced in the deployment report.
+             Aggregated from all Oracle rollback executor runs during a single rollback pass.
+             Attached to <see cref="P:WEDM.Domain.Models.RollbackSummary.OracleDetails"/> for HTML report rendering.
+            
+             Accumulation pattern:
+               Each Oracle rollback executor writes to <see cref="P:WEDM.Domain.Models.DeploymentConfiguration.OracleRollback"/>
+               (initialising it on first write). The workflow engine copies it into the report after rollback.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.DryRunMode">
+            <summary>
+            When true, rollback was run in dry-run mode. All operations were logged
+            but no destructive actions (process termination, filesystem deletion,
+            inventory mutation) were performed.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.RemovedHomes">
+            <summary>Oracle Home directories that were deleted during rollback.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.DetachedInventoryEntries">
+            <summary>Central Inventory entries that were detached (format: "NAME @ PATH").</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.StoppedAndRemovedServices">
+            <summary>Windows services that were stopped and removed from SCM.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.RemovedEnvironmentVariables">
+            <summary>Machine-level environment variables that were removed.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.StoppedProcesses">
+            <summary>Oracle / JVM processes that were stopped (format: "PID processName").</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.RemovedGeneratedFiles">
+            <summary>WEDM-generated files (response files, silent XML, etc.) that were deleted.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.InventoryClean">
+            <summary>True when the Central Inventory is confirmed clean post-rollback.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.NoOuiLocks">
+            <summary>True when no Oracle inventory lock files remain in the inventory directory.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.NoOrphanProcesses">
+            <summary>True when no orphan Oracle/JVM middleware processes remain running.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.RemainingWarnings">
+            <summary>
+            Non-blocking warnings (files locked by the OS, stale temp directories
+            the executor couldn't delete, etc.).
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.ManualActionsRequired">
+            <summary>
+            Actions the operator must complete manually before the environment is
+            ready for a fresh install attempt.
+            Examples: RCU schema drop, OPatch rollback, VC++ uninstall.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.GeneratedAt">
+            <summary>When this report section was generated.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleRollbackReport.IsFullyClean">
+            <summary>True when the environment is considered fully clean for a retry.</summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.OracleRollbackReport.MergeFrom(WEDM.Domain.Models.OracleRollbackReport)">
+            <summary>Merges another report's lists into this one (used when multiple executors write to the same report).</summary>
         </member>
         <member name="T:WEDM.Domain.Models.PatchConfiguration">
             <summary>OPatch / PSU automation configuration.</summary>
@@ -574,6 +2038,219 @@
         </member>
         <member name="P:WEDM.Domain.Models.PayloadAcquisitionConfiguration.UseLocalRepositoryOnly">
             <summary>When true, WEDM uses only the local repository under <see cref="P:WEDM.Domain.Models.DeploymentConfiguration.PayloadBasePath"/> (no downloads).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleProcessKind">
+            <summary>
+            Classification of an Oracle-related process by its functional role.
+            Used to determine the correct shutdown sequence and to protect customer-owned processes.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.OUI">
+            <summary>Oracle Universal Installer java subprocess (-jar fmw_*.jar -silent).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.WLST">
+            <summary>WebLogic Scripting Tool JVM (wlst.cmd / wlst.sh).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.OPatch">
+            <summary>Oracle OPatch JVM (opatch.bat / opatch napply).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.NodeManager">
+            <summary>WebLogic NodeManager daemon process.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.AdminServer">
+            <summary>WebLogic Administration Server (weblogic.Server -name AdminServer).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.ManagedServer">
+            <summary>WebLogic Managed Server (weblogic.Server -name [managed-name]).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.FormsRuntime">
+            <summary>Oracle Forms runtime JVM or installer.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.ReportsRuntime">
+            <summary>Oracle Reports runtime process.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.OHS">
+            <summary>Oracle HTTP Server (httpd / ohs) process.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.JdkInstaller">
+            <summary>JDK installer (java.exe / msiexec) launched by WEDM.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.RCU">
+            <summary>Repository Creation Utility (rcu.bat) JVM.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.OrphanJvm">
+            <summary>
+            Unclassified Java/JVM process with Oracle middleware markers in the command line.
+            May be an orphaned subprocess; treat cautiously.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.OracleProcessKind.Unknown">
+            <summary>
+            Cannot be classified with confidence.
+            MUST NOT be terminated automatically — requires operator review.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ProcessOwnership">
+            <summary>Process ownership classification: who launched this process?</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.ProcessOwnership.WedmOwned">
+            <summary>Launched by this WEDM session — safe to manage.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.ProcessOwnership.WedmPriorSession">
+            <summary>Appears to have been launched by a prior WEDM session — orphan candidate.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.ProcessOwnership.External">
+            <summary>
+            Launched by an external actor (customer deployment, another product).
+            WEDM must NOT terminate external processes automatically.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.ProcessOwnership.Unknown">
+            <summary>Ownership cannot be determined from available evidence.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.TerminationStage">
+            <summary>The stage at which a process was terminated during staged shutdown.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.TerminationStage.AlreadyExited">
+            <summary>Process had already exited before termination was attempted.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.TerminationStage.Graceful">
+            <summary>Process stopped cleanly in response to CloseMainWindow / graceful signal.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.TerminationStage.Escalated">
+            <summary>Process stopped after the graceful timeout expired (escalated kill).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.TerminationStage.ForcedKill">
+            <summary>Process was force-killed including its entire process tree.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.TerminationStage.Failed">
+            <summary>Termination failed — process is still running.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.TerminationStage.Skipped">
+            <summary>Process was skipped because it is externally owned.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleProcessInfo">
+            <summary>
+            Rich information about a single detected Oracle-related process.
+            Extends the basic <see cref="T:WEDM.Domain.Models.OracleProcessDescriptor"/> with ownership, tree, and classification data.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessInfo.DetectedJvmArgs">
+            <summary>Key JVM arguments detected (e.g. -Dweblogic.Name, -Djava.class.path fragment).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessInfo.OracleHomeRefs">
+            <summary>Oracle middleware home references found in command line or JVM args.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessInfo.OwnerSessionId">
+            <summary>Session ID of the WEDM session that owns this process, if known.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessInfo.OwnerAttemptNumber">
+            <summary>Deployment attempt number of the WEDM session that owns this process, if known.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessInfo.Runtime">
+            <summary>How long this process has been running as of detection time.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessInfo.HoldsInventoryLock">
+            <summary>True when this process holds a file lock on a known Oracle inventory path.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessInfo.LockedPaths">
+            <summary>Paths this process appears to have locked (file handles in Oracle directories).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OracleProcessTree">
+            <summary>
+            Parent-child process tree rooted at a single Oracle process.
+            Built by <c>ProcessTreeBuilder</c> via WMI PPID relationships.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessTree.Root">
+            <summary>The root process of this tree.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessTree.Children">
+            <summary>Direct children of the root.</summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.OracleProcessTree.All">
+            <summary>Flat enumeration of all processes in this tree (root + all descendants).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessTree.TotalCount">
+            <summary>Total number of processes in this tree.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OracleProcessTree.HasInventoryLock">
+            <summary>True when any process in the tree holds an Oracle inventory lock.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ProcessOwnershipRecord">
+            <summary>
+            Records metadata about a process launched by WEDM.
+            Persisted in the deployment session state so that crash recovery can
+            identify WEDM-owned orphan processes on next startup.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ProcessLaunchContext">
+            <summary>
+            Context provided to the lifecycle service when WEDM is about to launch an Oracle tool.
+            Used to record the launch and associate subsequent child processes with this session.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ProcessTerminationResult">
+            <summary>Result of terminating a single process during staged shutdown.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ShutdownPolicy">
+            <summary>
+            Shutdown policy for a process lifecycle operation.
+            Controls timeout durations and force-kill behaviour.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.ShutdownPolicy.GracefulTimeout">
+            <summary>Time to wait after sending WM_CLOSE / CloseMainWindow before escalating.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.ShutdownPolicy.EscalationTimeout">
+            <summary>Time to wait after escalation before force-killing the process tree.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.ShutdownPolicy.ForceKillOnEscalationFailure">
+            <summary>When true, force-kill the entire process tree if escalation also fails.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.ShutdownPolicy.SkipExternalProcesses">
+            <summary>When true, skip external-owned processes instead of returning an error.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.ShutdownPolicy.DryRun">
+            <summary>When true, log all actions but perform no actual process operations (dry-run).</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.OrphanReconciliationOptions">
+            <summary>
+            Options for orphan reconciliation (safe cleanup of prior-session Oracle processes).
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OrphanReconciliationOptions.PriorSessionIds">
+            <summary>Session IDs to consider as "prior WEDM sessions" for orphan detection.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OrphanReconciliationOptions.IncludeUnknownJvms">
+            <summary>When true, also consider any unknown Oracle JVM as an orphan candidate.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OrphanReconciliationOptions.AutoTerminateWedmOrphans">
+            <summary>When true, terminate WEDM-owned orphans automatically.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.OrphanReconciliationOptions.SuggestExternalCleanup">
+            <summary>
+            When true, log suggestions for external orphans but do NOT terminate them.
+            External Oracle processes are never killed automatically regardless of this setting.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ProcessLifecycleReport">
+            <summary>
+            Structured report produced by a process lifecycle operation.
+            Covers detection, termination, orphan reconciliation, and verification.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.ProcessClassificationResult">
+            <summary>
+            Classification signal used internally by <c>OracleProcessClassifier</c>.
+            Tracks how confident the classifier is and which evidence led to the classification.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.ProcessClassificationResult.ExtractedOracleHomes">
+            <summary>Oracle middleware home paths extracted from the command line.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.ProcessClassificationResult.ExtractedJvmArgs">
+            <summary>Relevant JVM arguments extracted from the command line.</summary>
         </member>
         <member name="T:WEDM.Domain.Models.WedmReleaseChannelKind">
             <summary>Logical release train for future update feeds (no network transport in core).</summary>
@@ -627,6 +2304,14 @@
         <member name="P:WEDM.Domain.Models.RollbackSummary.Records">
             <summary>Ordered records, one per eligible step (reverse execution order).</summary>
         </member>
+        <member name="P:WEDM.Domain.Models.RollbackSummary.OracleDetails">
+            <summary>
+            Oracle-specific rollback narrative accumulated by Oracle rollback executors during the rollback pass.
+            Populated by <c>DeploymentWorkflowEngine</c> after the full rollback pass completes by copying
+            <c>DeploymentConfiguration.OracleRollback</c>.
+            Null when no Oracle rollback executors ran (e.g. rollback of non-Oracle steps only).
+            </summary>
+        </member>
         <member name="T:WEDM.Domain.Models.RollbackStepRecord">
             <summary>Individual rollback outcome for one deployment step.</summary>
         </member>
@@ -637,6 +2322,265 @@
             <summary>
             One of: <c>RolledBack</c>, <c>ManualInterventionRequired</c>, <c>NoExecutor</c>, <c>Failed</c>, <c>Exception</c>.
             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.RollbackStepRecord.CompensationSource">
+            <summary>
+            How the rollback compensation data was obtained for this step.
+            <see cref="F:WEDM.Domain.Models.CompensationSource.Runtime"/>  — captured live; most precise.
+            <see cref="F:WEDM.Domain.Models.CompensationSource.Restored"/> — recovered from crash-recovery checkpoint.
+            <see cref="F:WEDM.Domain.Models.CompensationSource.Fallback"/> — no compensation available; config paths used.
+            <see cref="F:WEDM.Domain.Models.CompensationSource.None"/>     — step had no Oracle state to reverse.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SecretKind">
+            <summary>
+            Discriminates the category of secret stored in a vault binding.
+            Used for diagnostics and structured auditing — never contains secret values.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretKind.AdminPassword">
+            <summary>WebLogic Administration Server password.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretKind.SysPassword">
+            <summary>Oracle database SYS account password (RCU prerequisite).</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretKind.SchemaPassword">
+            <summary>RCU schema owner password.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretKind.IdentityKeystorePassword">
+            <summary>PKCS#12 identity keystore password.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretKind.TrustKeystorePassword">
+            <summary>Trust keystore password.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretKind.NodeManagerPassword">
+            <summary>NodeManager password.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretKind.JdbcPassword">
+            <summary>JDBC datasource password.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretKind.Generic">
+            <summary>Any other credential not covered by a specific kind.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SecretResolutionSource">
+            <summary>
+            Indicates where a secret value came from during rehydration.
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretResolutionSource.DpapiVault">
+            <summary>Secret was decrypted from the DPAPI vault on this machine/user.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretResolutionSource.ConfigPlaintext">
+            <summary>
+            Secret value is available as runtime plaintext in configuration
+            (no vault reference present — not yet checkpointed).
+            </summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretResolutionSource.NotResolved">
+            <summary>Vault entry was not found — secret cannot be resolved.</summary>
+        </member>
+        <member name="F:WEDM.Domain.Models.SecretResolutionSource.LegacyPlaceholder">
+            <summary>
+            Checkpoint contains a legacy "***REDACTED***" placeholder written by
+            older WEDM versions. Recovery is not possible — operator must re-enter.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SecretReference">
+             <summary>
+             Lightweight reference to a named secret stored in the DPAPI vault.
+             This is the ONLY credential representation persisted in deployment checkpoints.
+            
+             NEVER contains:
+               • Plaintext passwords
+               • Encrypted blobs
+               • Encoded credentials
+               • Certificate material
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretReference.Alias">
+            <summary>
+            Stable vault alias for deterministic recovery.
+            Format: "{category}.{name}" — e.g. "domain.admin.password".
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretReference.DeploymentId">
+            <summary>The deployment configuration ID this secret is bound to.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretReference.Kind">
+            <summary>Semantic kind of the credential.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretReference.Description">
+            <summary>Human-readable description. NEVER contains the secret value.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretReference.CreatedAt">
+            <summary>UTC time this reference was created (when the secret was first vaulted).</summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.SecretReference.ToSentinel(System.String)">
+            <summary>
+            Returns the sentinel string that replaces the plaintext value in a checkpoint.
+            Format: "__WEDM_VAULT_REF:{alias}__"
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.SecretReference.IsSentinel(System.String)">
+            <summary>Returns true when the value is a vault reference sentinel.</summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.SecretReference.ExtractAlias(System.String)">
+            <summary>
+            Extracts the alias from a sentinel string.
+            Returns null if <paramref name="sentinel"/> is not a valid sentinel.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.SecretReference.IsLegacyPlaceholder(System.String)">
+            <summary>
+            Returns true when the value is a legacy redacted placeholder
+            (written by older WEDM that did not support vault references).
+            Such values cannot be recovered from the vault.
+            </summary>
+        </member>
+        <member name="M:WEDM.Domain.Models.SecretReference.NeedsResolution(System.String)">
+            <summary>
+            Returns true when the field contains a value that requires rehydration
+            (sentinel) or that indicates recovery may be impossible (legacy placeholder).
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SecretVaultBinding">
+            <summary>
+            Binding between a <see cref="T:WEDM.Domain.Models.SecretReference"/> and its runtime resolution state.
+            Produced by <see cref="M:WEDM.Domain.Interfaces.ISecretRehydrationService.Rehydrate(WEDM.Domain.Models.DeploymentConfiguration,System.Guid)"/>.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretVaultBinding.Source">
+            <summary>Where the secret value was sourced during rehydration.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretVaultBinding.IsResolved">
+            <summary>True when the secret was successfully resolved and injected into config.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretVaultBinding.ValidationError">
+            <summary>
+            Validation error message when <see cref="P:WEDM.Domain.Models.SecretVaultBinding.IsResolved"/> is false.
+            NEVER contains the secret value, encrypted blob, or any credential material.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SecretRehydrationResult">
+             <summary>
+             Result of a secret rehydration pass over a loaded <see cref="T:WEDM.Domain.Models.DeploymentConfiguration"/>.
+            
+             If <see cref="P:WEDM.Domain.Models.SecretRehydrationResult.AllResolved"/> is false, resume must be blocked.
+             The operator should be shown <see cref="P:WEDM.Domain.Models.SecretRehydrationResult.RemediationSteps"/> to understand
+             what manual action is required.
+             </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationResult.AllResolved">
+            <summary>
+            True only when every required secret field was resolved successfully.
+            A false value means resume MUST be blocked.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationResult.Bindings">
+            <summary>All secret bindings examined during this rehydration pass.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationResult.MissingSecrets">
+            <summary>Aliases of secrets whose vault entries could not be found or decrypted.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationResult.PlaceholderSecrets">
+            <summary>
+            Config field names containing legacy redacted placeholders that cannot
+            be recovered from the vault and require operator re-entry.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationResult.DpapiScopeWarning">
+            <summary>
+            Warning message when the current OS user differs from the vault creator's user.
+            DPAPI CurrentUser scope binds secrets to the encrypting account — decryption
+            under a different user account will fail.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationResult.RemediationSteps">
+            <summary>
+            Human-readable remediation steps for the operator.
+            Populated when <see cref="P:WEDM.Domain.Models.SecretRehydrationResult.AllResolved"/> is false.
+            </summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.VaultDiagnostics">
+            <summary>
+            Metadata-only diagnostics for a DPAPI vault file.
+            Contains NO secret values, encrypted blobs, or credential material.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.VaultFileExists">
+            <summary>True when the vault file exists on disk.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.EntryCount">
+            <summary>Number of entries stored in the vault.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.EntryAliases">
+            <summary>
+            List of stored secret aliases (not values).
+            Example: ["domain.admin.password", "database.sys.password"]
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.VaultOwnerUser">
+            <summary>OS user account that originally created the vault file.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.VaultOwnerMachine">
+            <summary>Machine name where the vault file was created.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.CurrentUser">
+            <summary>The current OS user attempting vault access.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.CurrentMachine">
+            <summary>The current machine name.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.ScopeCompatible">
+            <summary>
+            True when DPAPI scope is likely compatible with the current execution context.
+            False indicates a cross-user or cross-machine resume scenario that will fail decryption.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.ScopeWarning">
+            <summary>Warning message when DPAPI scope may be incompatible.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.VaultCreatedAt">
+            <summary>UTC time the vault file was first created.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.VaultDiagnostics.LastModifiedAt">
+            <summary>UTC time the vault file was last written.</summary>
+        </member>
+        <member name="T:WEDM.Domain.Models.SecretRehydrationDiagnostics">
+            <summary>
+            Structured diagnostics for a deployment's overall secret rehydration state.
+            Used by <see cref="!:WEDM.Application.Services.DeploymentRecoveryDiagnostics"/> and
+            operator tooling to surface recovery status without exposing credential values.
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.TotalSecretFields">
+            <summary>Total number of secret-holding configuration fields examined.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.VaultBoundFields">
+            <summary>Fields that contain vault reference sentinels (safe checkpoint state).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.PlainTextFields">
+            <summary>Fields that contain runtime plaintext (not yet vaulted).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.PlaceholderFields">
+            <summary>Fields that contain legacy "***REDACTED***" placeholders (unrecoverable).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.EmptyFields">
+            <summary>Fields that are empty / null (may be optional).</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.ResumeReady">
+            <summary>True when all required secrets are vault-bound and resolvable.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.Vault">
+            <summary>DPAPI vault metadata for this deployment. Null when no vault file exists.</summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.Issues">
+            <summary>
+            Human-readable issues detected (no secret values, only field names and error types).
+            </summary>
+        </member>
+        <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.RemediationSteps">
+            <summary>Ordered remediation steps for the operator when <see cref="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.ResumeReady"/> is false.</summary>
         </member>
         <member name="T:WEDM.Domain.Models.SecretsStorageMode">
             <summary>Where operational secrets are persisted beyond in-process configuration.</summary>

@@ -100,7 +100,7 @@ public sealed class LockDiagnosticRecord
 }
 
 /// <summary>Structured output from a full lock-directory reconciliation pass.</summary>
-public sealed class LockReconciliationReport
+public sealed record LockReconciliationReport
 {
     public DateTimeOffset RanAt { get; init; } = DateTimeOffset.UtcNow;
     public TimeSpan Duration { get; set; }

@@ -147,13 +147,18 @@ public sealed class CreateDesktopShortcutsStep : IStepExecutor
 
 public sealed class GenerateDeploymentReportStep : IStepExecutor
 {
-    private readonly IDeploymentPlanAccessor _plan;
-    private readonly ILoggingService         _log;
+    private readonly IDeploymentPlanAccessor         _plan;
+    private readonly ILoggingService                 _log;
+    private readonly IOracleProcessLifecycleService? _lifecycle;
 
-    public GenerateDeploymentReportStep(IDeploymentPlanAccessor plan, ILoggingService log)
+    public GenerateDeploymentReportStep(
+        IDeploymentPlanAccessor         plan,
+        ILoggingService                 log,
+        IOracleProcessLifecycleService? lifecycle = null)
     {
-        _plan = plan;
-        _log  = log;
+        _plan      = plan;
+        _log       = log;
+        _lifecycle = lifecycle;
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -186,6 +191,24 @@ public sealed class GenerateDeploymentReportStep : IStepExecutor
                 : null,
             JdkInstallation   = config.Java.LastInstallationDiagnostics
         };
+
+        // ── Process lifecycle report ─────────────────────────────────────────
+        if (_lifecycle is not null)
+        {
+            try
+            {
+                report.ProcessLifecycle = _lifecycle.GenerateSessionReport(config.Id);
+                _log.Info(
+                    $"Process lifecycle report generated: {report.ProcessLifecycle.Summary}",
+                    "Finalization");
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(
+                    $"Could not generate process lifecycle report: {ex.Message}",
+                    "Finalization");
+            }
+        }
 
         var stamp = $"{config.Id:N}";
         var html  = Path.Combine(config.Paths.ReportsDirectory, $"wedm-workflow-{stamp}.html");

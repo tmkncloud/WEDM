@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © WEDM")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0 Stable+0b710b2f037f90e951d6605a0597799e025b9570")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0 Stable+b95dc033962655e559bb070f11a2a067e53d6c4d")]
 [assembly: System.Reflection.AssemblyProductAttribute("WEDM.Bootstrap")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WEDM.Bootstrap")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.1.0.0")]

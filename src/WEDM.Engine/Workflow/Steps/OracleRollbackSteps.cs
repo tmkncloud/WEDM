@@ -3,6 +3,7 @@ using System.ServiceProcess;
 using Microsoft.Win32;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
+using WEDM.Engine.ProcessLifecycle;
 
 namespace WEDM.Engine.Workflow.Steps;
 
@@ -47,20 +48,21 @@ namespace WEDM.Engine.Workflow.Steps;
 /// </summary>
 public sealed class OracleInstallRollbackExecutor : IStepExecutor
 {
-    private readonly ILoggingService         _log;
-    private readonly IOracleInventoryService _inventory;
-    private readonly IOracleProcessManager   _processManager;
-    private readonly OracleRollbackCore      _core;
+    private readonly ILoggingService                    _log;
+    private readonly IOracleInventoryService            _inventory;
+    private readonly IOracleProcessManager              _processManager;
+    private readonly OracleRollbackCore                 _core;
 
     public OracleInstallRollbackExecutor(
-        ILoggingService         log,
-        IOracleInventoryService inventory,
-        IOracleProcessManager   processManager)
+        ILoggingService                    log,
+        IOracleInventoryService            inventory,
+        IOracleProcessManager              processManager,
+        IOracleProcessLifecycleService?    lifecycle = null)
     {
         _log            = log;
         _inventory      = inventory;
         _processManager = processManager;
-        _core           = new OracleRollbackCore(log, inventory, processManager);
+        _core           = new OracleRollbackCore(log, inventory, processManager, lifecycle);
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -229,20 +231,21 @@ public sealed class OracleInstallRollbackExecutor : IStepExecutor
 /// </summary>
 public sealed class OracleFormsReportsRollbackExecutor : IStepExecutor
 {
-    private readonly ILoggingService         _log;
-    private readonly IOracleInventoryService _inventory;
-    private readonly IOracleProcessManager   _processManager;
-    private readonly OracleRollbackCore      _core;
+    private readonly ILoggingService                    _log;
+    private readonly IOracleInventoryService            _inventory;
+    private readonly IOracleProcessManager              _processManager;
+    private readonly OracleRollbackCore                 _core;
 
     public OracleFormsReportsRollbackExecutor(
-        ILoggingService         log,
-        IOracleInventoryService inventory,
-        IOracleProcessManager   processManager)
+        ILoggingService                    log,
+        IOracleInventoryService            inventory,
+        IOracleProcessManager              processManager,
+        IOracleProcessLifecycleService?    lifecycle = null)
     {
         _log            = log;
         _inventory      = inventory;
         _processManager = processManager;
-        _core           = new OracleRollbackCore(log, inventory, processManager);
+        _core           = new OracleRollbackCore(log, inventory, processManager, lifecycle);
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -395,20 +398,21 @@ public sealed class OracleFormsReportsRollbackExecutor : IStepExecutor
 /// </summary>
 public sealed class OracleOhsWebTierRollbackExecutor : IStepExecutor
 {
-    private readonly ILoggingService         _log;
-    private readonly IOracleInventoryService _inventory;
-    private readonly IOracleProcessManager   _processManager;
-    private readonly OracleRollbackCore      _core;
+    private readonly ILoggingService                    _log;
+    private readonly IOracleInventoryService            _inventory;
+    private readonly IOracleProcessManager              _processManager;
+    private readonly OracleRollbackCore                 _core;
 
     public OracleOhsWebTierRollbackExecutor(
-        ILoggingService         log,
-        IOracleInventoryService inventory,
-        IOracleProcessManager   processManager)
+        ILoggingService                    log,
+        IOracleInventoryService            inventory,
+        IOracleProcessManager              processManager,
+        IOracleProcessLifecycleService?    lifecycle = null)
     {
         _log            = log;
         _inventory      = inventory;
         _processManager = processManager;
-        _core           = new OracleRollbackCore(log, inventory, processManager);
+        _core           = new OracleRollbackCore(log, inventory, processManager, lifecycle);
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -862,18 +866,21 @@ public static class OracleRollbackVerificationService
 /// </summary>
 public sealed class OracleRollbackCore
 {
-    private readonly ILoggingService         _log;
-    private readonly IOracleInventoryService _inventory;
-    private readonly IOracleProcessManager   _processManager;
+    private readonly ILoggingService                 _log;
+    private readonly IOracleInventoryService         _inventory;
+    private readonly IOracleProcessManager           _processManager;
+    private readonly IOracleProcessLifecycleService? _lifecycle;
 
     public OracleRollbackCore(
-        ILoggingService         log,
-        IOracleInventoryService inventory,
-        IOracleProcessManager   processManager)
+        ILoggingService                 log,
+        IOracleInventoryService         inventory,
+        IOracleProcessManager           processManager,
+        IOracleProcessLifecycleService? lifecycle = null)
     {
         _log            = log;
         _inventory      = inventory;
         _processManager = processManager;
+        _lifecycle      = lifecycle;
     }
 
     // ── Process Management ────────────────────────────────────────────────────
@@ -884,7 +891,78 @@ public sealed class OracleRollbackCore
         string                  tag,
         CancellationToken       cancellationToken)
     {
-        var summary  = new ProcessStopSummary();
+        var summary = new ProcessStopSummary();
+
+        // Prefer IOracleProcessLifecycleService when available — it provides staged shutdown,
+        // orphan detection, external-process protection, and structured diagnostics.
+        if (_lifecycle is not null)
+        {
+            var oracleHome = config.Paths.MiddlewareHome;
+            var sessionId  = config.Id;
+
+            _log.Info(
+                $"{tag}: Using IOracleProcessLifecycleService.PrepareForRollbackAsync" +
+                (dryRun ? " [DRY-RUN — skipped]" : $" for '{oracleHome}'."),
+                "Rollback");
+
+            if (dryRun)
+            {
+                summary.Messages.Add(
+                    $"[DRY-RUN] Would call PrepareForRollbackAsync for Oracle home '{oracleHome}'.");
+                return summary;
+            }
+
+            try
+            {
+                var policy = new ShutdownPolicy
+                {
+                    GracefulTimeout              = TimeSpan.FromSeconds(
+                        config.OracleLifecycle.ProcessShutdownTimeoutSeconds),
+                    EscalationTimeout            = TimeSpan.FromSeconds(10),
+                    ForceKillOnEscalationFailure = config.OracleLifecycle.ForceKillProcessesOnRollback,
+                    SkipExternalProcesses        = true,
+                };
+
+                var report = await _lifecycle.PrepareForRollbackAsync(
+                    oracleHome, sessionId, policy, cancellationToken).ConfigureAwait(false);
+
+                summary.Messages.Add($"Process lifecycle cleanup: {report.Summary}");
+                summary.StoppedDescriptions.AddRange(
+                    report.TerminationResults
+                        .Where(r => r.Succeeded && r.Stage != TerminationStage.Skipped)
+                        .Select(r => $"PID {r.ProcessId} {r.ProcessName} [{r.Stage}]"));
+
+                if (report.ExternalOrphans.Count > 0)
+                    summary.Messages.Add(
+                        $"⚠ {report.ExternalOrphans.Count} external Oracle process(es) detected " +
+                        "but not stopped — operator review required.");
+
+                if (!report.AllCleaned && report.StillRunning.Count > 0)
+                {
+                    var stillList = string.Join(", ",
+                        report.StillRunning.Select(p => $"{p.ProcessName}(PID={p.ProcessId})"));
+                    summary.Messages.Add(
+                        $"⚠ {report.StillRunning.Count} process(es) still running after cleanup: {stillList}");
+                    _log.Warning(
+                        $"{tag}: {report.StillRunning.Count} process(es) still running: {stillList}",
+                        "Rollback");
+                }
+
+                foreach (var action in report.ManualActionItems)
+                    summary.Messages.Add($"⚠ Manual action: {action}");
+
+                return summary;
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(
+                    $"{tag}: PrepareForRollbackAsync failed ({ex.Message}) — falling back to IOracleProcessManager.",
+                    "Rollback");
+                // Fall through to legacy path
+            }
+        }
+
+        // Legacy fallback: IOracleProcessManager
         var detected = _processManager.DetectMiddlewareProcesses();
 
         if (detected.Count == 0)
@@ -907,10 +985,10 @@ public sealed class OracleRollbackCore
             return summary;
         }
 
-        var timeout  = TimeSpan.FromSeconds(config.OracleLifecycle.ProcessShutdownTimeoutSeconds);
-        var force    = config.OracleLifecycle.ForceKillProcessesOnRollback;
-        var result   = await _processManager.StopProcessesAsync(
-            detected, force, timeout, cancellationToken);
+        var timeout = TimeSpan.FromSeconds(config.OracleLifecycle.ProcessShutdownTimeoutSeconds);
+        var force   = config.OracleLifecycle.ForceKillProcessesOnRollback;
+        var result  = await _processManager.StopProcessesAsync(
+            detected, force, timeout, cancellationToken).ConfigureAwait(false);
 
         foreach (var msg in result.Messages)
             summary.Messages.Add(msg);

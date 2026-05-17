@@ -9,6 +9,7 @@ using WEDM.Engine.Execution;
 using WEDM.Engine.Transformation;
 using WEDM.Engine.EnvironmentIsolation;
 using WEDM.Engine.Opatch;
+using WEDM.Engine.ProcessLifecycle;
 using WEDM.Engine.PowerShell;
 using WEDM.Engine.ResponseFiles;
 using WEDM.Engine.Payload;
@@ -127,6 +128,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IPatchReportWriter, PatchReportWriter>();
 
         services.AddSingleton<ILocalSecretVault, DpapiFileSecretVault>();
+        services.AddSingleton<ISecretRehydrationService, SecretRehydrationService>();
         services.AddSingleton<ISecurityComplianceEvaluator, SecurityComplianceEvaluator>();
         services.AddSingleton<ICertificateMaterialValidator, CertificatePkcs12Validator>();
         services.AddSingleton<ISecurityReportWriter, SecurityReportWriter>();
@@ -174,6 +176,9 @@ public partial class App : System.Windows.Application
         // IOracleInventoryService: full install lifecycle (pre/post validation, XML mutation, rollback)
         services.AddSingleton<IOracleInventoryService, WEDM.Engine.OracleInventory.OracleInventoryService>();
         services.AddSingleton<IOracleProcessManager, OracleProcessManager>();
+        // Process lifecycle — staged shutdown, orphan detection, rollback preparation
+        services.AddSingleton<ProcessOwnershipTracker>();
+        services.AddSingleton<IOracleProcessLifecycleService, OracleProcessLifecycleService>();
         services.AddSingleton<IOracleHomeValidator, OracleHomeValidator>();
         services.AddSingleton<IOracleCleanupService, OracleCleanupService>();
         services.AddSingleton<IEnvironmentDiscoveryService, EnvironmentDiscoveryService>();

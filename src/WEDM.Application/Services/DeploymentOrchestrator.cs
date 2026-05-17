@@ -26,6 +26,7 @@ public sealed class DeploymentOrchestrator : IDisposable
     private readonly IDeploymentSessionStore         _sessions;
     private readonly IDeploymentLockService            _locks;
     private readonly DeploymentSecretLifecycleService  _secretLifecycle;
+    private readonly ISecretRehydrationService?        _rehydration;
     private bool _disposed;
 
     // ── Public events (marshalled; subscribers need not dispatch) ─────────────
@@ -44,7 +45,8 @@ public sealed class DeploymentOrchestrator : IDisposable
         IOperationalTelemetrySink telemetry,
         IDeploymentSessionStore sessions,
         IDeploymentLockService locks,
-        DeploymentSecretLifecycleService secretLifecycle)
+        DeploymentSecretLifecycleService secretLifecycle,
+        ISecretRehydrationService? rehydration = null)
     {
         _workflow        = workflow;
         _validator       = validator;
@@ -54,6 +56,7 @@ public sealed class DeploymentOrchestrator : IDisposable
         _sessions        = sessions;
         _locks           = locks;
         _secretLifecycle = secretLifecycle;
+        _rehydration     = rehydration;
 
         // Bridge engine events to orchestrator events
         _workflow.StepStarted    += OnStepStarted;
@@ -74,6 +77,42 @@ public sealed class DeploymentOrchestrator : IDisposable
         if (!state.CanResume)
             throw new InvalidOperationException(
                 $"Session {sessionId:N} is not resumable (status: {state.LifecycleStatus}).");
+
+        // ── R-03: Secret rehydration gate ──────────────────────────────────────
+        // Validate that all vault-referenced secrets can be resolved BEFORE allowing
+        // the workflow to proceed. Without this gate, Oracle steps (WLST, RCU, SSL,
+        // database) fail silently with authentication errors after resume.
+        if (_rehydration is not null)
+        {
+            var validation = _rehydration.ValidateForResume(state.Configuration, state.SessionId);
+            if (!validation.AllResolved)
+            {
+                var issueCount   = validation.MissingSecrets.Count + validation.PlaceholderSecrets.Count;
+                var summary      = $"Cannot resume session {sessionId:N}: {issueCount} secret(s) could not be resolved.";
+                var remediation  = string.Join(" | ", validation.RemediationSteps.Take(3));
+
+                _log.Error($"{summary} {remediation}", category: "Recovery");
+
+                if (validation.DpapiScopeWarning is not null)
+                    _log.Warning($"DPAPI scope warning: {validation.DpapiScopeWarning}", category: "Recovery");
+
+                foreach (var missing in validation.MissingSecrets)
+                    _log.Warning($"Missing vault secret: alias='{missing}'", category: "Recovery");
+
+                foreach (var placeholder in validation.PlaceholderSecrets)
+                    _log.Warning($"Legacy placeholder detected: field='{placeholder}'", category: "Recovery");
+
+                throw new InvalidOperationException(
+                    $"{summary}\n\nRemediation:\n{string.Join("\n", validation.RemediationSteps)}");
+            }
+
+            // All secrets validated — rehydrate: replace sentinels with decrypted plaintext.
+            _rehydration.Rehydrate(state.Configuration, state.SessionId);
+            _log.Info(
+                $"Secret rehydration complete for session {sessionId:N}: " +
+                $"{validation.Bindings.Count(b => b.IsResolved)} secret(s) restored from DPAPI vault.",
+                "Recovery");
+        }
 
         _log.Info($"Resuming deployment session {sessionId:N} from checkpoint {state.LastCheckpointAt:u}.", "DeploymentOrchestrator");
         return await ExecuteDeploymentCoreAsync(state.Configuration, ct, resumeState: state).ConfigureAwait(false);

@@ -77,6 +77,21 @@ public sealed class DeploymentSessionState
     [JsonPropertyName("lockToken")]
     public string? LockToken { get; set; }
 
+    /// <summary>
+    /// Vault-backed references for each secret field that was present at checkpoint time.
+    /// Populated by <see cref="WEDM.Domain.Interfaces.ISecretRehydrationService.PersistAndBind"/>
+    /// and used by diagnostics and operator tooling.
+    ///
+    /// These references contain ONLY aliases and metadata — no secret values.
+    /// The actual encrypted blobs live in the DPAPI vault file, not in this session file.
+    ///
+    /// Backward compatibility: old checkpoints without this field deserialize with an empty
+    /// list, which the rehydration service handles by detecting legacy placeholders and
+    /// producing actionable remediation guidance.
+    /// </summary>
+    [JsonPropertyName("secretReferences")]
+    public List<SecretReference> SecretReferences { get; set; } = [];
+
     public bool CanResume =>
         LifecycleStatus is DeploymentLifecycleStatus.InProgress
             or DeploymentLifecycleStatus.Interrupted

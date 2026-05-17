@@ -42,6 +42,14 @@ public sealed class DeploymentReport
     /// <summary>JDK installer diagnostics from the InstallJDK step (if executed).</summary>
     public JdkInstallationDiagnostics? JdkInstallation { get; set; }
 
+    /// <summary>
+    /// Process lifecycle report for this deployment session.
+    /// Populated by <c>GenerateDeploymentReportStep</c> when
+    /// <see cref="WEDM.Domain.Interfaces.IOracleProcessLifecycleService"/> is available.
+    /// Null when the lifecycle service was not registered or returned no data.
+    /// </summary>
+    public ProcessLifecycleReport? ProcessLifecycle { get; set; }
+
     public int TotalSteps     => Steps.Count;
     public int StepsSucceeded => Steps.Count(s => s.Status == StepStatus.Succeeded);
     public int StepsFailed    => Steps.Count(s => s.Status == StepStatus.Failed);
