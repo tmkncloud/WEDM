@@ -276,8 +276,8 @@ public sealed class VaultDiagnostics
 
 /// <summary>
 /// Structured diagnostics for a deployment's overall secret rehydration state.
-/// Used by <see cref="WEDM.Application.Services.DeploymentRecoveryDiagnostics"/> and
-/// operator tooling to surface recovery status without exposing credential values.
+/// Used by deployment recovery diagnostics and operator tooling to surface recovery status
+/// without exposing credential values.
 /// </summary>
 public sealed class SecretRehydrationDiagnostics
 {

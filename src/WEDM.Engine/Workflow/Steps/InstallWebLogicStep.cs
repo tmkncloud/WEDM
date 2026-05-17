@@ -107,7 +107,7 @@ public sealed class InstallWebLogicStep : IStepExecutor
             _log.Error(
                 $"Oracle inventory pre-install validation blocked OUI launch. State={preCheck.HomeState}. " +
                 $"Findings: {findings}",
-                "Install.WLS");
+                category: "Install.WLS");
             RecordFailureClass(config, InstallerFailureClass.InventoryConflict);
             return StepExecutionResult.Fail(
                 $"Oracle inventory pre-install check failed (state: {preCheck.HomeState}). " +
@@ -254,7 +254,7 @@ exit $exitCode
         {
             // Filesystem structure is incomplete even though OUI exited 0 — treat as failure
             var findings = string.Join(" | ", postCheck.Findings);
-            _log.Error($"Oracle inventory post-install validation failed: {findings}", "Install.WLS");
+            _log.Error($"Oracle inventory post-install validation failed: {findings}", category: "Install.WLS");
             return StepExecutionResult.Fail(
                 $"OUI exited successfully but post-install validation failed: {findings}", exitCode: -11);
         }

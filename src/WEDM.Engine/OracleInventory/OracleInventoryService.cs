@@ -590,7 +590,7 @@ public sealed class OracleInventoryService : IOracleInventoryService
             {
                 _log.Error(
                     $"RemoveHomeEntry: VERIFICATION FAILED — '{middlewareHome}' still appears in inventory after removal.",
-                    "OracleInventory");
+                    category: "OracleInventory");
                 return OracleInventoryRemovalResult.Failed(
                     $"Verification failed: '{middlewareHome}' still registered after removal attempt. " +
                     $"Backup preserved at: '{backupPath}'.",

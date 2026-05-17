@@ -63,20 +63,21 @@ file sealed class FakeOracleProcessManager : IOracleProcessManager
     public IReadOnlyList<OracleProcessDescriptor> DetectMiddlewareProcesses()
         => ProcessesToReturn.AsReadOnly();
 
-    public Task<OracleProcessStopResult> StopProcessesAsync(
-        IReadOnlyList<OracleProcessDescriptor> processes,
-        bool force,
-        TimeSpan timeout,
+    public Task<ProcessStopResult> StopProcessesAsync(
+        IEnumerable<OracleProcessDescriptor> processes,
+        bool forceAfterTimeout,
+        TimeSpan gracefulTimeout,
         CancellationToken cancellationToken = default)
     {
         StopCallCount++;
-        var stopped = StopShouldFail ? 0 : processes.Count;
-        var failed  = StopShouldFail ? processes.Count : 0;
-        return Task.FromResult(new OracleProcessStopResult
+        var list    = processes.ToList();
+        var stopped = StopShouldFail ? 0 : list.Count;
+        var failed  = StopShouldFail ? list.Count : 0;
+        return Task.FromResult(new ProcessStopResult
         {
             StoppedCount = stopped,
             FailedCount  = failed,
-            Messages     = processes.Select(p => $"Stopped: {p.ProcessName}({p.ProcessId})").ToList()
+            Messages     = list.Select(p => $"Stopped: {p.ProcessName}({p.ProcessId})").ToList()
         });
     }
 }

@@ -2,6 +2,7 @@ using FluentAssertions;
 using WEDM.Domain.Models;
 using WEDM.Engine.OracleInventory;
 using WEDM.Engine.Tests.Fakes;
+using Xunit;
 
 namespace WEDM.Engine.Tests.OracleInventory;
 

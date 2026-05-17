@@ -48,8 +48,9 @@ public static class ProcessTreeBuilder
 
         foreach (var pid in rootPids.Distinct())
         {
-            ownership?.TryGetValue(pid, out var record);
-            var tree = BuildTree(pid, allProcesses, depth: 0, maxDepth: 10, record);
+            ProcessOwnershipRecord? ownershipRecord = null;
+            ownership?.TryGetValue(pid, out ownershipRecord);
+            var tree = BuildTree(pid, allProcesses, depth: 0, maxDepth: 10, ownershipRecord);
             if (tree is not null)
                 trees.Add(tree);
         }

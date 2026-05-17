@@ -12,7 +12,7 @@ namespace WEDM.Engine.ProcessLifecycle;
 /// Thread-safety: all public methods are protected by a reader-writer lock.
 /// The tracker is designed to be registered as a singleton and used from multiple threads.
 /// </summary>
-public sealed class ProcessOwnershipTracker
+public class ProcessOwnershipTracker
 {
     // PID → ownership record for all known WEDM-launched processes
     private readonly Dictionary<int, ProcessOwnershipRecord> _byPid =
@@ -169,7 +169,7 @@ public sealed class ProcessOwnershipTracker
         {
             return _bySession.TryGetValue(sessionId, out var pids)
                 ? pids.ToList().AsReadOnly()
-                : [];
+                : Array.Empty<int>();
         }
         finally
         {

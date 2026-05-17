@@ -115,7 +115,7 @@ public enum TerminationStage
 /// Rich information about a single detected Oracle-related process.
 /// Extends the basic <see cref="OracleProcessDescriptor"/> with ownership, tree, and classification data.
 /// </summary>
-public sealed class OracleProcessInfo
+public sealed record OracleProcessInfo
 {
     // ── Identity ──────────────────────────────────────────────────────────────
     public int    ProcessId       { get; init; }

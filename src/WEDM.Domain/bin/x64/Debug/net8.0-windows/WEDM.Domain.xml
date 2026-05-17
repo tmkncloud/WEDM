@@ -2549,8 +2549,8 @@
         <member name="T:WEDM.Domain.Models.SecretRehydrationDiagnostics">
             <summary>
             Structured diagnostics for a deployment's overall secret rehydration state.
-            Used by <see cref="!:WEDM.Application.Services.DeploymentRecoveryDiagnostics"/> and
-            operator tooling to surface recovery status without exposing credential values.
+            Used by deployment recovery diagnostics and operator tooling to surface recovery status
+            without exposing credential values.
             </summary>
         </member>
         <member name="P:WEDM.Domain.Models.SecretRehydrationDiagnostics.TotalSecretFields">
