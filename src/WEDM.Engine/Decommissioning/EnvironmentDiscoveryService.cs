@@ -4,6 +4,7 @@ using System.ServiceProcess;
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Discovery.Parsers;
+using WEDM.Engine.OracleInventory;
 using WEDM.Infrastructure.Registry;
 
 namespace WEDM.Engine.Decommissioning;
@@ -188,8 +189,11 @@ public sealed class EnvironmentDiscoveryService : IEnvironmentDiscoveryService
         topology.CentralInventory = new OracleInventorySnapshot
         {
             InventoryLoc      = analysis.InventoryRoot,
+            InventoryState    = analysis.State,
             InventoryHealthy  = analysis.XmlValid && !analysis.LockPresent,
-            InventoryWarning  = string.Join("; ", analysis.CorruptionWarnings),
+            InventoryWarning  = analysis.State == OracleCentralInventoryState.Empty
+                ? OracleCentralInventoryClassifier.EmptyInventoryMessage
+                : string.Join("; ", analysis.CorruptionWarnings),
             OracleHomes       = analysis.Homes.Select(h => new OracleHomeDescriptor { Path = h.Path, Name = h.Name }).ToList(),
         };
         topology.InventoryHomes.AddRange(analysis.Homes);

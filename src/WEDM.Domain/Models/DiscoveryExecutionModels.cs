@@ -75,6 +75,9 @@ public sealed class OracleInventorySnapshot
     [JsonPropertyName("inventoryHealthy")]
     public bool InventoryHealthy { get; set; } = true;
 
+    [JsonPropertyName("inventoryState")]
+    public OracleCentralInventoryState InventoryState { get; set; } = OracleCentralInventoryState.Healthy;
+
     [JsonPropertyName("inventoryWarning")]
     public string? InventoryWarning { get; set; }
 

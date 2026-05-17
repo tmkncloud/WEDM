@@ -39,6 +39,34 @@ public enum OracleHomeState
     Unknown = 99,
 }
 
+/// <summary>
+/// Observed state of the Oracle Central Inventory (oraInventory / ContentsXML/inventory.xml).
+/// Distinct from <see cref="OracleHomeState"/>, which describes a single middleware home path.
+/// </summary>
+public enum OracleCentralInventoryState
+{
+    /// <summary>Central inventory.xml is absent — installation cannot proceed safely.</summary>
+    Missing = 0,
+
+    /// <summary>inventory.xml exists but is malformed or unreadable.</summary>
+    Corrupted = 1,
+
+    /// <summary>Valid inventory.xml with an empty HOME_LIST — clean-install bootstrap.</summary>
+    Empty = 2,
+
+    /// <summary>Valid inventory with registered homes that all resolve on disk.</summary>
+    Healthy = 3,
+
+    /// <summary>Valid inventory where every registered home path is missing on disk.</summary>
+    Stale = 4,
+
+    /// <summary>Active OUI lock files are present under the inventory directory.</summary>
+    Locked = 5,
+
+    /// <summary>Valid inventory with a mix of present and missing registered home paths.</summary>
+    Partial = 6,
+}
+
 // ── Validation results ────────────────────────────────────────────────────────
 
 /// <summary>

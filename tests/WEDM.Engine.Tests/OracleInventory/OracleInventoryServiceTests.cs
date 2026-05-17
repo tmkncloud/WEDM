@@ -124,7 +124,8 @@ public sealed class OracleInventoryServiceTests : IDisposable
         var snapshot = _sut.ReadSnapshot(invPath);
 
         snapshot.Should().NotBeNull();
-        snapshot!.InventoryHealthy.Should().BeFalse();
+        snapshot!.InventoryState.Should().Be(OracleCentralInventoryState.Missing);
+        snapshot.InventoryHealthy.Should().BeFalse();
         snapshot.OracleHomes.Should().BeEmpty();
     }
 

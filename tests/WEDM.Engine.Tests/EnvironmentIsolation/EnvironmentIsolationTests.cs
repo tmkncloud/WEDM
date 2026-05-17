@@ -93,7 +93,7 @@ public sealed class PathSanitizerTests
     public void Build_PrependPaths_AppearedFirst()
     {
         var machine = @"C:\Windows\System32";
-        var prepend = [@"C:\Java\jdk17\bin"];
+        var prepend = new[] { @"C:\Java\jdk17\bin" };
         var result  = PathSanitizer.Build(machine, prepend);
         result.Should().StartWith(@"C:\Java\jdk17\bin");
     }
@@ -151,7 +151,7 @@ public sealed class PathSanitizerTests
     public void Analyse_MissingRequired_Reported()
     {
         var path     = @"C:\Windows\System32";
-        var required = [@"C:\Java\jdk17\bin"];
+        var required = new[] { @"C:\Java\jdk17\bin" };
         var r        = PathSanitizer.Analyse(path, required);
         r.HasMissingRequired.Should().BeTrue();
         r.MissingRequired.Should().Contain(@"C:\Java\jdk17\bin");

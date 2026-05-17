@@ -1,5 +1,6 @@
 using System.Xml.Linq;
 using WEDM.Domain.Models;
+using WEDM.Engine.OracleInventory;
 
 namespace WEDM.Engine.Discovery.Parsers;
 
@@ -10,8 +11,9 @@ public static class OracleInventoryXmlParser
         var snapshot = new OracleInventorySnapshot { InventoryLoc = Path.GetDirectoryName(inventoryXmlPath) };
         if (!File.Exists(inventoryXmlPath))
         {
-            snapshot.InventoryHealthy = false;
-            snapshot.InventoryWarning = $"inventory.xml not found at {inventoryXmlPath}";
+            snapshot.InventoryState    = OracleCentralInventoryState.Missing;
+            snapshot.InventoryHealthy  = false;
+            snapshot.InventoryWarning  = $"inventory.xml not found at {inventoryXmlPath}";
             return snapshot;
         }
 
@@ -39,12 +41,21 @@ public static class OracleInventoryXmlParser
                 });
             }
 
-            snapshot.InventoryHealthy = snapshot.OracleHomes.Count > 0;
-            if (!snapshot.InventoryHealthy)
-                snapshot.InventoryWarning = "No Oracle homes registered in central inventory.";
+            if (snapshot.OracleHomes.Count == 0)
+            {
+                snapshot.InventoryState   = OracleCentralInventoryState.Empty;
+                snapshot.InventoryHealthy = true;
+                snapshot.InventoryWarning = OracleCentralInventoryClassifier.EmptyInventoryMessage;
+            }
+            else
+            {
+                snapshot.InventoryState   = OracleCentralInventoryState.Healthy;
+                snapshot.InventoryHealthy = true;
+            }
         }
         catch (Exception ex)
         {
+            snapshot.InventoryState   = OracleCentralInventoryState.Corrupted;
             snapshot.InventoryHealthy = false;
             snapshot.InventoryWarning = ex.Message;
         }

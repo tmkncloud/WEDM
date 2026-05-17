@@ -449,6 +449,9 @@ public sealed class PrerequisiteValidator : IValidationEngine
             var remediation = finding.Remediation ?? string.Empty;
             switch (finding.Severity)
             {
+                case OracleConflictSeverity.Informational:
+                    result.Pass($"OracleLifecycle.{finding.Code}", finding.Message);
+                    break;
                 case OracleConflictSeverity.Blocking when !config.OracleLifecycle.ForceCleanInstall:
                     result.Fatal($"OracleLifecycle.{finding.Code}", finding.Message, remediation);
                     break;

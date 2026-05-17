@@ -50,12 +50,12 @@ public static class DiscoveryInsightBuilder
                 CompatibilitySeverity.High));
         }
 
-        if (!inventory.InventoryHealthy && inventory.OracleHomes.Count == 0)
+        if (inventory.InventoryState is OracleCentralInventoryState.Missing or OracleCentralInventoryState.Corrupted)
         {
             findings.Add(Insight(
                 CompatibilityRiskCategory.General,
                 "Oracle inventory incomplete",
-                "oraInventory could not be fully resolved — patch analysis may be incomplete.",
+                inventory.InventoryWarning ?? "oraInventory could not be fully resolved — patch analysis may be incomplete.",
                 CompatibilitySeverity.Low));
         }
 

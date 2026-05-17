@@ -46,7 +46,8 @@ public sealed class DecommissionSubsystemTests
         var log = new FakeLoggingService();
         var rsp = new WEDM.Engine.ResponseFiles.ResponseFileGenerator(new FakeLoggingService());
         var cleanup = new OracleCleanupService(log);
-        var isolation = new InstallRetryIsolationService(log, rsp, cleanup);
+        var inventory = new WEDM.Engine.OracleInventory.OracleInventoryService(log);
+        var isolation = new InstallRetryIsolationService(log, rsp, cleanup, inventory);
 
         var config = new DeploymentConfiguration
         {
@@ -73,6 +74,42 @@ public sealed class DecommissionSubsystemTests
         plan.Should().HaveCount(9);
         plan.Select(s => s.Name).Should().Contain("DecommissionDiscover");
         plan.Select(s => s.Name).Should().Contain("DecommissionInventoryDetach");
+    }
+
+    [Fact]
+    public void DeployOracleConflictDetector_allows_empty_central_inventory()
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "wedm_empty_inv_" + Guid.NewGuid().ToString("N"));
+        var contents = Path.Combine(temp, "ContentsXML");
+        Directory.CreateDirectory(contents);
+        File.WriteAllText(Path.Combine(contents, "inventory.xml"), """
+            <?xml version="1.0" standalone="yes"?>
+            <INVENTORY><HOME_LIST/></INVENTORY>
+            """);
+
+        var mw = Path.Combine(Path.GetTempPath(), "wedm_mw_empty_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(mw);
+
+        try
+        {
+            var inventory = new OracleInventoryService();
+            var detector = new DeployOracleConflictDetector(
+                inventory,
+                new OracleHomeValidator(inventory, new OracleProcessManager()));
+
+            var report = detector.DetectConflicts(new DeploymentConfiguration
+            {
+                Paths = new PathConfiguration { MiddlewareHome = mw, OracleInventory = temp },
+            });
+
+            report.HasBlockingConflicts.Should().BeFalse();
+            report.Findings.Should().Contain(f => f.Code == "Inventory.Empty");
+        }
+        finally
+        {
+            Directory.Delete(temp, recursive: true);
+            Directory.Delete(mw, recursive: true);
+        }
     }
 
     [Fact]

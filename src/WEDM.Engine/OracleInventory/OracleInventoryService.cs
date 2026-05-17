@@ -78,6 +78,7 @@ public sealed class OracleInventoryService : IOracleInventoryService
             return new OracleInventorySnapshot
             {
                 InventoryLoc     = oracleInventoryPath,
+                InventoryState   = OracleCentralInventoryState.Missing,
                 InventoryHealthy = false,
                 InventoryWarning = $"inventory.xml not found under '{oracleInventoryPath}'.",
             };
@@ -294,8 +295,25 @@ public sealed class OracleInventoryService : IOracleInventoryService
         if (!string.IsNullOrWhiteSpace(oracleInventoryPath))
         {
             snapshot = ReadSnapshot(oracleInventoryPath);
-            if (snapshot is not null && !snapshot.InventoryHealthy && snapshot.OracleHomes.Count == 0)
-                findings.Add($"Oracle inventory at '{oracleInventoryPath}' is empty or missing — treating as clean.");
+            if (snapshot is not null)
+            {
+                switch (snapshot.InventoryState)
+                {
+                    case OracleCentralInventoryState.Missing:
+                        canProceed = false;
+                        findings.Add($"BLOCKED: Central inventory.xml is missing under '{oracleInventoryPath}'.");
+                        remediation.Add("Create or restore ContentsXML/inventory.xml before running OUI.");
+                        break;
+                    case OracleCentralInventoryState.Corrupted:
+                        canProceed = false;
+                        findings.Add($"BLOCKED: Central inventory.xml is corrupt or unreadable: {snapshot.InventoryWarning}");
+                        remediation.Add("Repair or regenerate central inventory.xml before install.");
+                        break;
+                    case OracleCentralInventoryState.Empty:
+                        findings.Add(OracleCentralInventoryClassifier.EmptyInventoryMessage);
+                        break;
+                }
+            }
         }
 
         // ── 2. Lock file check ────────────────────────────────────────────

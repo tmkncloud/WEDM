@@ -232,7 +232,7 @@ public sealed class ProcessOwnershipTracker_RegistrationTests
         var tracker = new ProcessOwnershipTracker();
         var session = Guid.NewGuid();
 
-        tracker.Register(MakeContext(session), rootPid: 500);
+        tracker.Register(MakeContext(session), pid: 500);
         tracker.TrackChild(parentPid: 500, childPid: 501);
 
         var pids = tracker.GetSessionPids(session);
@@ -768,9 +768,9 @@ public sealed class OracleProcessLifecycleService_OrphanDetectionTests
         // that is flagged as succeeded-via-kill (except AlreadyExited if any ran just before)
         report.Should().NotBeNull();
         report.TerminationResults.Should().NotContain(r =>
-            r.Stage is TerminationStage.Graceful
-                    or TerminationStage.Escalated
-                    or TerminationStage.ForcedKill);
+            r.Stage == TerminationStage.Graceful
+            || r.Stage == TerminationStage.Escalated
+            || r.Stage == TerminationStage.ForcedKill);
     }
 
     [Fact]

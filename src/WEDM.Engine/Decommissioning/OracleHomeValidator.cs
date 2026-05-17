@@ -48,6 +48,21 @@ public sealed class OracleHomeValidator : IOracleHomeValidator
         }
 
         var analysis = _inventory.Analyze(inv, mw);
+        if (analysis.State == OracleCentralInventoryState.Missing)
+        {
+            blocking.Add("Central inventory.xml is missing — cannot install until inventory is initialized.");
+            checks.Add("FAIL: Central inventory.xml missing.");
+        }
+        else if (analysis.State == OracleCentralInventoryState.Corrupted)
+        {
+            blocking.Add($"Central inventory.xml is corrupt or unreadable: {string.Join("; ", analysis.CorruptionWarnings)}");
+            checks.Add("FAIL: Central inventory.xml corrupt.");
+        }
+        else if (analysis.State == OracleCentralInventoryState.Empty)
+        {
+            checks.Add("PASS: Central inventory is empty (clean-install state).");
+        }
+
         if (analysis.LockPresent)
         {
             blocking.Add($"Inventory lock present at {analysis.LockFilePath}");

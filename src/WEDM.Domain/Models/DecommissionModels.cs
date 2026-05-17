@@ -100,6 +100,7 @@ public sealed class OracleProcessDescriptor
 public sealed class OracleInventoryAnalysis
 {
     public string? InventoryRoot { get; set; }
+    public OracleCentralInventoryState State { get; set; } = OracleCentralInventoryState.Healthy;
     public bool XmlValid { get; set; }
     public bool LockPresent { get; set; }
     public string? LockFilePath { get; set; }

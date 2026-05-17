@@ -72,11 +72,12 @@ public sealed class CompatibilityAssessmentEngine : ICompatibilityAssessmentEngi
                 blocksMigration: false));
         }
 
-        if (!config.OracleInventory.InventoryHealthy)
+        if (!config.OracleInventory.InventoryHealthy
+            && config.OracleInventory.InventoryState is not OracleCentralInventoryState.Empty)
         {
             findings.Add(Finding(
                 "Oracle central inventory incomplete",
-                config.OracleInventory.InventoryWarning ?? "inventory.xml could not be parsed or is missing registered homes.",
+                config.OracleInventory.InventoryWarning ?? "inventory.xml could not be parsed or is missing.",
                 CompatibilitySeverity.Medium,
                 CompatibilityRiskCategory.General,
                 "Verify oraInst.loc and central inventory permissions.",

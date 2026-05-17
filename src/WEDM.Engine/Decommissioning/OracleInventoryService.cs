@@ -1,6 +1,7 @@
 using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Discovery.Parsers;
+using WEDM.Engine.OracleInventory;
 
 namespace WEDM.Engine.Decommissioning;
 
@@ -15,32 +16,35 @@ public sealed class OracleInventoryService : IOracleInventoryAnalyzer
 
         if (string.IsNullOrWhiteSpace(inventoryRoot))
         {
+            analysis.State = OracleCentralInventoryState.Missing;
+            analysis.XmlValid = false;
             analysis.CorruptionWarnings.Add("Inventory root not specified and could not be resolved from oraInst.loc.");
             return analysis;
         }
 
         analysis.InventoryRoot = inventoryRoot;
 
-        var lockPath = Path.Combine(inventoryRoot, "locks");
-        if (Directory.Exists(lockPath) && Directory.EnumerateFileSystemEntries(lockPath).Any())
+        if (TryDetectActiveLock(inventoryRoot, out var lockPath))
         {
             analysis.LockPresent  = true;
             analysis.LockFilePath = lockPath;
-            analysis.CorruptionWarnings.Add($"Inventory lock directory is not empty: {lockPath}");
+            analysis.State        = OracleCentralInventoryState.Locked;
+            analysis.CorruptionWarnings.Add($"Oracle inventory lock detected: {lockPath}");
         }
 
         var centralXml = Path.Combine(inventoryRoot, "ContentsXML", "inventory.xml");
         if (!File.Exists(centralXml))
         {
-            analysis.CorruptionWarnings.Add($"Central inventory.xml missing: {centralXml}");
+            analysis.State = OracleCentralInventoryState.Missing;
             analysis.XmlValid = false;
+            analysis.CorruptionWarnings.Add($"Central inventory.xml missing: {centralXml}");
             return analysis;
         }
 
         try
         {
             var snapshot = OracleInventoryXmlParser.ParseInventoryXml(centralXml);
-            analysis.XmlValid = snapshot.InventoryHealthy;
+            analysis.XmlValid = OracleCentralInventoryClassifier.IsXmlReadable(snapshot.InventoryState);
 
             foreach (var home in snapshot.OracleHomes)
             {
@@ -58,13 +62,24 @@ public sealed class OracleInventoryService : IOracleInventoryAnalyzer
                 });
             }
 
-            if (!snapshot.InventoryHealthy)
-                analysis.CorruptionWarnings.Add(snapshot.InventoryWarning ?? "Inventory XML parsed with warnings.");
+            if (snapshot.InventoryState == OracleCentralInventoryState.Corrupted)
+            {
+                analysis.State = OracleCentralInventoryState.Corrupted;
+                analysis.XmlValid = false;
+                analysis.CorruptionWarnings.Add(snapshot.InventoryWarning ?? "Central inventory.xml is corrupt or unreadable.");
+            }
+            else if (!analysis.LockPresent)
+            {
+                analysis.State = OracleCentralInventoryClassifier.RefineFromHomes(
+                    snapshot.InventoryState,
+                    analysis.Homes);
+            }
         }
         catch (Exception ex)
         {
-            analysis.CorruptionWarnings.Add($"Failed to parse inventory.xml: {ex.Message}");
+            analysis.State = OracleCentralInventoryState.Corrupted;
             analysis.XmlValid = false;
+            analysis.CorruptionWarnings.Add($"Failed to parse inventory.xml: {ex.Message}");
         }
 
         if (!string.IsNullOrWhiteSpace(middlewareHome) && Directory.Exists(middlewareHome))
@@ -89,6 +104,15 @@ public sealed class OracleInventoryService : IOracleInventoryAnalyzer
                             Issues             = ["Found only in local inventory."],
                         });
                     }
+
+                    if (!analysis.LockPresent && analysis.XmlValid)
+                    {
+                        analysis.State = OracleCentralInventoryClassifier.RefineFromHomes(
+                            analysis.State == OracleCentralInventoryState.Empty
+                                ? OracleCentralInventoryState.Empty
+                                : OracleCentralInventoryState.Healthy,
+                            analysis.Homes);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -98,6 +122,27 @@ public sealed class OracleInventoryService : IOracleInventoryAnalyzer
         }
 
         return analysis;
+    }
+
+    private static bool TryDetectActiveLock(string inventoryRoot, out string? lockPath)
+    {
+        lockPath = null;
+        var locksDir = Path.Combine(inventoryRoot, "locks");
+        if (!Directory.Exists(locksDir))
+            return false;
+
+        foreach (var file in Directory.EnumerateFiles(locksDir, "*", SearchOption.TopDirectoryOnly))
+        {
+            var info = new FileInfo(file);
+            var age  = DateTimeOffset.UtcNow - info.LastWriteTimeUtc;
+            if (age <= TimeSpan.FromHours(4))
+            {
+                lockPath = file;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public Task<InventoryDetachResult> DetachHomeAsync(
@@ -118,31 +163,52 @@ public sealed class OracleInventoryService : IOracleInventoryAnalyzer
                 DryRun     = true,
                 OracleHome = home,
                 Message    = $"Dry-run: would detach Oracle Home '{home}' from inventory '{inventoryRoot}'.",
-                Actions    = ["Simulate detachHome from central inventory", "Remove local inventory pointer if present"],
+                Actions    = [$"Would remove HOME entry for '{home}' from ContentsXML/inventory.xml"],
             });
         }
 
-        var inventoryXml = Path.Combine(inventoryRoot, "ContentsXML", "inventory.xml");
-        if (!File.Exists(inventoryXml))
+        var centralXml = Path.Combine(inventoryRoot, "ContentsXML", "inventory.xml");
+        if (!File.Exists(centralXml))
         {
             return Task.FromResult(new InventoryDetachResult
             {
                 Success    = false,
                 OracleHome = home,
-                Message    = $"Central inventory.xml not found: {inventoryXml}",
+                Message    = $"Central inventory.xml not found at {centralXml}",
             });
         }
 
         try
         {
-            var removed = RemoveHomeFromInventoryXml(inventoryXml, home, actions);
+            var doc = System.Xml.Linq.XDocument.Load(centralXml);
+            var removed = false;
+            foreach (var homeEl in doc.Descendants("HOME").Concat(doc.Descendants("ORACLE_HOME")).ToList())
+            {
+                var loc = homeEl.Attribute("LOC")?.Value;
+                if (loc is not null && loc.Trim().Equals(home, StringComparison.OrdinalIgnoreCase))
+                {
+                    homeEl.Remove();
+                    removed = true;
+                    actions.Add($"Removed HOME entry LOC='{loc}' from central inventory.");
+                }
+            }
+
+            if (!removed)
+            {
+                return Task.FromResult(new InventoryDetachResult
+                {
+                    Success    = false,
+                    OracleHome = home,
+                    Message    = $"Home '{home}' was not found in central inventory.",
+                });
+            }
+
+            doc.Save(centralXml);
             return Task.FromResult(new InventoryDetachResult
             {
-                Success    = removed,
+                Success    = true,
                 OracleHome = home,
-                Message    = removed
-                    ? $"Detached stale home registration for {home}."
-                    : $"Home {home} was not found in central inventory.xml.",
+                Message    = $"Detached Oracle Home '{home}' from central inventory.",
                 Actions    = actions,
             });
         }
@@ -152,31 +218,8 @@ public sealed class OracleInventoryService : IOracleInventoryAnalyzer
             {
                 Success    = false,
                 OracleHome = home,
-                Message    = ex.Message,
-                Actions    = actions,
+                Message    = $"Failed to detach home: {ex.Message}",
             });
         }
-    }
-
-    private static bool RemoveHomeFromInventoryXml(string inventoryXml, string homePath, List<string> actions)
-    {
-        var doc = System.Xml.Linq.XDocument.Load(inventoryXml);
-        var homes = doc.Descendants("HOME").Concat(doc.Descendants("ORACLE_HOME")).ToList();
-        var removed = false;
-
-        foreach (var node in homes)
-        {
-            var loc = node.Attribute("LOC")?.Value ?? node.Element("LOCATION")?.Value;
-            if (string.IsNullOrWhiteSpace(loc)) continue;
-            if (!loc.Trim().Equals(homePath, StringComparison.OrdinalIgnoreCase)) continue;
-            node.Remove();
-            removed = true;
-            actions.Add($"Removed HOME LOC={loc} from {inventoryXml}");
-        }
-
-        if (removed)
-            doc.Save(inventoryXml);
-
-        return removed;
     }
 }
