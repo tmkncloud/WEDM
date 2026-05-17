@@ -46,15 +46,24 @@ public sealed class RemediationExecutionEngine
             };
         }
 
-        var checkpoint = LoadCheckpoint(config) ?? new RemediationCheckpoint
+        var correlationId = options.CorrelationId ?? config.RemediationSession.CorrelationId;
+        var checkpoint = LoadCheckpoint(config, correlationId) ?? new RemediationCheckpoint
         {
             DeploymentId  = config.Id,
-            AttemptNumber = config.CurrentInstallerContext?.AttemptNumber ?? 1,
+            AttemptNumber = options.AttemptNumber > 0
+                ? options.AttemptNumber
+                : config.CurrentInstallerContext?.AttemptNumber ?? 1,
+            CorrelationId = correlationId,
         };
+
+        config.RemediationSession.Phase = options.DryRun
+            ? OracleRemediationPhase.Assessed
+            : OracleRemediationPhase.Remediating;
 
         _log.Info(
             $"[Remediation] Executing {plan.Actions.Count} action(s) " +
-            $"(dryRun={options.DryRun}, classification={assessment.Classification})",
+            $"(dryRun={options.DryRun}, classification={assessment.Classification}, " +
+            $"correlation={correlationId:N})",
             "Remediation");
 
         var actionResults = await _remediator.ExecutePlanAsync(
@@ -64,8 +73,16 @@ public sealed class RemediationExecutionEngine
         if (!options.DryRun)
             verification = _verification.Verify(config);
 
-        var report = _reports.BuildReport(assessment, plan, actionResults, verification, options);
+        var phase = options.DryRun
+            ? OracleRemediationPhase.Assessed
+            : OracleRemediationPhase.Remediating;
+
+        var report = _reports.BuildReport(
+            assessment, plan, actionResults, verification, options, correlationId, phase);
         report.Mode = config.OracleLifecycle.AutoRemediationMode;
+
+        if (!options.DryRun)
+            report.Phase = report.Success ? OracleRemediationPhase.VerifiedClean : OracleRemediationPhase.Failed;
 
         var continuation = !options.DryRun
                              && report.Success
@@ -77,15 +94,19 @@ public sealed class RemediationExecutionEngine
         else
             _log.Warning("[Remediation] Remediation completed with failures or residual risk.", "Remediation");
 
+        if (!options.DryRun)
+            config.RemediationSession.Phase = report.Phase;
+
         return new OracleRemediationResult
         {
             Success                  = report.Success,
             ContinuationRecommended  = continuation,
+            Phase                    = report.Phase,
             Report                   = report,
         };
     }
 
-    private static RemediationCheckpoint? LoadCheckpoint(DeploymentConfiguration config)
+    private static RemediationCheckpoint? LoadCheckpoint(DeploymentConfiguration config, Guid correlationId)
     {
         try
         {

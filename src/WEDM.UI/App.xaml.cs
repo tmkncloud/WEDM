@@ -190,6 +190,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IRemediationReportBuilder, WEDM.Engine.Remediation.RemediationReportBuilder>();
         services.AddSingleton<WEDM.Engine.Remediation.RemediationExecutionEngine>();
         services.AddSingleton<IOracleRemediationService, WEDM.Engine.Remediation.OracleRemediationService>();
+        services.AddSingleton<IInstallRemediationOrchestrator, WEDM.Engine.Remediation.InstallRemediationOrchestrator>();
         services.AddSingleton<IOracleInventoryPathResolver, WEDM.Engine.OracleInventoryBootstrap.OracleInventoryPathResolver>();
         services.AddSingleton<IOracleInventorySkeletonFactory, WEDM.Engine.OracleInventoryBootstrap.OracleInventorySkeletonFactory>();
         services.AddSingleton<IOracleInventoryBootstrapValidator, WEDM.Engine.OracleInventoryBootstrap.OracleInventoryBootstrapValidator>();

@@ -64,16 +64,17 @@ public sealed class PartialInstallClassifier : IPartialInstallClassifier
         var ctx = config.CurrentInstallerContext;
         return new RemediationDiscoveryContext
         {
-            MiddlewareHome        = config.Paths.MiddlewareHome,
-            OracleInventoryPath   = config.Paths.OracleInventory,
-            TempDirectory           = config.Paths.TempDirectory,
-            ExtractionDirectory     = ctx?.ExtractionDirectory,
-            ResponseFilePath        = ctx?.ResponseFilePath,
-            SnapshotDirectory       = config.Paths.SnapshotDirectory,
-            ReportsDirectory        = config.Paths.ReportsDirectory,
-            TriggerStep             = "InstallInfrastructure",
-            AttemptNumber           = ctx?.AttemptNumber ?? 1,
-            PreviousFailureClass    = ctx?.PreviousFailureClass,
+            MiddlewareHome              = config.Paths.MiddlewareHome,
+            OracleInventoryPath         = config.Paths.OracleInventory,
+            TempDirectory                 = config.Paths.TempDirectory,
+            ExtractionDirectory           = ctx?.ExtractionDirectory,
+            ResponseFilePath              = ctx?.ResponseFilePath,
+            SnapshotDirectory             = config.Paths.SnapshotDirectory,
+            ReportsDirectory              = config.Paths.ReportsDirectory,
+            TriggerStep                   = "InstallInfrastructure",
+            AttemptNumber                 = ctx?.AttemptNumber ?? 1,
+            PreviousFailureClass          = ctx?.PreviousFailureClass,
+            StaleInstallActivityMinutes   = config.OracleLifecycle.StaleInstallActivityMinutes,
         };
     }
 

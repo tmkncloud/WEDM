@@ -50,12 +50,19 @@ public sealed class OracleRemediationService : IOracleRemediationService
         var plan       = assessment.RecommendedPlan
                          ?? _planBuilder.Build(config, assessment, assessment.Safety);
 
-        if (!plan.CanAutoExecute && !options.DryRun && !options.ForceUnsafe && assessment.RequiresRemediation)
+        var mayExecute = options.DryRun
+                           || options.ForceExecute
+                           || options.ForceUnsafe
+                           || ShouldAutoRemediate(config, assessment)
+                           || (plan.CanAutoExecute && assessment.CanAutoRemediate);
+
+        if (!mayExecute && assessment.RequiresRemediation)
         {
             _log.Warning("[Remediation] Plan is not eligible for automatic execution.", "Remediation");
             return new OracleRemediationResult
             {
                 Success = false,
+                Phase   = OracleRemediationPhase.Skipped,
                 Report  = new OracleRemediationReport
                 {
                     DryRun         = options.DryRun,
@@ -63,6 +70,7 @@ public sealed class OracleRemediationService : IOracleRemediationService
                     Classification = assessment.Classification,
                     Safety         = assessment.Safety,
                     Plan           = plan,
+                    Phase          = OracleRemediationPhase.Skipped,
                     DetectedIssues = assessment.Issues,
                     RemainingRisks = assessment.Safety.BlockingReasons.ToList(),
                 },

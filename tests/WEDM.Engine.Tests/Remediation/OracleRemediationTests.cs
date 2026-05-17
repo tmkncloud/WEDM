@@ -39,7 +39,7 @@ public sealed class OracleRemediationTests : IDisposable
         var classifier = new PartialInstallClassifier(inventory, analyzer, safety);
         var planBuilder = new RemediationPlanBuilder();
         var remediator  = new OraclePartialInstallRemediator(log, analyzer, processes);
-        var verify      = new RemediationVerificationService(inventory);
+        var verify      = new RemediationVerificationService(inventory, processes);
         var reports     = new RemediationReportBuilder();
         var engine      = new RemediationExecutionEngine(remediator, verify, reports, log);
         var svc         = new OracleRemediationService(classifier, planBuilder, engine, log);

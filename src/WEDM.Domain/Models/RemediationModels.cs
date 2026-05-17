@@ -3,6 +3,26 @@ using WEDM.Domain.Enums;
 
 namespace WEDM.Domain.Models;
 
+public enum OracleRemediationPhase
+{
+    NotRequired = 0,
+    Detected = 1,
+    Assessed = 2,
+    Remediating = 3,
+    VerifiedClean = 4,
+    Failed = 5,
+    UnsafeBlocked = 6,
+    Skipped = 7,
+}
+
+public sealed class OracleRemediationSessionState
+{
+    public Guid CorrelationId { get; set; } = Guid.NewGuid();
+    public OracleRemediationPhase Phase { get; set; } = OracleRemediationPhase.NotRequired;
+    public HashSet<string> ExecutedForStepAttempt { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public int TotalExecutions { get; set; }
+}
+
 public sealed class RemediationDiscoveryContext
 {
     public string MiddlewareHome { get; init; } = string.Empty;
@@ -17,6 +37,7 @@ public sealed class RemediationDiscoveryContext
     public InstallerFailureClass? PreviousFailureClass { get; init; }
     public OracleHomeState DetectedHomeState { get; init; } = OracleHomeState.Unknown;
     public OracleCentralInventoryState InventoryState { get; init; } = OracleCentralInventoryState.Healthy;
+    public int StaleInstallActivityMinutes { get; init; } = 15;
 }
 
 public sealed class SafetyAnalysisResult
@@ -26,6 +47,7 @@ public sealed class SafetyAnalysisResult
     public RemediationConfidence Confidence { get; init; } = RemediationConfidence.Medium;
     public IReadOnlyList<string> Reasons { get; init; } = [];
     public IReadOnlyList<string> BlockingReasons { get; init; } = [];
+    public IReadOnlyList<string> Warnings { get; init; } = [];
     public string Recommendation { get; init; } = string.Empty;
 }
 
@@ -61,13 +83,19 @@ public sealed class RemediationVerificationResult
 {
     public bool Passed { get; init; }
     public OracleHomeState HomeStateAfter { get; init; } = OracleHomeState.Unknown;
+    public OracleRemediationState RemediationStateAfter { get; init; } = OracleRemediationState.Unknown;
     public bool CanProceedWithInstall { get; init; }
+    public bool MiddlewareDirectoryCleared { get; init; }
+    public bool InventoryClean { get; init; }
+    public bool NoActiveProcesses { get; init; }
+    public bool NoActiveLocks { get; init; }
     public IReadOnlyList<string> Findings { get; init; } = [];
 }
 
 public sealed class OracleRemediationReport
 {
     public Guid ReportId { get; init; } = Guid.NewGuid();
+    public Guid CorrelationId { get; init; }
     public DateTimeOffset StartedAt { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? CompletedAt { get; set; }
     public bool DryRun { get; init; }
@@ -75,6 +103,7 @@ public sealed class OracleRemediationReport
     public string Trigger { get; init; } = string.Empty;
     public OracleRemediationState Classification { get; init; } = OracleRemediationState.Unknown;
     public OracleHomeState OriginalHomeState { get; init; } = OracleHomeState.Unknown;
+    public OracleRemediationPhase Phase { get; set; } = OracleRemediationPhase.NotRequired;
     public SafetyAnalysisResult Safety { get; init; } = new();
     public RemediationPlan? Plan { get; init; }
     public bool Success { get; set; }
@@ -85,7 +114,7 @@ public sealed class OracleRemediationReport
     public IReadOnlyList<string> StoppedProcesses { get; init; } = [];
     public RemediationVerificationResult? Verification { get; init; }
     public IReadOnlyList<string> RemainingRisks { get; init; } = [];
-    public IReadOnlyList<string> ManualFollowUps { get; init; } = [];
+    public List<string> Errors { get; init; } = [];
 }
 
 public sealed class RemediationIssue
@@ -111,7 +140,17 @@ public sealed class OracleRemediationResult
 {
     public bool Success { get; init; }
     public bool ContinuationRecommended { get; init; }
+    public OracleRemediationPhase Phase { get; init; } = OracleRemediationPhase.NotRequired;
     public OracleRemediationReport Report { get; init; } = new();
+}
+
+public sealed class InstallRemediationGateResult
+{
+    public bool CanProceedToInstall { get; init; }
+    public OracleRemediationPhase Phase { get; init; } = OracleRemediationPhase.NotRequired;
+    public OracleInventoryValidationResult? PostValidation { get; init; }
+    public string? FailureMessage { get; init; }
+    public bool RemediationExecuted { get; init; }
 }
 
 public sealed class RemediationExecutionOptions
@@ -119,6 +158,9 @@ public sealed class RemediationExecutionOptions
     public bool DryRun { get; init; }
     public string Trigger { get; init; } = string.Empty;
     public bool ForceUnsafe { get; init; }
+    public bool ForceExecute { get; init; }
+    public int AttemptNumber { get; init; } = 1;
+    public Guid? CorrelationId { get; init; }
 }
 
 /// <summary>Persisted checkpoint for crash-tolerant remediation retries.</summary>
@@ -129,6 +171,9 @@ public sealed class RemediationCheckpoint
 
     [JsonPropertyName("attemptNumber")]
     public int AttemptNumber { get; init; }
+
+    [JsonPropertyName("correlationId")]
+    public Guid CorrelationId { get; init; }
 
     [JsonPropertyName("completedActionKeys")]
     public List<string> CompletedActionKeys { get; set; } = [];

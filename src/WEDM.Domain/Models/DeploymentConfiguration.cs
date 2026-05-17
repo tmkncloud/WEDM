@@ -179,6 +179,10 @@ public sealed class DeploymentConfiguration
     [JsonIgnore]
     public InventoryBootstrapAssessment? LastBootstrapAssessment { get; set; }
 
+    /// <summary>Tracks remediation execution per install step attempt (prevents infinite cleanup loops).</summary>
+    [JsonIgnore]
+    public OracleRemediationSessionState RemediationSession { get; } = new();
+
     /// <summary>
     /// Oracle rollback report accumulated by Oracle-aware rollback executors during a rollback pass.
     /// Each Oracle rollback executor (OracleInstallRollbackExecutor, OracleFormsReportsRollbackExecutor, etc.)

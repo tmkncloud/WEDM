@@ -33,7 +33,7 @@ public sealed class InstallWebLogicStep : IStepExecutor
     private readonly IOracleInventoryService       _inventory;
     private readonly IInstallRetryIsolationService _retryIsolation;
     private readonly IEnvironmentIsolationService  _envIsolation;
-    private readonly IOracleRemediationService       _remediation;
+    private readonly IInstallRemediationOrchestrator _installRemediation;
     private readonly IOracleInventoryBootstrapService? _inventoryBootstrap;
 
     public InstallWebLogicStep(
@@ -43,16 +43,16 @@ public sealed class InstallWebLogicStep : IStepExecutor
         IOracleInventoryService inventory,
         IInstallRetryIsolationService retryIsolation,
         IEnvironmentIsolationService envIsolation,
-        IOracleRemediationService remediation,
+        IInstallRemediationOrchestrator installRemediation,
         IOracleInventoryBootstrapService? inventoryBootstrap = null)
     {
-        _ps             = ps;
-        _log            = log;
-        _rspGen         = rspGen;
-        _inventory      = inventory;
-        _retryIsolation = retryIsolation;
-        _envIsolation   = envIsolation;
-        _remediation    = remediation;
+        _ps                 = ps;
+        _log                = log;
+        _rspGen             = rspGen;
+        _inventory          = inventory;
+        _retryIsolation     = retryIsolation;
+        _envIsolation       = envIsolation;
+        _installRemediation = installRemediation;
         _inventoryBootstrap = inventoryBootstrap;
     }
 
@@ -130,32 +130,32 @@ public sealed class InstallWebLogicStep : IStepExecutor
             }
         }
 
-        // ── Phase 2: Pre-install Oracle inventory validation (hard gate) ───
-        var preCheck = _inventory.ValidateForInstall(
-            config.Paths.MiddlewareHome,
-            config.Paths.OracleInventory);
+        // ── Phase 2: Proactive remediation gate → inventory validation (hard gate) ─
+        // State machine: PartialInstall → Remediating → VerifiedClean → Installing
+        var remediationGate = await _installRemediation.EnsureInstallReadyAsync(
+            config,
+            step.Name,
+            attemptNumber,
+            _inventory,
+            cancellationToken);
 
-        LogInventoryValidation(preCheck, "Pre-install");
+        var preCheck = remediationGate.PostValidation
+                       ?? _inventory.ValidateForInstall(
+                           config.Paths.MiddlewareHome,
+                           config.Paths.OracleInventory);
 
-        if (!preCheck.CanProceed)
+        if (!remediationGate.CanProceedToInstall)
         {
-            preCheck = await TryAutoRemediateAndRevalidateAsync(config, preCheck, cancellationToken)
-                       ?? preCheck;
-        }
-
-        if (!preCheck.CanProceed)
-        {
-            var findings    = string.Join(" | ", preCheck.Findings);
-            var remediation = string.Join(" | ", preCheck.RemediationSteps);
             _log.Error(
                 $"Oracle inventory pre-install validation blocked OUI launch. State={preCheck.HomeState}. " +
-                $"Findings: {findings}",
+                $"Phase={remediationGate.Phase} RemediationExecuted={remediationGate.RemediationExecuted}",
                 category: "Install.WLS");
             RecordFailureClass(config, InstallerFailureClass.InventoryConflict);
             return StepExecutionResult.Fail(
-                $"Oracle inventory pre-install check failed (state: {preCheck.HomeState}). " +
-                $"{findings} Remediation: {remediation}",
-                exitCode: -10);
+                remediationGate.FailureMessage
+                ?? $"Oracle inventory pre-install check failed (state: {preCheck.HomeState}).",
+                exitCode: -10,
+                retryRecommended: false);
         }
 
         // ── Phase 3: Locate JDK and installer JAR ─────────────────────────
@@ -490,60 +490,8 @@ exit $exitCode
         return paths;
     }
 
-    private async Task<OracleInventoryValidationResult?> TryAutoRemediateAndRevalidateAsync(
-        DeploymentConfiguration config,
-        OracleInventoryValidationResult failedCheck,
-        CancellationToken cancellationToken)
-    {
-        var assessment = _remediation.Assess(config, "InstallInfrastructure");
-        if (!_remediation.ShouldAutoRemediate(config, assessment))
-        {
-            _log.Warning(
-                $"[Remediation] Partial install detected (state={failedCheck.HomeState}) but auto-remediation is " +
-                $"disabled or unsafe (classification={assessment.Classification}, mode={config.OracleLifecycle.AutoRemediationMode}).",
-                "Install.WLS");
-            return null;
-        }
-
-        var attempts = config.RemediationReports.Count(r => !r.DryRun);
-        if (attempts >= config.OracleLifecycle.MaxRemediationAttempts)
-        {
-            _log.Warning(
-                $"[Remediation] Max remediation attempts ({config.OracleLifecycle.MaxRemediationAttempts}) reached.",
-                "Install.WLS");
-            return null;
-        }
-
-        _log.Info(
-            $"[Remediation] Auto-remediating partial install before OUI (classification={assessment.Classification})...",
-            "Install.WLS");
-
-        var result = await _remediation.ExecuteAsync(
-            config,
-            new RemediationExecutionOptions
-            {
-                DryRun  = false,
-                Trigger = "InstallInfrastructure",
-            },
-            cancellationToken);
-
-        foreach (var action in result.Report.ExecutedActions)
-            _log.Info($"  [Remediation] {action.ActionType}: {action.Outcome} — {action.TargetPath}", "Install.WLS");
-
-        if (!result.Success || !config.OracleLifecycle.AutoContinueAfterRemediation)
-            return null;
-
-        var revalidated = _inventory.ValidateForInstall(
-            config.Paths.MiddlewareHome,
-            config.Paths.OracleInventory);
-
-        LogInventoryValidation(revalidated, "Post-remediation");
-        return revalidated.CanProceed ? revalidated : null;
-    }
-
     private void LogInventoryValidation(OracleInventoryValidationResult result, string phase)
     {
-        var level = result.CanProceed ? "INFO" : "WARN";
         _log.Info(
             $"[{phase}] Oracle inventory: state={result.HomeState} canProceed={result.CanProceed}",
             "Install.WLS");

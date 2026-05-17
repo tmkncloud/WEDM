@@ -11,7 +11,9 @@ public sealed class RemediationReportBuilder : IRemediationReportBuilder
         RemediationPlan plan,
         IReadOnlyList<RemediationActionResult> actionResults,
         RemediationVerificationResult? verification,
-        RemediationExecutionOptions options)
+        RemediationExecutionOptions options,
+        Guid correlationId = default,
+        OracleRemediationPhase phase = OracleRemediationPhase.NotRequired)
     {
         var deleted = actionResults
             .Where(r => r.Outcome is RemediationExecutionOutcome.Succeeded or RemediationExecutionOutcome.DryRun)
@@ -42,6 +44,10 @@ public sealed class RemediationReportBuilder : IRemediationReportBuilder
 
         return new OracleRemediationReport
         {
+            CorrelationId           = correlationId != Guid.Empty
+                ? correlationId
+                : options.CorrelationId ?? Guid.Empty,
+            Phase                   = phase,
             DryRun                  = options.DryRun,
             Trigger                 = options.Trigger,
             Classification          = assessment.Classification,

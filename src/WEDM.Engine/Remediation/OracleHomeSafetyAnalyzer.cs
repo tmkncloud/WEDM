@@ -58,11 +58,12 @@ public sealed class OracleHomeSafetyAnalyzer : IOracleHomeSafetyAnalyzer
         if (HasRecentInstallerActivity(context))
             blocking.Add("Recent installer activity detected under middleware home or temp directories.");
 
-        foreach (var svc in FindOracleServicesUsingHome(mw))
-            blocking.Add($"Windows service may be using home: {svc}");
+        var warnings = new List<string>();
+        foreach (var svc in FindUnrelatedOracleServices(mw))
+            warnings.Add($"Unrelated Oracle/WebLogic service running ({svc}) — not blocking cleanup of unregistered partial home.");
 
         if (blocking.Count == 0)
-            reasons.Add("No active Oracle processes, services, or inventory locks block cleanup.");
+            reasons.Add("No active Oracle processes or inventory locks block cleanup.");
 
         if (classification is OracleRemediationState.PartialInstall or OracleRemediationState.FilesystemOnly)
             reasons.Add("Target is not registered as a complete Oracle home in central inventory.");
@@ -87,6 +88,7 @@ public sealed class OracleHomeSafetyAnalyzer : IOracleHomeSafetyAnalyzer
             Confidence        = blocking.Count == 0 ? RemediationConfidence.High : RemediationConfidence.Medium,
             Reasons           = reasons,
             BlockingReasons   = blocking,
+            Warnings          = warnings,
             Recommendation    = safe
                 ? "Automated safe cleanup can remove partial artifacts and continue deployment."
                 : "Resolve blocking processes/services/locks before cleanup or use Remove WebLogic Environment.",
@@ -114,8 +116,10 @@ public sealed class OracleHomeSafetyAnalyzer : IOracleHomeSafetyAnalyzer
 
     private static bool HasRecentInstallerActivity(RemediationDiscoveryContext context)
     {
-        var threshold = DateTime.UtcNow.AddMinutes(-15);
-        var ouiMarkers = new[] { "oraInstall", "oui", "cfgtoollogs", ".lock", "install.platform" };
+        var minutes   = context.StaleInstallActivityMinutes > 0 ? context.StaleInstallActivityMinutes : 15;
+        var threshold = DateTime.UtcNow.AddMinutes(-minutes);
+        var fileMarkers = new[] { "oraInstall", "oui", "cfgtoollogs", ".lock", "install.platform" };
+        var dirMarkers  = new[] { "oraInstall", "cfgtoollogs", "oui_logs" };
 
         foreach (var dir in new[] { context.MiddlewareHome, context.ExtractionDirectory, context.TempDirectory }
                      .Where(d => !string.IsNullOrWhiteSpace(d) && Directory.Exists(d!)))
@@ -125,11 +129,20 @@ public sealed class OracleHomeSafetyAnalyzer : IOracleHomeSafetyAnalyzer
                 foreach (var file in Directory.EnumerateFiles(dir!, "*", SearchOption.AllDirectories))
                 {
                     var name = Path.GetFileName(file);
-                    if (!ouiMarkers.Any(m => name.Contains(m, StringComparison.OrdinalIgnoreCase)
-                                             || file.Contains(m, StringComparison.OrdinalIgnoreCase)))
+                    if (!fileMarkers.Any(m => name.Contains(m, StringComparison.OrdinalIgnoreCase)))
                         continue;
 
                     if (new FileInfo(file).LastWriteTimeUtc >= threshold)
+                        return true;
+                }
+
+                foreach (var subDir in Directory.EnumerateDirectories(dir!, "*", SearchOption.AllDirectories))
+                {
+                    var segment = Path.GetFileName(subDir);
+                    if (!dirMarkers.Any(m => segment.Contains(m, StringComparison.OrdinalIgnoreCase)))
+                        continue;
+
+                    if (Directory.GetLastWriteTimeUtc(subDir) >= threshold)
                         return true;
                 }
             }
@@ -142,7 +155,7 @@ public sealed class OracleHomeSafetyAnalyzer : IOracleHomeSafetyAnalyzer
         return false;
     }
 
-    private static List<string> FindOracleServicesUsingHome(string middlewareHome)
+    private static List<string> FindUnrelatedOracleServices(string middlewareHome)
     {
         var found = new List<string>();
         try

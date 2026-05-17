@@ -43,7 +43,9 @@ public interface IRemediationReportBuilder
         RemediationPlan plan,
         IReadOnlyList<RemediationActionResult> actionResults,
         RemediationVerificationResult? verification,
-        RemediationExecutionOptions options);
+        RemediationExecutionOptions options,
+        Guid correlationId = default,
+        OracleRemediationPhase phase = OracleRemediationPhase.NotRequired);
 }
 
 public interface IOracleRemediationService
@@ -56,4 +58,17 @@ public interface IOracleRemediationService
         CancellationToken cancellationToken = default);
 
     bool ShouldAutoRemediate(DeploymentConfiguration config, OracleRemediationAssessment assessment);
+}
+
+/// <summary>
+/// Proactive install-time remediation gate: PartialInstall → Remediating → VerifiedClean → Installing.
+/// </summary>
+public interface IInstallRemediationOrchestrator
+{
+    Task<InstallRemediationGateResult> EnsureInstallReadyAsync(
+        DeploymentConfiguration config,
+        string stepName,
+        int attemptNumber,
+        IOracleInventoryService inventory,
+        CancellationToken cancellationToken = default);
 }
