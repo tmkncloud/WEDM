@@ -1,3 +1,4 @@
+using WEDM.Domain.Interfaces;
 using WEDM.Domain.Models;
 using WEDM.Engine.Execution;
 using Xunit;
@@ -14,7 +15,7 @@ public sealed class WlstExecutionServiceTests
         var script = Path.Combine(temp, "test.py");
         await File.WriteAllTextAsync(script, "print('hello')\nexit()");
 
-        var service = new WlstExecutionService(new FakePowerShellExecutor());
+        var service = new WlstExecutionService(new FakeExternalProcessRunner());
         var record = await service.ExecuteScriptAsync(
             @"C:\nonexistent\wlst.cmd",
             script,
@@ -27,6 +28,72 @@ public sealed class WlstExecutionServiceTests
         Assert.Contains("DRY-RUN", record.StdoutExcerpt ?? "");
 
         Directory.Delete(temp, true);
+    }
+
+    [Fact]
+    public async Task ExecuteScriptAsync_ScriptNotFound_ReturnsFailure()
+    {
+        var service = new WlstExecutionService(new FakeExternalProcessRunner());
+        var record = await service.ExecuteScriptAsync(
+            @"C:\nonexistent\wlst.cmd",
+            @"C:\nonexistent\script.py",
+            credentials: null,
+            dryRun: false,
+            logDirectory: Path.GetTempPath());
+
+        Assert.False(record.Success);
+        Assert.Contains("Script not found", record.StderrExcerpt ?? "");
+    }
+
+    [Fact]
+    public async Task ExecuteScriptAsync_WlstNotFound_ReturnsFailure()
+    {
+        var temp = Path.Combine(Path.GetTempPath(), "wedm-wlst-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        var script = Path.Combine(temp, "test.py");
+        await File.WriteAllTextAsync(script, "exit()");
+
+        try
+        {
+            var service = new WlstExecutionService(new FakeExternalProcessRunner());
+            var record = await service.ExecuteScriptAsync(
+                @"C:\nonexistent\wlst.cmd",
+                script,
+                credentials: null,
+                dryRun: false,
+                logDirectory: temp);
+
+            Assert.False(record.Success);
+            Assert.Contains("WLST not found", record.StderrExcerpt ?? "");
+        }
+        finally
+        {
+            Directory.Delete(temp, true);
+        }
+    }
+
+    [Fact]
+    public void BuildEnvironmentVariables_SetsJavaAndOracleHome()
+    {
+        var vars = WlstPowerShellEnvironment.BuildEnvironmentVariables(new WlstExecutionEnvironment
+        {
+            JavaHome   = @"D:\Java\jdk-21",
+            OracleHome = @"D:\Oracle\Middleware",
+        });
+
+        Assert.True(vars.ContainsKey("JAVA_HOME"));
+        Assert.Equal(@"D:\Java\jdk-21", vars["JAVA_HOME"]);
+        Assert.True(vars.ContainsKey("ORACLE_HOME"));
+        Assert.Equal(@"D:\Oracle\Middleware", vars["ORACLE_HOME"]);
+        Assert.True(vars.ContainsKey("PATH"));
+        Assert.StartsWith(@"D:\Java\jdk-21\bin;", vars["PATH"], StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BuildEnvironmentVariables_NullEnvironment_ReturnsEmptyDict()
+    {
+        var vars = WlstPowerShellEnvironment.BuildEnvironmentVariables(null);
+        Assert.Empty(vars);
     }
 
     [Fact]
@@ -56,24 +123,35 @@ public sealed class WlstExecutionServiceTests
         Assert.Contains("JAVA_HOME=", trace);
     }
 
-    private sealed class FakePowerShellExecutor : Domain.Interfaces.IPowerShellExecutor
+    // ── Test double ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Fake ExternalProcessRunner that always returns success.
+    /// Used for tests that only need the dry-run or validation paths.
+    /// </summary>
+    private sealed class FakeExternalProcessRunner : IExternalProcessRunner
     {
         public event EventHandler<string>? OutputReceived;
         public event EventHandler<string>? ErrorReceived;
 
-        public Task<Domain.Interfaces.PowerShellResult> ExecuteCommandAsync(
-            string command, string? workingDirectory = null, bool runAsAdministrator = false,
-            CancellationToken cancellationToken = default, TimeSpan? operationTimeout = null)
-            => Task.FromResult(new Domain.Interfaces.PowerShellResult { Success = true, ExitCode = 0, Output = command });
-
-        public Task<Domain.Interfaces.PowerShellResult> ExecuteModuleFunctionAsync(
-            string modulePath, string functionName, Dictionary<string, object>? parameters = null,
-            CancellationToken cancellationToken = default, TimeSpan? operationTimeout = null)
-            => Task.FromResult(new Domain.Interfaces.PowerShellResult { Success = true, ExitCode = 0 });
-
-        public Task<Domain.Interfaces.PowerShellResult> ExecuteScriptAsync(
-            string scriptPath, Dictionary<string, object>? parameters = null, string? workingDirectory = null,
-            bool runAsAdministrator = false, CancellationToken cancellationToken = default, TimeSpan? operationTimeout = null)
-            => Task.FromResult(new Domain.Interfaces.PowerShellResult { Success = true, ExitCode = 0 });
+        public Task<ExternalProcessResult> RunAsync(
+            ExternalProcessOptions options,
+            Action<string>?        onStdout          = null,
+            Action<string>?        onStderr          = null,
+            CancellationToken      cancellationToken = default)
+        {
+            var result = new ExternalProcessResult
+            {
+                ExitCode    = 0,
+                Output      = $"[FAKE] {options.Label}",
+                OutputLines = [$"[FAKE] {options.Label}"],
+                Duration    = TimeSpan.FromMilliseconds(1),
+                Pid         = 999,
+            };
+            // Suppress unused event warning
+            _ = OutputReceived;
+            _ = ErrorReceived;
+            return Task.FromResult(result);
+        }
     }
 }

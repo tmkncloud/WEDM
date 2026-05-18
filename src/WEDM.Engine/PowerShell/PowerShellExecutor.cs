@@ -30,17 +30,41 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
     public PowerShellExecutor(ILoggingService log)
     {
         _log = log;
+
+        // CreateDefault2 builds a minimal session that loads only the Core module
+        // (Microsoft.PowerShell.Core) eagerly and defers all other modules via
+        // module auto-loading.  That lazy auto-loading is the source of the startup
+        // message "The 'Set-Location' command was found in the module
+        // 'Microsoft.PowerShell.Management'…" which can hang or produce unexpected
+        // output in a WPF host with no interactive console.
+        //
+        // Fix: disable module auto-loading (PSModuleAutoLoadingPreference = None) and
+        // pre-import only the management module we actually need.  All subsequent
+        // commands are fully satisfied without any on-demand disk probing.
         var iss = InitialSessionState.CreateDefault2();
         iss.ExecutionPolicy = Microsoft.PowerShell.ExecutionPolicy.Bypass;
 
-        // WPF has no PSHost. Overload (min, max, iss, host) requires a non-null host. Use the factory overload
-        // that binds only InitialSessionState (pool min/max are both 1 — sufficient for this host tool).
+        // Disable module auto-loading for non-interactive / headless execution.
+        // Scripts that need additional modules must import them explicitly.
+        iss.Variables.Add(new SessionStateVariableEntry(
+            "PSModuleAutoLoadingPreference",
+            "None",
+            "Disable auto-loading to prevent startup hangs in WPF host",
+            ScopedItemOptions.AllScope));
+
+        // Pre-import Microsoft.PowerShell.Management so Set-Location, Get-ChildItem,
+        // Start-Process etc. are immediately available without a lazy module load.
+        iss.ImportPSModule("Microsoft.PowerShell.Management");
+        iss.ImportPSModule("Microsoft.PowerShell.Utility");
+
+        // WPF has no PSHost. Use the factory overload that binds only InitialSessionState
+        // (pool min/max are both 1 — sufficient for this host tool).
         _pool = RunspaceFactory.CreateRunspacePool(iss);
         try
         {
             _pool.Open();
             _log.Info(
-                "PowerShell in-process runspace pool ready (InitialSessionState, single runspace capacity).",
+                "PowerShell in-process runspace pool ready (InitialSessionState, Management+Utility pre-loaded).",
                 "PowerShell");
         }
         catch (Exception ex)
@@ -263,7 +287,7 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
         CancellationToken cancellationToken,
         TimeSpan? operationTimeout)
     {
-        var sw = Stopwatch.StartNew();
+        var sw       = Stopwatch.StartNew();
         var outputSb = new StringBuilder();
         var errorSb  = new StringBuilder();
 
@@ -278,73 +302,118 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
                 : null;
         var waitToken = linkedCts?.Token ?? CancellationToken.None;
 
-        var psi = new ProcessStartInfo
-        {
-            FileName               = "powershell.exe",
-            Arguments              = $"-NonInteractive -ExecutionPolicy Bypass -NoProfile -File \"{scriptPath}\"{paramArgs}",
-            UseShellExecute        = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError  = true,
-            CreateNoWindow         = true,
-            WorkingDirectory       = workingDirectory ?? Directory.GetCurrentDirectory(),
-            Verb                   = "runas"
-        };
+        // ── Elevation via ShellExecute runas ────────────────────────────────
+        // UseShellExecute must be TRUE for the runas verb.
+        // This means we cannot redirect stdout/stderr through managed pipes.
+        // Instead we have the script write its output to a temp log file that
+        // we read back after the elevated process exits.
+        //
+        // Hardening flags:
+        //   -NoProfile        — skips $PROFILE loading (no interactive side-effects)
+        //   -NonInteractive   — disables prompts (read-host, confirmations)
+        //   -NoLogo           — suppresses the banner header
+        //   -ExecutionPolicy Bypass — overrides any machine policy for this call
+        //   -WindowStyle Hidden — hides the console window from the desktop
 
-        using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data is null) return;
-            outputSb.AppendLine(e.Data);
-            OutputReceived?.Invoke(this, e.Data);
-            _log.ScriptOutput(e.Data);
-        };
-
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is null) return;
-            errorSb.AppendLine(e.Data);
-            ErrorReceived?.Invoke(this, e.Data);
-            _log.ScriptOutput(e.Data, isError: true);
-        };
+        var tempLog   = Path.Combine(Path.GetTempPath(), $"wedm_elv_{Guid.NewGuid():N}.log");
+        var logScriptPath = Path.GetTempFileName() + ".ps1";
 
         try
         {
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+            // Wrap the original script in a tee-to-file wrapper so we capture output.
+            // "exit $LASTEXITCODE" propagates the child script's exit code through the wrapper.
+            var scriptQ = scriptPath.Replace("'", "''", StringComparison.Ordinal);
+            var logQ    = tempLog.Replace("'", "''", StringComparison.Ordinal);
+            var wrapper = $"""
+                $ErrorActionPreference = 'Continue'
+                $VerbosePreference = 'SilentlyContinue'
+                & '{scriptQ}'{paramArgs} 2>&1 | Tee-Object -FilePath '{logQ}'
+                exit $LASTEXITCODE
+                """;
+            await File.WriteAllTextAsync(logScriptPath, wrapper, cancellationToken).ConfigureAwait(false);
 
-            await process.WaitForExitAsync(waitToken).ConfigureAwait(false);
+            var psi = new ProcessStartInfo
+            {
+                FileName        = "powershell.exe",
+                Arguments       = $"-NoProfile -NonInteractive -NoLogo -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{logScriptPath}\"",
+                UseShellExecute = true,   // required for runas elevation
+                Verb            = "runas",
+                WorkingDirectory = workingDirectory ?? Directory.GetCurrentDirectory(),
+            };
+
+            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+
+            bool started;
+            try { started = process.Start(); }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                _log.Error("Elevated PowerShell process failed to start", ex, "PowerShell");
+                return PowerShellResult.Fail($"Elevation failed: {ex.Message}", 1, ex);
+            }
+
+            if (!started)
+            {
+                sw.Stop();
+                return PowerShellResult.Fail("Elevated powershell.exe process did not start — UAC denied.", 1);
+            }
+
+            _log.Info($"[ProcessLaunch] Elevated PowerShell PID={process.Id}", "PowerShell");
+
+            try
+            {
+                await process.WaitForExitAsync(waitToken).ConfigureAwait(false);
+                process.WaitForExit(); // ensure all I/O is flushed
+            }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { /* ignore */ }
+                process.WaitForExit(5_000);
+                sw.Stop();
+                return cancellationToken.IsCancellationRequested
+                    ? PowerShellResult.Fail("Execution cancelled.", -1)
+                    : PowerShellResult.TimedOutResult(sw.Elapsed);
+            }
 
             sw.Stop();
             var exit = process.ExitCode;
-            var outText = outputSb.ToString();
-            var errText = errorSb.ToString();
 
+            // Read captured log file
+            string outText = string.Empty;
+            if (File.Exists(tempLog))
+            {
+                outText = await File.ReadAllTextAsync(tempLog, CancellationToken.None)
+                                    .ConfigureAwait(false);
+                foreach (var line in SplitLines(outText))
+                {
+                    outputSb.AppendLine(line);
+                    OutputReceived?.Invoke(this, line);
+                    _log.ScriptOutput(line);
+                }
+            }
+
+            var outFinal = outputSb.ToString();
             return new PowerShellResult
             {
                 Success     = exit == 0,
                 ExitCode    = exit,
-                Output      = outText,
-                Errors      = errText,
-                OutputLines = SplitLines(outText),
-                ErrorLines  = SplitLines(errText),
-                Duration    = sw.Elapsed
+                Output      = outFinal,
+                Errors      = errorSb.ToString(),
+                OutputLines = SplitLines(outFinal),
+                ErrorLines  = SplitLines(errorSb.ToString()),
+                Duration    = sw.Elapsed,
             };
-        }
-        catch (OperationCanceledException)
-        {
-            try { process.Kill(entireProcessTree: true); } catch { /* ignore */ }
-            sw.Stop();
-            if (cancellationToken.IsCancellationRequested)
-                return PowerShellResult.Fail("Execution cancelled.", -1);
-            return PowerShellResult.TimedOutResult(sw.Elapsed);
         }
         catch (Exception ex)
         {
             sw.Stop();
             _log.Error("Elevated PowerShell process failed", ex, "PowerShell");
             return PowerShellResult.Fail(ex.Message, 1, ex);
+        }
+        finally
+        {
+            TryDelete(tempLog);
+            TryDelete(logScriptPath);
         }
     }
 

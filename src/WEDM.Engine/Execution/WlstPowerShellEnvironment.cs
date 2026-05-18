@@ -46,6 +46,27 @@ public static class WlstPowerShellEnvironment
         return $"[WEDM] WLST environment: ORACLE_HOME={oh}; JAVA_HOME={jh}";
     }
 
+    /// <summary>
+    /// Build a key/value dictionary of environment variables to inject into a child process.
+    /// Use this with <see cref="IExternalProcessRunner"/> instead of the PowerShell wrapper.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> BuildEnvironmentVariables(
+        WlstExecutionEnvironment? environment)
+    {
+        var vars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (environment is null) return vars;
+        if (!string.IsNullOrWhiteSpace(environment.OracleHome))
+            vars["ORACLE_HOME"] = environment.OracleHome;
+        if (!string.IsNullOrWhiteSpace(environment.JavaHome))
+        {
+            vars["JAVA_HOME"] = environment.JavaHome;
+            // Prepend to PATH so the correct JVM is found first.
+            var existingPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            vars["PATH"] = $"{environment.JavaHome}\\bin;{existingPath}";
+        }
+        return vars;
+    }
+
     /// <summary>PowerShell body: env vars, optional preamble, Start-Process WLST, exit with child code.</summary>
     public static string BuildWlstLaunchBody(
         string wlstCmd,

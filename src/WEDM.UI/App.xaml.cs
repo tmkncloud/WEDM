@@ -122,6 +122,8 @@ public partial class App : System.Windows.Application
         services.AddSingleton<DeploymentSecretLifecycleService>();
         services.AddSingleton<IRcuAutomationService, RcuAutomationService>();
         services.AddSingleton<IPowerShellExecutor, PowerShellExecutor>();
+        // Deadlock-safe, observable, cancellable process runner for WLST / OUI / OPatch / RCU
+        services.AddSingleton<IExternalProcessRunner, ExternalProcessRunner>();
 
         services.AddSingleton<OpatchRunner>();
         services.AddSingleton<IPatchExecutionState, PatchExecutionState>();

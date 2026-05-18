@@ -13,16 +13,36 @@ using WEDM.Infrastructure.Registry;
 
 namespace WEDM.Engine.Workflow.Steps;
 
-/// <summary>Runs WLST offline to materialise the domain on disk.</summary>
+/// <summary>
+/// Runs WLST offline to materialise the domain on disk.
+///
+/// Implementation note — why we bypass PowerShell
+/// ────────────────────────────────────────────────
+/// Using Start-Process -Wait -NoNewWindow inside an in-process PS SDK runspace
+/// causes a deterministic deadlock in a WPF host process (which has no console):
+///
+///   WPF process (no console)
+///     └── PS RunspacePool thread
+///           └── Start-Process wlst.cmd -Wait -NoNewWindow
+///                 └── wlst.cmd  ← inherits NULL stdout handle from WPF
+///                       └── java.exe (WLST)  ← writes to NULL handle → hangs
+///
+/// We instead invoke cmd.exe /c wlst.cmd directly via ExternalProcessRunner, which:
+///   • Redirects stdout/stderr into async event-driven pipe readers (no buffer fill)
+///   • Applies ORACLE_HOME / JAVA_HOME / PATH via ProcessStartInfo.Environment
+///   • Adds a watchdog that fires if no output is seen for SilentProcessTimeout
+///   • Verifies that java.exe actually spawned within LaunchVerificationTimeout
+///   • Kills the full process tree (cmd → wlst.cmd → java) on cancellation or abort
+/// </summary>
 public sealed class CreateDomainStep : IStepExecutor
 {
-    private readonly IPowerShellExecutor _ps;
-    private readonly ILoggingService     _log;
+    private readonly IExternalProcessRunner _runner;
+    private readonly ILoggingService        _log;
 
-    public CreateDomainStep(IPowerShellExecutor ps, ILoggingService log)
+    public CreateDomainStep(IExternalProcessRunner runner, ILoggingService log)
     {
-        _ps  = ps;
-        _log = log;
+        _runner = runner;
+        _log    = log;
     }
 
     public async Task<StepExecutionResult> ExecuteAsync(
@@ -31,39 +51,101 @@ public sealed class CreateDomainStep : IStepExecutor
         CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
+
+        // ── 1. Resolve WLST launcher ────────────────────────────────────────
         var wlst = WlstDomainScriptBuilder.ResolveWlstCmd(config);
         if (!File.Exists(wlst))
-            return StepExecutionResult.Fail($"WLST not found at '{wlst}'. Install Fusion Middleware / WebLogic first.");
+            return StepExecutionResult.Fail(
+                $"WLST not found at '{wlst}'. Install Fusion Middleware / WebLogic first.");
 
-        var scriptPath = Path.Combine(config.Paths.TempDirectory, $"wedm_create_domain_{config.Id:N}.py");
+        // ── 2. Write WLST Python script ─────────────────────────────────────
+        var scriptPath = Path.Combine(
+            config.Paths.TempDirectory, $"wedm_create_domain_{config.Id:N}.py");
         Directory.CreateDirectory(config.Paths.TempDirectory);
+
         var py = WlstDomainScriptBuilder.BuildCreateDomainPy(config);
-        await File.WriteAllTextAsync(scriptPath, py, cancellationToken);
+        await File.WriteAllTextAsync(scriptPath, py, cancellationToken).ConfigureAwait(false);
         _log.Info($"WLST script written: {scriptPath}", "Domain");
 
-        var env  = WlstPowerShellEnvironment.FromDeployment(config);
-        var body = WlstPowerShellEnvironment.BuildWlstLaunchBody(wlst, scriptPath, env);
+        // ── 3. Build environment variables ──────────────────────────────────
+        var env     = WlstPowerShellEnvironment.FromDeployment(config);
+        var envVars = WlstPowerShellEnvironment.BuildEnvironmentVariables(env);
+        _log.Info(WlstPowerShellEnvironment.BuildEnvironmentTrace(env), "Domain");
 
-        var result = await _ps.ExecuteCommandAsync(
-            body,
-            workingDirectory: config.Paths.TempDirectory,
-            runAsAdministrator: false,
-            cancellationToken: cancellationToken,
-            operationTimeout: TimeSpan.FromMinutes(90));
+        // ── 4. Launch directly via cmd.exe — no PowerShell wrapper ──────────
+        //   cmd.exe /c ""wlst.cmd" "script.py""
+        //   The double outer quotes satisfy CMD's /C quoting rule when inner paths
+        //   contain spaces:  /c ""C:\path\wlst.cmd" "C:\path\script.py""
+        var options = new ExternalProcessOptions
+        {
+            FileName                  = "cmd.exe",
+            Arguments                 = BuildCmdArguments(wlst, scriptPath),
+            WorkingDirectory          = config.Paths.TempDirectory,
+            EnvironmentVariables      = envVars,
+            TotalTimeout              = ExternalProcessTimeouts.DomainCreation,
+            SilentProcessTimeout      = ExternalProcessTimeouts.SilentProcess,
+            LaunchVerificationTimeout = ExternalProcessTimeouts.LaunchVerification,
+            ExpectedChildProcessName  = "java",   // wlst.cmd must spawn the JVM
+            Label                     = "WLST CreateDomain",
+            EnableWatchdog            = true,
+        };
+
+        _log.Info(
+            $"[ProcessLaunch] Starting WLST domain creation: cmd.exe {options.Arguments}",
+            "Domain");
+
+        var result = await _runner.RunAsync(
+            options,
+            onStdout: line => _log.ScriptOutput(line),
+            onStderr: line => _log.ScriptOutput(line, isError: true),
+            cancellationToken: cancellationToken).ConfigureAwait(false);
 
         sw.Stop();
-        if (result.TimedOut)
-            return StepExecutionResult.Fail("WLST domain creation timed out.", -2);
-        if (result.ExitCode != 0)
-            return StepExecutionResult.Fail($"WLST failed (exit {result.ExitCode}). Output: {result.Output}\nErrors: {result.Errors}", result.ExitCode);
 
+        // ── 5. Map process result to step result ─────────────────────────────
+        if (result.Cancelled)
+            return StepExecutionResult.Fail("WLST domain creation was cancelled.", -1);
+
+        if (result.TimedOut)
+            return StepExecutionResult.Fail(
+                $"WLST domain creation timed out after {options.TotalTimeout}.", -2);
+
+        if (result.Hung)
+        {
+            var diagNote = result.Diagnostics is { } d
+                ? $" Diagnostics — classification: {d.HangClassification}; "
+                + $"last stdout: {d.StdoutTail[..Math.Min(300, d.StdoutTail.Length)]}"
+                : string.Empty;
+            return StepExecutionResult.Fail(
+                $"WLST hung (no process activity for {options.SilentProcessTimeout}).{diagNote}", -3);
+        }
+
+        if (result.LaunchFailed)
+            return StepExecutionResult.Fail(
+                $"WLST launch failed: {result.LaunchFailureReason}", -4);
+
+        if (result.ExitCode != 0)
+            return StepExecutionResult.Fail(
+                $"WLST failed (exit {result.ExitCode}).\nOutput: {result.Output}\nErrors: {result.Errors}",
+                result.ExitCode);
+
+        // ── 6. Verify domain materialised on disk ────────────────────────────
         var domainHome = Path.Combine(config.Paths.DomainBase, config.Domain.DomainName);
         var cfgXml     = Path.Combine(domainHome, "config", "config.xml");
         if (!File.Exists(cfgXml))
-            return StepExecutionResult.Fail($"Domain config.xml missing at '{cfgXml}'.");
+            return StepExecutionResult.Fail(
+                $"Domain config.xml missing at '{cfgXml}' — WLST reported success but produced no domain directory.");
 
         return StepExecutionResult.Ok($"Domain created at {domainHome}", sw.Elapsed);
     }
+
+    /// <summary>
+    /// Build the CMD /C argument string.  The outer double-quote wrapping is required
+    /// by CMD.EXE when the compound command itself contains quoted paths.
+    ///   /c ""C:\path with space\wlst.cmd" "C:\path with space\script.py""
+    /// </summary>
+    private static string BuildCmdArguments(string wlstCmd, string scriptPath)
+        => $"/c \"\"{wlstCmd}\" \"{scriptPath}\"\"";
 }
 
 /// <summary>Validates AdminServer listen configuration in domain config.xml.</summary>
