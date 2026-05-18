@@ -84,7 +84,8 @@ public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
         sb.AppendLine($"# AdminUser: {adminUser}");
         sb.AppendLine($"# Generated: {generatedAt}");
         sb.AppendLine("#");
-        sb.AppendLine("# NOTE: set('Password', ...) is NOT valid in 12c/14c — see comments below.");
+        sb.AppendLine("# NOTE: Direct password attribute mutation is invalid in 12c/14c.");
+        sb.AppendLine("#       Use cmo.setPassword() via MBean navigation instead (see below).");
         sb.AppendLine();
         sb.AppendLine("import os");
         sb.AppendLine();
@@ -113,7 +114,7 @@ public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
         //   cd('/Security/base_domain/User/weblogic')
         //   cmo.setPassword('mypassword')
         //   cd('/')
-        sb.AppendLine("# Admin credentials (12c/14c: cmo.setPassword via MBean — NOT set('Password',...)");
+        sb.AppendLine("# Admin credentials: cmo.setPassword() via MBean (12c/14c/15c correct API)");
         sb.AppendLine($"cd('/Security/{realmName}/User/{EscapePy(adminUser)}')");
         sb.AppendLine($"cmo.setPassword('{EscapePy(adminPwd)}')");
         sb.AppendLine("cd('/')");
