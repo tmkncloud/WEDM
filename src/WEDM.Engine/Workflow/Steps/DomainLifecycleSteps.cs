@@ -107,7 +107,7 @@ public sealed class CreateDomainStep : IStepExecutor
         if (!compatibility.IsCompatible)
         {
             foreach (var violation in compatibility.Violations)
-                _log.Error($"[WLST] Compatibility VIOLATION: {violation}", "Domain");
+                _log.Error($"[WLST] Compatibility VIOLATION: {violation}", category: "Domain");
 
             var violationSummary = string.Join(" | ", compatibility.Violations);
             return StepExecutionResult.Fail(
