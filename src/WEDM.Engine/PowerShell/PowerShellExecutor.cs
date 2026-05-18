@@ -523,7 +523,7 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
     }
 
     private static List<string> SplitLines(string text)
-        => text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).ToList();
+        => text.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
 
     private static string BuildParamBlock(Dictionary<string, object>? parameters)
     {

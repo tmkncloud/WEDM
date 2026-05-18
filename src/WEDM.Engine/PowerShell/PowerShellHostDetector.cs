@@ -5,7 +5,7 @@ namespace WEDM.Engine.PowerShell;
 /// <summary>
 /// Immutable snapshot of the host PowerShell environment detected at application startup.
 /// </summary>
-public sealed class PowerShellHostInfo
+public sealed record PowerShellHostInfo
 {
     /// <summary>"Desktop" (Windows PowerShell 5.1) or "Core" (PowerShell 7+).</summary>
     public string Edition           { get; init; } = "Unknown";
