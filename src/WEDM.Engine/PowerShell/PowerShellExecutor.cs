@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
@@ -9,71 +8,121 @@ namespace WEDM.Engine.PowerShell;
 
 /// <summary>
 /// Production PowerShell executor using the PowerShell SDK for in-process execution
-/// and System.Diagnostics.Process for out-of-process elevated execution.
+/// and a detected out-of-process host for Administrator-elevated operations.
 ///
-/// Design decisions:
-///   • In-process runspace pool for fast, non-elevated script execution
-///   • Out-of-process powershell.exe for Administrator-elevated operations
-///   • Optional wall-clock <see cref="TimeSpan"/> caps (OUI installs, RCU, WLST)
-///   • Streaming stdout/stderr output via events for real-time log viewer binding
-///   • Full structured result with exit code, duration, timeout flag, and exceptions
+/// Compatibility guarantee
+/// ──────────────────────
+/// • Works with Windows PowerShell 5.1 (powershell.exe) AND PowerShell 7+ (pwsh.exe).
+/// • Does NOT call ImportPSModule() on built-in modules — those modules are compiled
+///   into the PS SDK assemblies and have no standalone .psd1 on disk in the PS7 SDK
+///   in-process context.  Calling ImportPSModule("Microsoft.PowerShell.Management")
+///   throws CmdletInvocationException in PS 7+ and must never be attempted.
+/// • InitialSessionState.CreateDefault2() already registers every built-in cmdlet
+///   (Set-Location, Get-ChildItem, Start-Process, …) as SessionStateCmdletEntry objects
+///   without any file loading — no additional imports are needed.
+/// • If CreateDefault2() fails for any reason a safe fallback to CreateDefault() is
+///   attempted, and if that also fails the executor enters a graceful no-op mode so
+///   the WEDM UI still launches.
+///
+/// Elevated execution
+/// ──────────────────
+/// • Prefers pwsh.exe (PS 7+) when detected; falls back to powershell.exe (5.1).
+/// • Uses UseShellExecute=true + Verb="runas" for UAC elevation.
+/// • Captures output via a temp Tee-Object wrapper script rather than pipe redirection
+///   (pipe redirection is incompatible with UseShellExecute=true).
 /// </summary>
 public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
 {
-    private readonly ILoggingService _log;
-    private readonly RunspacePool   _pool;
+    private readonly ILoggingService    _log;
+    private readonly RunspacePool?      _pool;          // null when both ISS strategies fail
+    private readonly bool               _poolAvailable;
+    private readonly PowerShellHostInfo _hostInfo;
     private bool _disposed;
 
     public event EventHandler<string>? OutputReceived;
     public event EventHandler<string>? ErrorReceived;
 
+    // ── Constructor ───────────────────────────────────────────────────────────
+
     public PowerShellExecutor(ILoggingService log)
     {
         _log = log;
 
-        // CreateDefault2 builds a minimal session that loads only the Core module
-        // (Microsoft.PowerShell.Core) eagerly and defers all other modules via
-        // module auto-loading.  That lazy auto-loading is the source of the startup
-        // message "The 'Set-Location' command was found in the module
-        // 'Microsoft.PowerShell.Management'…" which can hang or produce unexpected
-        // output in a WPF host with no interactive console.
+        // ── 1. Detect PS edition and preferred elevated executable ────────────
+        _hostInfo = PowerShellHostDetector.Detect();
+        _log.Info(_hostInfo.ToString(), "PowerShell");
+
+        // ── 2. Build InitialSessionState — NO explicit module imports ────────
         //
-        // Fix: disable module auto-loading (PSModuleAutoLoadingPreference = None) and
-        // pre-import only the management module we actually need.  All subsequent
-        // commands are fully satisfied without any on-demand disk probing.
-        var iss = InitialSessionState.CreateDefault2();
-        iss.ExecutionPolicy = Microsoft.PowerShell.ExecutionPolicy.Bypass;
+        // IMPORTANT: Do NOT call iss.ImportPSModule() for built-in modules.
+        //
+        // Reason: In the PowerShell 7 SDK (Microsoft.PowerShell.SDK 7.x), built-in
+        // cmdlets like Set-Location, Get-ChildItem, Start-Process are registered directly
+        // as SessionStateCmdletEntry objects by CreateDefault2() — they are NOT separate
+        // .psd1/.psm1 files on disk.  Calling iss.ImportPSModule("Microsoft.PowerShell.Management")
+        // asks PS to find a module file that does not exist at any path in $PSModulePath for
+        // an SDK-hosted process, resulting in:
+        //   CmdletInvocationException: Cannot find the built-in module
+        //   'Microsoft.PowerShell.Management' that is compatible with the 'Core' edition.
+        //
+        // Similarly: Do NOT set PSModuleAutoLoadingPreference = "None".
+        // Module auto-loading in an SDK session applies only to EXTERNAL modules in
+        // $PSModulePath, not to the built-in cmdlets which are already present.
+        // Disabling it would break scripts that import third-party modules.
+        //
+        // The informational trace "The 'Set-Location' command was found in the module
+        // 'Microsoft.PowerShell.Management'..." that appeared in earlier runs was PS's
+        // verbose module-discovery tracing, NOT a sign of a real problem.
+        var iss = BuildSafeInitialSessionState(out var issStrategy);
 
-        // Disable module auto-loading for non-interactive / headless execution.
-        // Scripts that need additional modules must import them explicitly.
-        iss.Variables.Add(new SessionStateVariableEntry(
-            "PSModuleAutoLoadingPreference",
-            "None",
-            "Disable auto-loading to prevent startup hangs in WPF host",
-            ScopedItemOptions.AllScope));
+        // ── 3. Open runspace pool with graceful double-fallback ───────────────
+        _pool          = null;
+        _poolAvailable = false;
+        var pool       = RunspaceFactory.CreateRunspacePool(iss);
 
-        // Pre-import Microsoft.PowerShell.Management so Set-Location, Get-ChildItem,
-        // Start-Process etc. are immediately available without a lazy module load.
-        iss.ImportPSModule("Microsoft.PowerShell.Management");
-        iss.ImportPSModule("Microsoft.PowerShell.Utility");
-
-        // WPF has no PSHost. Use the factory overload that binds only InitialSessionState
-        // (pool min/max are both 1 — sufficient for this host tool).
-        _pool = RunspaceFactory.CreateRunspacePool(iss);
         try
         {
-            _pool.Open();
+            pool.Open();
+            _pool          = pool;
+            _poolAvailable = true;
             _log.Info(
-                "PowerShell in-process runspace pool ready (InitialSessionState, Management+Utility pre-loaded).",
+                $"[PowerShellHost] In-process runspace pool ready (strategy={issStrategy}).",
                 "PowerShell");
         }
-        catch (Exception ex)
+        catch (Exception ex1)
         {
-            _log.Error("PowerShell runspace pool initialization failed.", ex, "PowerShell");
-            try { _pool.Dispose(); } catch { /* ignore */ }
-            throw;
+            _log.Warning(
+                $"[PowerShellHost] {issStrategy} runspace open failed: {ex1.Message} — trying CreateDefault() fallback.",
+                "PowerShell");
+            try { pool.Dispose(); } catch { /* ignore */ }
+
+            // Fallback: CreateDefault() is an older but more universally compatible factory
+            try
+            {
+                var fallbackIss = InitialSessionState.CreateDefault();
+                fallbackIss.ExecutionPolicy = Microsoft.PowerShell.ExecutionPolicy.Bypass;
+                var fallbackPool = RunspaceFactory.CreateRunspacePool(fallbackIss);
+                fallbackPool.Open();
+                _pool          = fallbackPool;
+                _poolAvailable = true;
+                _hostInfo      = _hostInfo with { RestrictedMode = true };
+                _log.Warning(
+                    "[PowerShellHost] Using CreateDefault() fallback — some advanced PS cmdlets may be unavailable.",
+                    "PowerShell");
+            }
+            catch (Exception ex2)
+            {
+                // Both strategies failed.  WEDM must still launch; in-process PS execution
+                // will return graceful errors at call time rather than crashing at startup.
+                _log.Error(
+                    $"[PowerShellHost] All runspace strategies failed. In-process PS execution unavailable. " +
+                    $"Error1={ex1.Message} Error2={ex2.Message}",
+                    null, "PowerShell");
+            }
         }
     }
+
+    // ── Public interface methods ──────────────────────────────────────────────
 
     public async Task<PowerShellResult> ExecuteScriptAsync(
         string scriptPath,
@@ -89,11 +138,14 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
         _log.Info($"Executing script: {scriptPath}", "PowerShell");
 
         if (runAsAdministrator)
-            return await ExecuteElevatedAsync(scriptPath, parameters, workingDirectory, cancellationToken, operationTimeout);
+            return await ExecuteElevatedAsync(
+                scriptPath, parameters, workingDirectory, cancellationToken, operationTimeout)
+                .ConfigureAwait(false);
 
         var escaped = scriptPath.Replace("'", "''", StringComparison.Ordinal);
         return await ExecuteInProcessAsync(
-            $"& '{escaped}'", parameters, workingDirectory, cancellationToken, operationTimeout);
+            $"& '{escaped}'", parameters, workingDirectory, cancellationToken, operationTimeout)
+            .ConfigureAwait(false);
     }
 
     public async Task<PowerShellResult> ExecuteCommandAsync(
@@ -107,17 +159,24 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
 
         if (runAsAdministrator)
         {
-            var cwd = workingDirectory ?? Directory.GetCurrentDirectory();
+            var cwd    = workingDirectory ?? Directory.GetCurrentDirectory();
             var cwdEsc = cwd.Replace("'", "''", StringComparison.Ordinal);
-            var tmpScript = Path.Combine(Path.GetTempPath(), $"wedm_{Guid.NewGuid():N}.ps1");
-            await File.WriteAllTextAsync(tmpScript,
+            var tmp    = Path.Combine(Path.GetTempPath(), $"wedm_{Guid.NewGuid():N}.ps1");
+            await File.WriteAllTextAsync(tmp,
                 $"Set-Location -LiteralPath '{cwdEsc}'\n{command}",
-                cancellationToken);
-            try { return await ExecuteElevatedAsync(tmpScript, null, workingDirectory, cancellationToken, operationTimeout); }
-            finally { TryDelete(tmpScript); }
+                cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await ExecuteElevatedAsync(
+                    tmp, null, workingDirectory, cancellationToken, operationTimeout)
+                    .ConfigureAwait(false);
+            }
+            finally { TryDelete(tmp); }
         }
 
-        return await ExecuteInProcessAsync(command, null, workingDirectory, cancellationToken, operationTimeout);
+        return await ExecuteInProcessAsync(
+            command, null, workingDirectory, cancellationToken, operationTimeout)
+            .ConfigureAwait(false);
     }
 
     public async Task<PowerShellResult> ExecuteModuleFunctionAsync(
@@ -131,10 +190,14 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
             return PowerShellResult.Fail($"Module not found: {modulePath}");
 
         var paramBlock = BuildParamBlock(parameters);
-        var modEsc = modulePath.Replace("'", "''", StringComparison.Ordinal);
-        var command = $"Import-Module -Force -LiteralPath '{modEsc}' -ErrorAction Stop; {functionName} {paramBlock}";
-        return await ExecuteInProcessAsync(command, null, null, cancellationToken, operationTimeout);
+        var modEsc     = modulePath.Replace("'", "''", StringComparison.Ordinal);
+        var command    = $"Import-Module -Force -LiteralPath '{modEsc}' -ErrorAction Stop; {functionName} {paramBlock}";
+        return await ExecuteInProcessAsync(
+            command, null, null, cancellationToken, operationTimeout)
+            .ConfigureAwait(false);
     }
+
+    // ── In-process execution (RunspacePool) ───────────────────────────────────
 
     private async Task<PowerShellResult> ExecuteInProcessAsync(
         string command,
@@ -143,7 +206,17 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
         CancellationToken cancellationToken,
         TimeSpan? operationTimeout)
     {
-        var sw = Stopwatch.StartNew();
+        // Guard: pool unavailable (both ISS strategies failed at startup)
+        if (!_poolAvailable || _pool is null)
+        {
+            _log.Warning(
+                "[PowerShellHost] In-process PS execution skipped — runspace pool unavailable. " +
+                "Check startup-error.txt for details.", "PowerShell");
+            return PowerShellResult.Fail(
+                "PowerShell runspace pool is unavailable. Check startup-error.txt for details.");
+        }
+
+        var sw          = Stopwatch.StartNew();
         var outputLines = new List<string>();
         var errorLines  = new List<string>();
 
@@ -189,7 +262,7 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
                 ps.EndInvoke);
 
             var hasDeadline = operationTimeout is { TotalMilliseconds: > 0 }
-                              || cancellationToken.CanBeCanceled;
+                           || cancellationToken.CanBeCanceled;
 
             if (!hasDeadline)
             {
@@ -197,16 +270,16 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
             }
             else
             {
-                using var linked = CreateLinkedTimeoutSource(cancellationToken, operationTimeout);
-                var gate = Task.Delay(Timeout.Infinite, linked.Token);
-                var completed = await Task.WhenAny(invokeTask, gate).ConfigureAwait(false);
+                using var linked   = CreateLinkedTimeoutSource(cancellationToken, operationTimeout);
+                var gate           = Task.Delay(Timeout.Infinite, linked.Token);
+                var completed      = await Task.WhenAny(invokeTask, gate).ConfigureAwait(false);
                 if (completed != invokeTask)
                 {
                     try { ps.Stop(); } catch { /* ignore */ }
                     sw.Stop();
-                    if (cancellationToken.IsCancellationRequested)
-                        return PowerShellResult.Fail("Execution cancelled.", -1);
-                    return PowerShellResult.TimedOutResult(sw.Elapsed);
+                    return cancellationToken.IsCancellationRequested
+                        ? PowerShellResult.Fail("Execution cancelled.", -1)
+                        : PowerShellResult.TimedOutResult(sw.Elapsed);
                 }
 
                 await invokeTask.ConfigureAwait(false);
@@ -214,10 +287,10 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
 
             sw.Stop();
 
-            // ── Extract __WEDM_EXIT marker (written by BuildWlstLaunchBody) ──────────
-            // This is the authoritative exit code for all WLST / Start-Process launch
-            // scripts, bypassing ps.HadErrors which fires on any native-command stderr
-            // output (including WLST informational messages) regardless of actual success.
+            // ── Extract __WEDM_EXIT sentinel ─────────────────────────────────
+            // Scripts that wrap Start-Process emit "__WEDM_EXIT:<code>" so we can read
+            // the child exit code without being confused by ps.HadErrors, which fires
+            // on any native-command stderr output regardless of actual success.
             int? wedmExplicitExit = null;
             var cleanOutputLines  = outputLines.ToList();
             for (int i = cleanOutputLines.Count - 1; i >= 0; i--)
@@ -227,7 +300,7 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
                     && int.TryParse(marker["__WEDM_EXIT:".Length..], out var parsedRc))
                 {
                     wedmExplicitExit = parsedRc;
-                    cleanOutputLines.RemoveAt(i);   // strip internal marker from user-visible output
+                    cleanOutputLines.RemoveAt(i);
                     break;
                 }
             }
@@ -236,49 +309,45 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
             int  exitCode;
             if (wedmExplicitExit.HasValue)
             {
-                // WLST / Start-Process script with explicit exit code — trust it entirely.
                 exitCode  = wedmExplicitExit.Value;
                 hadErrors = exitCode != 0;
             }
             else
             {
-                // Cmdlet-only script (no Start-Process wrapper).
-                // Only fail when ErrorRecord objects carry an actual exception; bare informational
-                // error-stream messages (e.g., Set-Location on non-existent path warning) should
-                // not abort a step that otherwise completes successfully.
+                // Only fail for ErrorRecord objects that carry an actual exception;
+                // bare informational error-stream messages must not abort the step.
                 hadErrors = ps.HadErrors && ps.Streams.Error.Any(e => e?.Exception is not null);
                 exitCode  = hadErrors ? 1 : 0;
             }
-
-            var output = string.Join(Environment.NewLine, cleanOutputLines);
-            var errors = string.Join(Environment.NewLine, errorLines);
 
             return new PowerShellResult
             {
                 Success     = !hadErrors,
                 ExitCode    = exitCode,
-                Output      = output,
-                Errors      = errors,
+                Output      = string.Join(Environment.NewLine, cleanOutputLines),
+                Errors      = string.Join(Environment.NewLine, errorLines),
                 OutputLines = cleanOutputLines,
                 ErrorLines  = errorLines,
-                Duration    = sw.Elapsed
+                Duration    = sw.Elapsed,
             };
         }
         catch (OperationCanceledException)
         {
             try { ps.Stop(); } catch { /* ignore */ }
             sw.Stop();
-            if (cancellationToken.IsCancellationRequested)
-                return PowerShellResult.Fail("Execution cancelled.", -1);
-            return PowerShellResult.TimedOutResult(sw.Elapsed);
+            return cancellationToken.IsCancellationRequested
+                ? PowerShellResult.Fail("Execution cancelled.", -1)
+                : PowerShellResult.TimedOutResult(sw.Elapsed);
         }
         catch (Exception ex)
         {
             sw.Stop();
-            _log.Error("PowerShell execution failed", ex, "PowerShell");
+            _log.Error("PowerShell in-process execution failed", ex, "PowerShell");
             return PowerShellResult.Fail(ex.Message, 1, ex);
         }
     }
+
+    // ── Elevated out-of-process execution ─────────────────────────────────────
 
     private async Task<PowerShellResult> ExecuteElevatedAsync(
         string scriptPath,
@@ -289,7 +358,6 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
     {
         var sw       = Stopwatch.StartNew();
         var outputSb = new StringBuilder();
-        var errorSb  = new StringBuilder();
 
         var paramArgs = string.Empty;
         if (parameters?.Count > 0)
@@ -297,49 +365,48 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
                 parameters.Select(kv => $"-{kv.Key} \"{kv.Value}\""));
 
         using CancellationTokenSource? linkedCts =
-            (operationTimeout is { TotalMilliseconds: > 0 } || cancellationToken.CanBeCanceled)
+            operationTimeout is { TotalMilliseconds: > 0 } || cancellationToken.CanBeCanceled
                 ? CreateLinkedTimeoutSource(cancellationToken, operationTimeout)
                 : null;
         var waitToken = linkedCts?.Token ?? CancellationToken.None;
 
-        // ── Elevation via ShellExecute runas ────────────────────────────────
-        // UseShellExecute must be TRUE for the runas verb.
-        // This means we cannot redirect stdout/stderr through managed pipes.
-        // Instead we have the script write its output to a temp log file that
-        // we read back after the elevated process exits.
+        // Elevation strategy:
+        //   UseShellExecute = true + Verb = "runas"  →  UAC prompt → elevated process
+        //   Cannot redirect stdout/stderr with UseShellExecute=true.
+        //   Use Tee-Object wrapper to write output to a temp log file we read back.
         //
-        // Hardening flags:
-        //   -NoProfile        — skips $PROFILE loading (no interactive side-effects)
-        //   -NonInteractive   — disables prompts (read-host, confirmations)
-        //   -NoLogo           — suppresses the banner header
-        //   -ExecutionPolicy Bypass — overrides any machine policy for this call
-        //   -WindowStyle Hidden — hides the console window from the desktop
-
-        var tempLog   = Path.Combine(Path.GetTempPath(), $"wedm_elv_{Guid.NewGuid():N}.log");
-        var logScriptPath = Path.GetTempFileName() + ".ps1";
+        // Executable: prefer pwsh.exe (PS 7+), fall back to powershell.exe (5.1).
+        // Both accept the same flag set for this use case.
+        var exe     = _hostInfo.Executable;
+        var tempLog = Path.Combine(Path.GetTempPath(), $"wedm_elv_{Guid.NewGuid():N}.log");
+        var wrapper = Path.GetTempFileName() + ".ps1";
 
         try
         {
-            // Wrap the original script in a tee-to-file wrapper so we capture output.
-            // "exit $LASTEXITCODE" propagates the child script's exit code through the wrapper.
+            // Wrapper script: invoke the real script, tee output to log file, propagate exit code.
             var scriptQ = scriptPath.Replace("'", "''", StringComparison.Ordinal);
             var logQ    = tempLog.Replace("'", "''", StringComparison.Ordinal);
-            var wrapper = $"""
+            var wrapContent = $"""
                 $ErrorActionPreference = 'Continue'
                 $VerbosePreference = 'SilentlyContinue'
                 & '{scriptQ}'{paramArgs} 2>&1 | Tee-Object -FilePath '{logQ}'
                 exit $LASTEXITCODE
                 """;
-            await File.WriteAllTextAsync(logScriptPath, wrapper, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(wrapper, wrapContent, cancellationToken)
+                      .ConfigureAwait(false);
 
             var psi = new ProcessStartInfo
             {
-                FileName        = "powershell.exe",
-                Arguments       = $"-NoProfile -NonInteractive -NoLogo -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{logScriptPath}\"",
-                UseShellExecute = true,   // required for runas elevation
-                Verb            = "runas",
+                FileName         = exe,
+                Arguments        = $"-NoProfile -NonInteractive -NoLogo -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{wrapper}\"",
+                UseShellExecute  = true,    // required for runas verb
+                Verb             = "runas",
                 WorkingDirectory = workingDirectory ?? Directory.GetCurrentDirectory(),
             };
+
+            _log.Info(
+                $"[ProcessLaunch] Elevated PS ({_hostInfo.ExecutableName} Edition={_hostInfo.Edition}) starting.",
+                "PowerShell");
 
             using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
 
@@ -355,15 +422,18 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
             if (!started)
             {
                 sw.Stop();
-                return PowerShellResult.Fail("Elevated powershell.exe process did not start — UAC denied.", 1);
+                return PowerShellResult.Fail(
+                    $"Elevated {_hostInfo.ExecutableName} process did not start — UAC prompt was denied.", 1);
             }
 
-            _log.Info($"[ProcessLaunch] Elevated PowerShell PID={process.Id}", "PowerShell");
+            _log.Info(
+                $"[ProcessLaunch] Elevated PS PID={process.Id} ({_hostInfo.ExecutableName}).",
+                "PowerShell");
 
             try
             {
                 await process.WaitForExitAsync(waitToken).ConfigureAwait(false);
-                process.WaitForExit(); // ensure all I/O is flushed
+                process.WaitForExit(); // drain async event callbacks
             }
             catch (OperationCanceledException)
             {
@@ -378,13 +448,12 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
             sw.Stop();
             var exit = process.ExitCode;
 
-            // Read captured log file
-            string outText = string.Empty;
+            // Replay captured output through the normal event stream
             if (File.Exists(tempLog))
             {
-                outText = await File.ReadAllTextAsync(tempLog, CancellationToken.None)
-                                    .ConfigureAwait(false);
-                foreach (var line in SplitLines(outText))
+                var logText = await File.ReadAllTextAsync(tempLog, CancellationToken.None)
+                                        .ConfigureAwait(false);
+                foreach (var line in SplitLines(logText))
                 {
                     outputSb.AppendLine(line);
                     OutputReceived?.Invoke(this, line);
@@ -398,9 +467,8 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
                 Success     = exit == 0,
                 ExitCode    = exit,
                 Output      = outFinal,
-                Errors      = errorSb.ToString(),
                 OutputLines = SplitLines(outFinal),
-                ErrorLines  = SplitLines(errorSb.ToString()),
+                ErrorLines  = [],
                 Duration    = sw.Elapsed,
             };
         }
@@ -413,13 +481,27 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
         finally
         {
             TryDelete(tempLog);
-            TryDelete(logScriptPath);
+            TryDelete(wrapper);
         }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static InitialSessionState BuildSafeInitialSessionState(out string strategy)
+    {
+        // CreateDefault2() registers all built-in cmdlets as SessionStateCmdletEntry objects.
+        // No ImportPSModule() calls — those require .psd1 files that don't exist in the SDK.
+        // No PSModuleAutoLoadingPreference override — auto-loading is only for $PSModulePath
+        // external modules and does not affect built-in cmdlet availability.
+        strategy = "CreateDefault2";
+        var iss  = InitialSessionState.CreateDefault2();
+        iss.ExecutionPolicy = Microsoft.PowerShell.ExecutionPolicy.Bypass;
+        return iss;
     }
 
     private static CancellationTokenSource CreateLinkedTimeoutSource(
         CancellationToken userToken,
-        TimeSpan? operationTimeout)
+        TimeSpan?         operationTimeout)
     {
         if (operationTimeout is { TotalMilliseconds: > 0 })
         {
@@ -441,7 +523,7 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
     }
 
     private static List<string> SplitLines(string text)
-        => text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        => text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).ToList();
 
     private static string BuildParamBlock(Dictionary<string, object>? parameters)
     {
@@ -460,7 +542,7 @@ public sealed class PowerShellExecutor : IPowerShellExecutor, IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-        _pool.Dispose();
+        _pool?.Dispose();
         _disposed = true;
     }
 }
