@@ -6,30 +6,26 @@ using WEDM.Engine.Wlst;
 namespace WEDM.Engine.Automation;
 
 /// <summary>
-/// Builds a WLST offline domain-creation script for WebLogic 12c and 14c.
+/// Builds a WLST offline domain-creation script for WebLogic 12c, 14c, and 15c.
 ///
-/// Key difference from the old (broken) approach
-/// ──────────────────────────────────────────────
-/// WebLogic 12c's writeDomain() internally calls ScriptExecutor.checkSecurityInfo()
-/// which validates the admin user credentials in the security realm MBean tree.
+/// Admin credential approach
+/// ─────────────────────────
+/// writeDomain() calls checkSecurityInfo() internally which validates the admin-user
+/// MBean.  The correct API is cmo.setPassword() via MBean navigation — NOT the
+/// rejected set('Password', ...) attribute form.
 ///
-/// The old set('Password', ...) attribute form was NEVER valid in 12c and triggers:
-///   com.oracle.cie.domain.script.ScriptException: Attribute "Password" is not valid
-///     at ScriptExecutor.checkSecurityInfo(...)
-///     at ScriptExecutor.writeDomain(...)
+/// The admin user lives at /Security/{realm}/User/{adminUser}, but the realm name
+/// varies across WLS versions, patch levels, and templates:
+///   wls.jar on WLS 12.2.1.4  → realm may be 'myrealm' or 'base_domain'
+///   wls.jar on WLS 14.1.1    → realm is typically 'myrealm'
 ///
-/// The correct 12c API navigates to the admin-user MBean and calls cmo.setPassword():
-///   cd('/Security/base_domain/User/weblogic')
-///   cmo.setPassword('password')
-///   cd('/')
-///
-/// The realm path uses "base_domain" — the template's internal domain name — because
-/// renaming the domain via set('Name', ...) does NOT rename the security realm.
-/// This provider also covers WebLogic 14c, which uses the same API surface.
+/// This provider emits the _wedm_discover_admin_path() Jython helper which
+/// discovers the correct path at runtime by calling ls() after readTemplate().
+/// No realm name is ever hardcoded in the generated script.
 /// </summary>
 public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
 {
-    /// <summary>Primary target; also used for 14c via <see cref="WlstDomainScriptProviderFactory"/>.</summary>
+    /// <summary>Primary target; also used for 14c/15c via <see cref="WlstDomainScriptProviderFactory"/>.</summary>
     public WebLogicVersion TargetVersion => WebLogicVersion.WLS_12c;
 
     // ── IWlstDomainScriptProvider ─────────────────────────────────────────────
@@ -38,14 +34,12 @@ public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
     {
         var templatePath = MiddlewareHomePathResolver.ResolveExistingOrDefault(
             MiddlewareHomePathResolver.GetWlsTemplateJarCandidates(config.Paths.MiddlewareHome));
-        var domainPath   = Path.Combine(config.Paths.DomainBase, config.Domain.DomainName);
-        var adminUser    = config.Domain.AdminUsername;
-        var adminPwd     = config.Domain.AdminPassword;
-        var generatedAt  = DateTimeOffset.UtcNow.ToString("O");
-        const string realmName = "base_domain";   // built into wls.jar — never changes
+        var domainPath  = Path.Combine(config.Paths.DomainBase, config.Domain.DomainName);
+        var adminUser   = config.Domain.AdminUsername;
+        var adminPwd    = config.Domain.AdminPassword;
+        var generatedAt = DateTimeOffset.UtcNow.ToString("O");
 
-        var script = BuildScript(config, templatePath, domainPath, adminUser, adminPwd,
-                                 realmName, generatedAt);
+        var script = BuildScript(config, templatePath, domainPath, adminUser, adminPwd, generatedAt);
 
         return new WlstScriptContext
         {
@@ -55,7 +49,7 @@ public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
             AdminUser         = adminUser,
             Version           = config.WebLogicVersion,
             GeneratedAt       = generatedAt,
-            TemplateRealmName = realmName,
+            TemplateRealmName = "discovered-at-runtime",   // dynamic — not hardcoded
         };
     }
 
@@ -67,16 +61,15 @@ public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
         string domainPath,
         string adminUser,
         string adminPwd,
-        string realmName,
         string generatedAt)
     {
-        var tmpl  = PyRaw(templatePath);
-        var dom   = PyRaw(domainPath);
-        var mode  = config.DomainHardening.ProductionMode ? "prod" : "dev";
+        var tmpl = PyRaw(templatePath);
+        var dom  = PyRaw(domainPath);
+        var mode = config.DomainHardening.ProductionMode ? "prod" : "dev";
 
         var sb = new StringBuilder();
 
-        // ── Header comment ────────────────────────────────────────────────────
+        // ── Header ────────────────────────────────────────────────────────────
         sb.AppendLine("# WEDM-generated WLST offline domain creation");
         sb.AppendLine($"# Version:   WebLogic {config.WebLogicVersion}");
         sb.AppendLine($"# Template:  {templatePath}");
@@ -84,11 +77,14 @@ public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
         sb.AppendLine($"# AdminUser: {adminUser}");
         sb.AppendLine($"# Generated: {generatedAt}");
         sb.AppendLine("#");
-        sb.AppendLine("# NOTE: Direct password attribute mutation is invalid in 12c/14c.");
-        sb.AppendLine("#       Use cmo.setPassword() via MBean navigation instead (see below).");
+        sb.AppendLine("# Admin credential method: cmo.setPassword() via dynamic MBean discovery.");
+        sb.AppendLine("# Realm name is discovered at runtime — no hardcoded /Security/<name>/ path.");
         sb.AppendLine();
         sb.AppendLine("import os");
         sb.AppendLine();
+
+        // ── Runtime discovery helpers (emitted before use) ────────────────────
+        WlstDomainScriptHelpers.AppendAdminDiscoveryHelpers(sb);
 
         // ── Load template ─────────────────────────────────────────────────────
         sb.AppendLine("print('[WLST] Reading template: ' + " + tmpl + ")");
@@ -101,24 +97,8 @@ public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
         sb.AppendLine($"set('Name', '{EscapePy(config.Domain.DomainName)}')");
         sb.AppendLine();
 
-        // ── Admin credentials — 12c/14c CORRECT API ───────────────────────────
-        //
-        // The admin user MBean lives under the template's built-in realm name.
-        // wls.jar always uses 'base_domain' regardless of what you name the domain.
-        //
-        // WRONG (11g-era, rejected by 12c checkSecurityInfo):
-        //   set('Password', 'mypassword')           ← ScriptException in writeDomain()
-        //   set('UserPasswordEncrypted', ...)       ← same failure
-        //
-        // CORRECT for 12c and 14c:
-        //   cd('/Security/base_domain/User/weblogic')
-        //   cmo.setPassword('mypassword')
-        //   cd('/')
-        sb.AppendLine("# Admin credentials: cmo.setPassword() via MBean (12c/14c/15c correct API)");
-        sb.AppendLine($"cd('/Security/{realmName}/User/{EscapePy(adminUser)}')");
-        sb.AppendLine($"cmo.setPassword('{EscapePy(adminPwd)}')");
-        sb.AppendLine("cd('/')");
-        sb.AppendLine();
+        // ── Admin credentials (dynamic discovery + cmo.setPassword) ──────────
+        WlstDomainScriptHelpers.AppendAdminCredentialBlock(sb, adminUser, adminPwd);
 
         // ── AdminServer ───────────────────────────────────────────────────────
         sb.AppendLine("# AdminServer");
@@ -161,11 +141,9 @@ public sealed class Wls12cDomainScriptProvider : IWlstDomainScriptProvider
 
     // ── Python string helpers ─────────────────────────────────────────────────
 
-    /// <summary>Wraps a Windows path as a Python raw string: r'C:\path\to\thing'</summary>
     private static string PyRaw(string path)
         => "r'" + path.Replace("'", "\\'", StringComparison.Ordinal) + "'";
 
-    /// <summary>Escapes single quotes for embedding inside a Python single-quoted string literal.</summary>
     private static string EscapePy(string s)
         => s.Replace("\\", "\\\\", StringComparison.Ordinal)
              .Replace("'", "\\'",  StringComparison.Ordinal);

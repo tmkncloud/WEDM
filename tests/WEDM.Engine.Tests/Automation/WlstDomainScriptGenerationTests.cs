@@ -95,34 +95,40 @@ public sealed class WlstDomainScriptGenerationTests
     }
 
     [Fact]
-    public void Wls12c_script_navigates_correct_security_realm_path()
+    public void Wls12c_script_uses_dynamic_discovery_not_hardcoded_realm_path()
     {
         var provider = new Wls12cDomainScriptProvider();
         var ctx      = provider.BuildCreateDomainScript(Make12cConfig(adminUser: "myadmin"));
 
-        // The realm name is always "base_domain" (built into wls.jar) regardless of domain name.
-        // Renaming the domain via set('Name', ...) does NOT rename the security realm.
-        ctx.ScriptContent.Should().Contain("cd('/Security/base_domain/User/myadmin')",
-            "MBean path must use the template realm name 'base_domain', not the configured domain name");
+        // Dynamic discovery: must call _wedm_discover_admin_path, not a hardcoded cd('/Security/...')
+        ctx.ScriptContent.Should().Contain("_wedm_discover_admin_path(",
+            "admin path must be discovered dynamically — hardcoded /Security/<realm>/ paths " +
+            "fail when the template uses a realm name other than 'base_domain'");
         ctx.ScriptContent.Should().Contain("cmo.setPassword('Welcome1')");
+
+        // Must NOT contain a hardcoded /Security/ literal path
+        ctx.ScriptContent.Should().NotContain("cd('/Security/",
+            "hardcoded cd('/Security/...') must be replaced with dynamic discovery");
+        ctx.ScriptContent.Should().NotContain("cd(\"/Security/",
+            "hardcoded cd(\"/Security/...\") must be replaced with dynamic discovery");
     }
 
     [Fact]
-    public void Wls12c_script_realm_name_is_base_domain_not_configured_domain_name()
+    public void Wls12c_script_no_hardcoded_realm_regardless_of_domain_name()
     {
-        // When the configured domain name differs from "base_domain", the realm path
-        // must still reference "base_domain" (the template's built-in realm).
         var provider = new Wls12cDomainScriptProvider();
         var ctx      = provider.BuildCreateDomainScript(Make12cConfig(domainName: "my_custom_domain"));
 
         // Domain name is set correctly
         ctx.ScriptContent.Should().Contain("set('Name', 'my_custom_domain')");
 
-        // But the security realm path uses base_domain, NOT my_custom_domain
-        ctx.ScriptContent.Should().Contain("/Security/base_domain/User/",
-            "realm path must always use 'base_domain' — renaming the domain does not rename the realm");
-        ctx.ScriptContent.Should().NotContain("/Security/my_custom_domain/User/",
-            "using the configured domain name in the realm path is the classic 12c scripting mistake");
+        // No hardcoded /Security/<anything>/ literal — always dynamic
+        ctx.ScriptContent.Should().NotContain("cd('/Security/",
+            "realm path must never be hardcoded — the template realm name is discovered at runtime");
+        ctx.ScriptContent.Should().NotContain("/Security/base_domain/",
+            "base_domain must not be hardcoded — the realm may be 'myrealm' or something else");
+        ctx.ScriptContent.Should().NotContain("/Security/my_custom_domain/",
+            "the domain name must not appear in the security realm path");
     }
 
     [Fact]
@@ -581,5 +587,140 @@ public sealed class WlstDomainScriptGenerationTests
 
         report.Summary.Should().Contain("INCOMPATIBLE");
         report.Summary.Should().Contain("violation");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 10. Dynamic realm discovery — regression tests
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Theory]
+    [InlineData(WebLogicVersion.WLS_11g)]
+    [InlineData(WebLogicVersion.WLS_12c)]
+    [InlineData(WebLogicVersion.WLS_14c)]
+    [InlineData(WebLogicVersion.WLS_15c)]
+    public void Generated_script_never_contains_hardcoded_cd_Security_path(WebLogicVersion version)
+    {
+        // Root cause of cd() WLSTException: realm name varies across template versions.
+        // /Security/base_domain/ works on some; /Security/myrealm/ on others.
+        // The fix: always use dynamic discovery (_wedm_discover_admin_path).
+
+        var config = version == WebLogicVersion.WLS_11g ? Make11gConfig() : Make12cConfig();
+        config.WebLogicVersion = version;
+        var provider = WlstDomainScriptProviderFactory.Create(version);
+        var ctx      = provider.BuildCreateDomainScript(config);
+
+        ctx.ScriptContent.Should().NotContain("cd('/Security/",
+            $"No hardcoded cd('/Security/...') must appear in {version} scripts — " +
+            "it fails when the template's realm name differs from the hardcoded value. " +
+            "Use _wedm_discover_admin_path() instead.");
+
+        ctx.ScriptContent.Should().NotContain("cd(\"/Security/",
+            $"No hardcoded cd(\"/Security/...\") in {version} scripts either.");
+    }
+
+    [Theory]
+    [InlineData(WebLogicVersion.WLS_11g)]
+    [InlineData(WebLogicVersion.WLS_12c)]
+    [InlineData(WebLogicVersion.WLS_14c)]
+    [InlineData(WebLogicVersion.WLS_15c)]
+    public void Generated_script_contains_dynamic_discovery_function(WebLogicVersion version)
+    {
+        var config = version == WebLogicVersion.WLS_11g ? Make11gConfig() : Make12cConfig();
+        config.WebLogicVersion = version;
+        var provider = WlstDomainScriptProviderFactory.Create(version);
+        var ctx      = provider.BuildCreateDomainScript(config);
+
+        ctx.ScriptContent.Should().Contain("def _wedm_discover_admin_path(",
+            $"The {version} script must include the dynamic admin-path discovery helper");
+        ctx.ScriptContent.Should().Contain("def _wedm_ls():",
+            $"The {version} script must include the ls() wrapper helper");
+        ctx.ScriptContent.Should().Contain("_wedm_discover_admin_path(",
+            $"The {version} script must CALL _wedm_discover_admin_path()");
+    }
+
+    [Theory]
+    [InlineData(WebLogicVersion.WLS_11g)]
+    [InlineData(WebLogicVersion.WLS_12c)]
+    [InlineData(WebLogicVersion.WLS_14c)]
+    [InlineData(WebLogicVersion.WLS_15c)]
+    public void Generated_script_discovery_function_handles_any_realm_name(WebLogicVersion version)
+    {
+        // The generated _wedm_discover_admin_path function must use ls() to discover
+        // the realm name — it must NOT reference a hardcoded realm like 'base_domain' or 'myrealm'.
+        var config = version == WebLogicVersion.WLS_11g ? Make11gConfig() : Make12cConfig();
+        config.WebLogicVersion = version;
+        var provider = WlstDomainScriptProviderFactory.Create(version);
+        var ctx      = provider.BuildCreateDomainScript(config);
+
+        // The discovery function must navigate to /Security then call ls() to find the realm
+        ctx.ScriptContent.Should().Contain("cd('/Security')",
+            "Discovery navigates to the /Security root, then calls ls() to find realms");
+        ctx.ScriptContent.Should().Contain("_realms = _wedm_ls()",
+            "Discovery uses ls() to get realms — not a hardcoded name");
+        ctx.ScriptContent.Should().Contain("_realm = _realms[0]",
+            "Discovery uses the first available realm dynamically");
+
+        // Must not encode 'base_domain' or 'myrealm' as a string literal inside the discovery function
+        // (they may appear in comments, but not as a cd() argument)
+        var lines = ctx.ScriptContent.Split('\n');
+        var hasHardcodedRealm = lines
+            .Where(l => !l.TrimStart().StartsWith('#'))      // skip comment lines
+            .Any(l => l.Contains("'base_domain'") || l.Contains("\"base_domain\"") ||
+                      l.Contains("'myrealm'")     || l.Contains("\"myrealm\""));
+        hasHardcodedRealm.Should().BeFalse(
+            "No hardcoded realm name ('base_domain', 'myrealm') should appear in non-comment code");
+    }
+
+    [Fact]
+    public void WlstCompatibilityValidator_warns_about_hardcoded_Security_path()
+    {
+        // A legacy script that hardcodes the realm path should trigger a warning.
+        const string legacyScript = """
+            readTemplate(r'C:\mw\wlserver\common\templates\wls\wls.jar')
+            cd('/')
+            set('Name', 'mydomain')
+            cd('/Security/base_domain/User/weblogic')
+            cmo.setPassword('Welcome1')
+            cd('/')
+            writeDomain(r'C:\domains\d1')
+            closeTemplate()
+            exit()
+            """;
+
+        var report = WlstCompatibilityValidator.Validate(legacyScript, WebLogicVersion.WLS_12c);
+
+        // Still compatible (hardcoded path is a warning, not a violation)
+        report.IsCompatible.Should().BeTrue(
+            "a hardcoded realm path may still work — it is a warning, not a hard violation");
+        report.Warnings.Should().Contain(w => w.Contains("hardcoded") || w.Contains("/Security/"),
+            "validator must warn about hardcoded /Security/<realm>/ paths");
+    }
+
+    [Fact]
+    public void WlstCompatibilityValidator_approves_dynamic_discovery_script()
+    {
+        // The script generated by the new providers must pass with zero warnings about hardcoded paths.
+        var provider = new Wls12cDomainScriptProvider();
+        var ctx      = provider.BuildCreateDomainScript(Make12cConfig());
+        var report   = WlstCompatibilityValidator.Validate(ctx.ScriptContent, WebLogicVersion.WLS_12c);
+
+        report.IsCompatible.Should().BeTrue();
+        report.Violations.Should().BeEmpty();
+
+        // No hardcoded-path warning for the dynamic discovery script
+        report.Warnings.Should().NotContain(w => w.Contains("hardcoded") && w.Contains("/Security/"),
+            "dynamic discovery must not trigger the hardcoded-realm-path warning");
+    }
+
+    [Fact]
+    public void WlstScriptContext_TemplateRealmName_is_discovered_at_runtime()
+    {
+        // Since we use dynamic discovery, TemplateRealmName must reflect that.
+        var provider = new Wls12cDomainScriptProvider();
+        var ctx      = provider.BuildCreateDomainScript(Make12cConfig());
+
+        ctx.TemplateRealmName.Should().Be("discovered-at-runtime",
+            "TemplateRealmName must not be a hardcoded value like 'base_domain' since " +
+            "the actual realm name is determined by dynamic ls() at WLST runtime");
     }
 }

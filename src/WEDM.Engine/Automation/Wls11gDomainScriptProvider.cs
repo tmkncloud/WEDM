@@ -11,10 +11,8 @@ namespace WEDM.Engine.Automation;
 /// 11g notes
 /// ─────────
 /// • The standard wls.jar template resides under wlserver_10.3/common/templates/wls/
-///   (or wlserver_12.1.2/... for 12c patch-set 1 bridges).
-/// • cmo.setPassword() works in 11g and is preferred over set('Password', ...).
-/// • setOption('ServerStartMode', ...) is supported from 10.3.3+; earlier builds
-///   may need to configure via the StartupMode domain attribute instead.
+/// • cmo.setPassword() works in 11g and is forward-compatible with 12c/14c.
+/// • Realm name is discovered at runtime — never hardcoded — same as 12c provider.
 /// </summary>
 public sealed class Wls11gDomainScriptProvider : IWlstDomainScriptProvider
 {
@@ -24,14 +22,12 @@ public sealed class Wls11gDomainScriptProvider : IWlstDomainScriptProvider
     {
         var templatePath = MiddlewareHomePathResolver.ResolveExistingOrDefault(
             MiddlewareHomePathResolver.GetWlsTemplateJarCandidates(config.Paths.MiddlewareHome));
-        var domainPath   = Path.Combine(config.Paths.DomainBase, config.Domain.DomainName);
-        var adminUser    = config.Domain.AdminUsername;
-        var adminPwd     = config.Domain.AdminPassword;
-        var generatedAt  = DateTimeOffset.UtcNow.ToString("O");
-        const string realmName = "base_domain";
+        var domainPath  = Path.Combine(config.Paths.DomainBase, config.Domain.DomainName);
+        var adminUser   = config.Domain.AdminUsername;
+        var adminPwd    = config.Domain.AdminPassword;
+        var generatedAt = DateTimeOffset.UtcNow.ToString("O");
 
-        var script = BuildScript(config, templatePath, domainPath, adminUser, adminPwd,
-                                 realmName, generatedAt);
+        var script = BuildScript(config, templatePath, domainPath, adminUser, adminPwd, generatedAt);
 
         return new WlstScriptContext
         {
@@ -41,7 +37,7 @@ public sealed class Wls11gDomainScriptProvider : IWlstDomainScriptProvider
             AdminUser         = adminUser,
             Version           = config.WebLogicVersion,
             GeneratedAt       = generatedAt,
-            TemplateRealmName = realmName,
+            TemplateRealmName = "discovered-at-runtime",   // dynamic — not hardcoded
         };
     }
 
@@ -51,7 +47,6 @@ public sealed class Wls11gDomainScriptProvider : IWlstDomainScriptProvider
         string domainPath,
         string adminUser,
         string adminPwd,
-        string realmName,
         string generatedAt)
     {
         var tmpl = PyRaw(templatePath);
@@ -66,9 +61,14 @@ public sealed class Wls11gDomainScriptProvider : IWlstDomainScriptProvider
         sb.AppendLine($"# Domain:    {domainPath}");
         sb.AppendLine($"# AdminUser: {adminUser}");
         sb.AppendLine($"# Generated: {generatedAt}");
+        sb.AppendLine("#");
+        sb.AppendLine("# Admin credential method: cmo.setPassword() via dynamic MBean discovery.");
         sb.AppendLine();
         sb.AppendLine("import os");
         sb.AppendLine();
+
+        // Runtime discovery helpers
+        WlstDomainScriptHelpers.AppendAdminDiscoveryHelpers(sb);
 
         sb.AppendLine("print('[WLST] Reading template: ' + " + tmpl + ")");
         sb.AppendLine("readTemplate(" + tmpl + ")");
@@ -78,12 +78,8 @@ public sealed class Wls11gDomainScriptProvider : IWlstDomainScriptProvider
         sb.AppendLine($"set('Name', '{EscapePy(config.Domain.DomainName)}')");
         sb.AppendLine();
 
-        // 11g: cmo.setPassword() is the preferred API (forward-compatible with 12c)
-        sb.AppendLine("# Admin credentials");
-        sb.AppendLine($"cd('/Security/{realmName}/User/{EscapePy(adminUser)}')");
-        sb.AppendLine($"cmo.setPassword('{EscapePy(adminPwd)}')");
-        sb.AppendLine("cd('/')");
-        sb.AppendLine();
+        // Admin credentials via dynamic discovery
+        WlstDomainScriptHelpers.AppendAdminCredentialBlock(sb, adminUser, adminPwd);
 
         sb.AppendLine($"cd('/Server/{EscapePy(config.Domain.AdminServerName)}')");
         sb.AppendLine($"set('ListenAddress', '{EscapePy(config.Network.Hostname)}')");

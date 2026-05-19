@@ -154,6 +154,16 @@ public static class WlstCompatibilityValidator
             warnings.Add(
                 "setOption('OverwriteDomain', 'true') is not set. " +
                 "If the target domain directory already exists, writeDomain() may fail.");
+
+        // Hardcoded /Security/<name>/User/ path — breaks when the template's realm name differs.
+        // The correct approach is dynamic discovery via ls() after readTemplate().
+        // cd('/Security/') appearing as a literal string in the script indicates a hardcoded path.
+        if (ContainsHardcodedSecurityPath(script))
+            warnings.Add(
+                "A hardcoded /Security/<realm>/User/<user> path was detected (e.g. cd('/Security/base_domain/User/weblogic')). " +
+                "The realm name in wls.jar varies across WLS versions and patch levels — " +
+                "hardcoding it causes cd() failures when the template uses a different name (e.g. 'myrealm'). " +
+                "Use dynamic discovery: navigate /Security, list realms with ls(), then cd into the first realm/User/<user>.");
     }
 
     // ── Pattern helpers ───────────────────────────────────────────────────────
@@ -170,4 +180,13 @@ public static class WlstCompatibilityValidator
     private static bool ContainsSetName(string script)
         => script.Contains("set('Name'",  StringComparison.Ordinal)
         || script.Contains("set(\"Name\"", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Returns true if the script contains a literal cd('/Security/...') call with a
+    /// hardcoded realm name — a pattern that breaks when the template uses a different name.
+    /// Dynamic discovery uses cd(_realm + '/User') with a variable, not a string literal.
+    /// </summary>
+    private static bool ContainsHardcodedSecurityPath(string script)
+        => script.Contains("cd('/Security/",  StringComparison.Ordinal)
+        || script.Contains("cd(\"/Security/", StringComparison.Ordinal);
 }
