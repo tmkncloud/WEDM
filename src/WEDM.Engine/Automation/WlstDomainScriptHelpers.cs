@@ -4,117 +4,142 @@ namespace WEDM.Engine.Automation;
 
 /// <summary>
 /// Jython code fragments emitted into WLST offline domain-creation scripts.
-/// Shared by all version-specific providers (<see cref="Wls12cDomainScriptProvider"/>,
-/// <see cref="Wls11gDomainScriptProvider"/>).
+/// Shared by all version-specific providers.
+///
+/// Jython / Python compatibility guarantee
+/// ────────────────────────────────────────
+/// All emitted code must be valid Jython 2.2+ (WLS 11g minimum).
+/// The following Python 3 / Python 2.5+ constructs are BANNED from this file:
+///
+///   BANNED                             REQUIRED REPLACEMENT
+///   ──────────────────────────────     ──────────────────────────────────────
+///   except Exception as e:             except Exception, e:
+///   x if condition else y  (ternary)   if condition:\n    x = a\nelse:\n    x = b
+///   f'...' / f"..."  (f-strings)       '...' + str(var)  string concatenation
+///   print(a, b)  (multi-arg)           print a + ' ' + b  statement form
+///
+/// Jython version baseline per WLS release:
+///   WLS 10.3.x (11g)  → Jython 2.2.1  (no ternary, no 'as' in except)
+///   WLS 12.1.x/12.2.x → Jython 2.5.3+ (ternary OK, but 'as' in except still risky)
+///   WLS 14.1.x        → Jython 2.7.x  (most Python 2.7 constructs OK)
+///   WLS 15.x          → Jython 2.7.x
+///
+/// We target Jython 2.2.1 as the lowest common denominator so that a single
+/// generated script works on ALL WLS versions without a runtime syntax error.
 ///
 /// Dynamic realm discovery
 /// ───────────────────────
-/// WLST offline exposes the security configuration as an MBean subtree under /Security.
-/// After readTemplate() the exact realm name varies:
-///
-///   • wls.jar on WLS 12.2.1.4  → realm may be 'myrealm' or 'base_domain'
-///   • wls.jar on WLS 14.1.1     → realm is typically 'myrealm'
-///   • Customer-customised templates may use any realm name
-///
-/// Hardcoding 'base_domain' in cd('/Security/base_domain/User/weblogic') therefore
-/// breaks on any installation where the template's realm has a different name.
-///
-/// The correct approach is to navigate to /Security, list the available child MBeans
-/// with ls(), and use whatever name is there — that is what these helpers do.
+/// After readTemplate() the WLST security realm name varies by template and
+/// WLS patch level — it may be "myrealm", "base_domain", or a custom name.
+/// These helpers discover the realm name at runtime rather than hardcoding it.
 /// </summary>
 internal static class WlstDomainScriptHelpers
 {
     // ── Public helpers ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Appends two Jython helper functions into the script StringBuilder.
+    /// Appends the _wedm_ls() and _wedm_discover_admin_path() Jython helper functions.
     ///
-    /// <c>_wedm_ls()</c>
-    ///   Wraps WLST's ls() to return a plain Python list of strings.
-    ///   WLST ls() returns a Java String[] in some versions and a Jython list in
-    ///   others; the wrapper normalises both cases and filters empty strings.
+    /// MUST be called before AppendAdminCredentialBlock() and before readTemplate()
+    /// so the functions are defined by the time they are invoked.
     ///
-    /// <c>_wedm_discover_admin_path(configured_user)</c>
-    ///   After readTemplate() is called, navigates /Security, discovers the first
-    ///   realm, finds the admin-user node, and returns the full MBean path.
-    ///   Prints diagnostic [WLST-DIAG] lines at every step so failures are easy to
-    ///   diagnose from the retained stdout artifact.
-    ///   Prefers configured_user; falls back to the first available user.
-    ///   Raises Exception with diagnostic detail if discovery fails.
-    ///
-    /// Call this BEFORE the readTemplate() line so the functions are defined before
-    /// they are called.
+    /// All emitted code is Jython 2.2-compatible:
+    ///   • No "except X as e:" — uses "except X, e:" form
+    ///   • No ternary expressions — uses explicit if/else blocks
+    ///   • No f-strings — uses string concatenation
     /// </summary>
     public static void AppendAdminDiscoveryHelpers(StringBuilder sb)
     {
-        sb.AppendLine("# ── WEDM runtime helpers: dynamic realm / admin-user discovery ──────────");
+        sb.AppendLine("# ── WEDM runtime helpers: dynamic realm/admin-user discovery ─────────────");
+        sb.AppendLine("# Compatible with Jython 2.2+ (WLS 11g through 15c).");
+        sb.AppendLine("# No Python 3 syntax: no 'except X as e', no ternary, no f-strings.");
+        sb.AppendLine();
+
+        // ── _wedm_ls() ─────────────────────────────────────────────────────────
         sb.AppendLine("def _wedm_ls():");
-        sb.AppendLine("    \"\"\"Safely convert WLST ls() to a Python list (handles Java arrays and Jython lists).\"\"\"");
+        sb.AppendLine("    \"\"\"Return WLST ls() as a plain Python list; handles Java arrays and Jython lists.\"\"\"");
         sb.AppendLine("    try:");
         sb.AppendLine("        raw = ls()");
-        sb.AppendLine("        if raw is None: return []");
-        sb.AppendLine("        return [str(i) for i in raw if str(i).strip()]");
-        sb.AppendLine("    except Exception: return []");
+        sb.AppendLine("        if raw is None:");
+        sb.AppendLine("            return []");
+        sb.AppendLine("        result = []");
+        sb.AppendLine("        for i in raw:");
+        sb.AppendLine("            s = str(i).strip()");
+        sb.AppendLine("            if s:");
+        sb.AppendLine("                result.append(s)");
+        sb.AppendLine("        return result");
+        // Bare "except:" is Jython 2.2 compatible; we don't need the exception object here.
+        sb.AppendLine("    except:");
+        sb.AppendLine("        return []");
         sb.AppendLine();
+
+        // ── _wedm_discover_admin_path() ────────────────────────────────────────
         sb.AppendLine("def _wedm_discover_admin_path(configured_user):");
         sb.AppendLine("    \"\"\"");
-        sb.AppendLine("    Dynamically discover the admin-user MBean path from the loaded template.");
+        sb.AppendLine("    Discover the admin-user MBean path from the loaded template at runtime.");
         sb.AppendLine("    Returns e.g. '/Security/myrealm/User/weblogic'.");
-        sb.AppendLine("    Raises Exception with diagnostic output if the path cannot be found.");
+        sb.AppendLine("    Prints [WLST-DIAG] lines at every step for post-mortem analysis.");
         sb.AppendLine("    \"\"\"");
-        sb.AppendLine("    print('[WLST-DIAG] --- Admin MBean discovery start ---')");
+        sb.AppendLine("    print('[WLST-DIAG] Admin MBean discovery start')");
         sb.AppendLine("    print('[WLST-DIAG] Configured user: ' + configured_user)");
         sb.AppendLine("    cd('/')");
         sb.AppendLine("    _root = _wedm_ls()");
         sb.AppendLine("    print('[WLST-DIAG] Root ls: ' + str(_root))");
         sb.AppendLine("    if 'Security' not in _root:");
-        sb.AppendLine("        raise Exception('[WLST-DIAG] /Security not found at root. Root ls: ' + str(_root) +");
-        sb.AppendLine("                        '. Ensure readTemplate() was called before discovery.')");
+        sb.AppendLine("        raise Exception('[WLST-DIAG] /Security not found at root. ls=' + str(_root) +");
+        sb.AppendLine("                        ' — ensure readTemplate() was called before discovery.')");
+        // Jython 2.2: use "except Exception, _e:" NOT "except Exception as _e:"
         sb.AppendLine("    try:");
         sb.AppendLine("        cd('/Security')");
-        sb.AppendLine("    except Exception as _e:");
+        sb.AppendLine("    except Exception, _e:");
         sb.AppendLine("        raise Exception('[WLST-DIAG] cd(/Security) failed: ' + str(_e) +");
-        sb.AppendLine("                        ' | Root ls: ' + str(_root))");
+        sb.AppendLine("                        ' | root ls=' + str(_root))");
         sb.AppendLine("    _realms = _wedm_ls()");
-        sb.AppendLine("    print('[WLST-DIAG] Security realms: ' + str(_realms))");
+        sb.AppendLine("    print('[WLST-DIAG] Security realms found: ' + str(_realms))");
         sb.AppendLine("    if not _realms:");
         sb.AppendLine("        cd('/')");
-        sb.AppendLine("        raise Exception('[WLST-DIAG] No realms found under /Security. ' +");
-        sb.AppendLine("                        'Template may not be fully loaded.')");
+        sb.AppendLine("        raise Exception('[WLST-DIAG] No security realms found under /Security — template may not be loaded.')");
         sb.AppendLine("    _realm = _realms[0]");
-        sb.AppendLine("    print('[WLST-DIAG] Selected realm: ' + _realm)");
+        sb.AppendLine("    print('[WLST-DIAG] Using realm: ' + _realm)");
         sb.AppendLine("    try:");
         sb.AppendLine("        cd(_realm + '/User')");
-        sb.AppendLine("    except Exception as _e:");
+        // Jython 2.2: use "except Exception, _e:" NOT "except Exception as _e:"
+        sb.AppendLine("    except Exception, _e:");
         sb.AppendLine("        cd('/')");
         sb.AppendLine("        raise Exception('[WLST-DIAG] cd(/Security/' + _realm + '/User) failed: ' + str(_e))");
         sb.AppendLine("    _users = _wedm_ls()");
-        sb.AppendLine("    print('[WLST-DIAG] Available users: ' + str(_users))");
+        sb.AppendLine("    print('[WLST-DIAG] Users found: ' + str(_users))");
         sb.AppendLine("    if not _users:");
         sb.AppendLine("        cd('/')");
-        sb.AppendLine("        raise Exception('[WLST-DIAG] No users found under /Security/' + _realm + '/User.')");
-        sb.AppendLine("    _user = configured_user if configured_user in _users else _users[0]");
-        sb.AppendLine("    if _user != configured_user:");
-        sb.AppendLine("        print('[WLST-DIAG] WARNING: Configured user ' + configured_user +");
-        sb.AppendLine("              ' not found; using first available: ' + _user)");
+        sb.AppendLine("        raise Exception('[WLST-DIAG] No users found under /Security/' + _realm + '/User')");
+        // Jython 2.2: no ternary "x if cond else y" — use explicit if/else block instead
+        sb.AppendLine("    if configured_user in _users:");
+        sb.AppendLine("        _user = configured_user");
+        sb.AppendLine("    else:");
+        sb.AppendLine("        _user = _users[0]");
+        sb.AppendLine("        print('[WLST-DIAG] WARNING: user ' + configured_user +");
+        sb.AppendLine("              ' not in template; using: ' + _user)");
         sb.AppendLine("    _path = '/Security/' + _realm + '/User/' + _user");
-        sb.AppendLine("    print('[WLST-DIAG] Resolved admin MBean path: ' + _path)");
+        sb.AppendLine("    print('[WLST-DIAG] Resolved admin path: ' + _path)");
         sb.AppendLine("    cd('/')");
         sb.AppendLine("    return _path");
-        sb.AppendLine("# ── end WEDM helpers ────────────────────────────────────────────────────");
+        sb.AppendLine("# ── end WEDM helpers ─────────────────────────────────────────────────────");
         sb.AppendLine();
     }
 
     /// <summary>
-    /// Appends the admin credential block: calls <c>_wedm_discover_admin_path</c>,
-    /// navigates to the discovered MBean, calls <c>cmo.setPassword()</c>, and returns
-    /// to root.  Must be called after <c>readTemplate()</c> in the generated script.
+    /// Appends the admin credential block: discovers the admin-user MBean path at runtime,
+    /// navigates to it, calls cmo.setPassword(), and returns to root.
+    ///
+    /// Must appear AFTER readTemplate() in the generated script.
+    /// All emitted code is Jython 2.2-compatible.
     /// </summary>
     public static void AppendAdminCredentialBlock(StringBuilder sb, string adminUser, string adminPwd)
     {
-        sb.AppendLine("# Admin credentials: dynamic realm/user discovery + cmo.setPassword()");
+        sb.AppendLine("# Admin credentials: dynamic discovery + cmo.setPassword()");
+        sb.AppendLine("# (cmo.setPassword is the correct API for 12c/14c — NOT set('Password',...)");
         sb.AppendLine($"_admin_path = _wedm_discover_admin_path('{EscapePy(adminUser)}')");
-        sb.AppendLine("print('[WLST-DIAG] Setting admin password at: ' + _admin_path)");
+        sb.AppendLine("print('[WLST-DIAG] Setting password at: ' + _admin_path)");
         sb.AppendLine("cd(_admin_path)");
         sb.AppendLine($"cmo.setPassword('{EscapePy(adminPwd)}')");
         sb.AppendLine("cd('/')");

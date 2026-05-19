@@ -116,6 +116,32 @@ public sealed class CreateDomainStep : IStepExecutor
                 retryRecommended: false);
         }
 
+        // ── 4b. Jython syntax pre-flight (fail fast, no JVM started) ───────
+        //   Scans the generated Python for constructs that cause a top-level SyntaxError
+        //   in Jython 2.2/2.5 (WLS 11g–12c).  The classic offender:
+        //     "except Exception as _e:"  →  rejected by Jython with:
+        //     "Problem invoking WLST … (no code object) at line 0 … SyntaxError: invalid syntax"
+        //   Catching it here produces a clear message before WLST is launched.
+        var jythonReport = WlstJythonCompatibilityValidator.Validate(ctx.ScriptContent);
+
+        foreach (var w in jythonReport.Warnings)
+            _log.Warning($"[WLST] Jython: {w}", "Domain");
+
+        if (!jythonReport.IsCompatible)
+        {
+            var violationText = string.Join("\n  ", jythonReport.Violations.Select(v => v.ToString()));
+            _log.Error(
+                $"[WLST] Jython pre-flight FAILED — {jythonReport.Violations.Count} Python 3 " +
+                $"construct(s) found that will cause a SyntaxError at parse time:\n  {violationText}",
+                null, "Domain");
+            return StepExecutionResult.Fail(
+                $"Generated WLST script contains Jython-incompatible syntax " +
+                $"({jythonReport.Violations.Count} violation(s)):\n{violationText}",
+                retryRecommended: false);
+        }
+
+        _log.Info($"[WLST] Jython pre-flight: {jythonReport.Summary}", "Domain");
+
         // ── 5. Write script to temp directory ───────────────────────────────
         //   The script is NOT deleted on failure — operators need it for post-mortem.
         var scriptPath = Path.Combine(
