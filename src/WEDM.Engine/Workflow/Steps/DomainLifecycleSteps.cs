@@ -390,6 +390,10 @@ public sealed class ConfigureAdminServerStep : IStepExecutor
 
     public ConfigureAdminServerStep(ILoggingService log) => _log = log;
 
+    // WebLogic default listen port — config.xml omits <listen-port> when this value is in use.
+    // If the element is absent the effective port IS 7001, not an error.
+    private const int WlsDefaultListenPort = 7001;
+
     public Task<StepExecutionResult> ExecuteAsync(
         DeploymentStep step,
         DeploymentConfiguration config,
@@ -397,32 +401,91 @@ public sealed class ConfigureAdminServerStep : IStepExecutor
     {
         var sw = Stopwatch.StartNew();
         var cfgXml = Path.Combine(config.Paths.DomainBase, config.Domain.DomainName, "config", "config.xml");
+
+        _log.Info($"ConfigureAdminServer: checking config.xml at {cfgXml}", "Domain");
+
         if (!File.Exists(cfgXml))
-            return Task.FromResult(StepExecutionResult.Fail($"config.xml not found: {cfgXml}"));
+        {
+            sw.Stop();
+            return Task.FromResult(StepExecutionResult.Fail(
+                $"config.xml not found: {cfgXml}. " +
+                "CreateDomain must complete before this step runs."));
+        }
 
         try
         {
             var doc   = XDocument.Load(cfgXml);
             var admin = WebLogicConfigXmlHelper.FindServerByName(doc, config.Domain.AdminServerName);
-            if (admin is null)
-                return Task.FromResult(StepExecutionResult.Fail($"Admin server '{config.Domain.AdminServerName}' not found in config.xml."));
 
-            var listen = WebLogicConfigXmlHelper.ReadChildValue(admin, "listen-port");
-            if (int.TryParse(listen, out var p) && p == config.Domain.AdminPort)
+            if (admin is null)
+            {
+                // Log server elements found to help diagnose name mismatches.
+                var found = doc.Descendants()
+                    .Where(e => e.Name.LocalName == "server")
+                    .Select(s => WebLogicConfigXmlHelper.ReadChildValue(s, "name") ?? "(unnamed)")
+                    .ToList();
+
+                sw.Stop();
+                return Task.FromResult(StepExecutionResult.Fail(
+                    $"Admin server '{config.Domain.AdminServerName}' not found in config.xml. " +
+                    $"Servers present: [{string.Join(", ", found)}]. " +
+                    $"Check that AdminServerName in the deployment plan matches the name used in the WLST script."));
+            }
+
+            // ── Listen-port verification ─────────────────────────────────────────
+            //
+            // WebLogic config.xml omits <listen-port> when the port equals the default (7001).
+            // Absence of the element does NOT mean the port is unset — it means it is 7001.
+            // Treating a missing element as a mismatch was the bug: the step always failed
+            // when AdminPort was configured as 7001 even after a perfectly successful writeDomain.
+            //
+            // Fix: when <listen-port> is absent, effectivePort = WlsDefaultListenPort (7001).
+            // Compare effectivePort against the configured port; succeed if they match.
+
+            var rawListenPort = WebLogicConfigXmlHelper.ReadChildValue(admin, "listen-port");
+            var rawListenAddr = WebLogicConfigXmlHelper.ReadChildValue(admin, "listen-address");
+
+            bool portElementAbsent = string.IsNullOrEmpty(rawListenPort);
+            int  effectivePort     = portElementAbsent
+                ? WlsDefaultListenPort
+                : (int.TryParse(rawListenPort, out var pp) ? pp : -1);
+
+            _log.Info(
+                $"ConfigureAdminServer diagnostics: " +
+                $"server='{config.Domain.AdminServerName}' | " +
+                $"listen-port element: {(portElementAbsent ? "(absent — WebLogic default)" : rawListenPort)} | " +
+                $"effective port: {effectivePort} | " +
+                $"configured port: {config.Domain.AdminPort} | " +
+                $"listen-address: {rawListenAddr ?? "(absent)"}",
+                "Domain");
+
+            if (effectivePort == config.Domain.AdminPort)
             {
                 sw.Stop();
-                _log.Info($"AdminServer listen port verified: {p}", "Domain");
-                return Task.FromResult(StepExecutionResult.Ok("AdminServer port matches deployment plan.", sw.Elapsed));
+                var note = portElementAbsent
+                    ? $"AdminServer listen port verified: {effectivePort} " +
+                      "(element absent from config.xml — WebLogic omits default port)."
+                    : $"AdminServer listen port verified: {effectivePort}.";
+                _log.Info(note, "Domain");
+                return Task.FromResult(StepExecutionResult.Ok(note, sw.Elapsed));
             }
 
             sw.Stop();
             return Task.FromResult(StepExecutionResult.Fail(
-                $"AdminServer listen port in config.xml ({listen}) does not match configured port {config.Domain.AdminPort}."));
+                $"AdminServer listen port mismatch. " +
+                $"config.xml raw <listen-port>: '{rawListenPort ?? "(element absent)"}', " +
+                $"effective port: {effectivePort}, " +
+                $"configured port (deployment plan): {config.Domain.AdminPort}. " +
+                $"If the port element is absent and effective port is {WlsDefaultListenPort} but configured port is {config.Domain.AdminPort}, " +
+                $"the WLST script may not have applied set('ListenPort', {config.Domain.AdminPort}) before writeDomain."));
         }
         catch (Exception ex)
         {
             sw.Stop();
-            return Task.FromResult(StepExecutionResult.Fail($"Failed to parse config.xml: {ex.Message}", 1, ex));
+            _log.Error(
+                $"ConfigureAdminServer: exception while parsing config.xml '{cfgXml}': {ex}", "Domain");
+            return Task.FromResult(StepExecutionResult.Fail(
+                $"Failed to parse config.xml '{cfgXml}': {ex.GetType().Name}: {ex.Message}", 1, ex));
         }
     }
 }
