@@ -48,6 +48,18 @@ public sealed class DpapiFileSecretVault : ILocalSecretVault
         Directory.CreateDirectory(_rootDir);
     }
 
+    /// <summary>
+    /// Internal constructor for test isolation.
+    /// Allows unit/integration tests to redirect vault files to a temp directory
+    /// without subclassing (the class is sealed) or reflection-based hacks.
+    /// Not for production use.
+    /// </summary>
+    internal DpapiFileSecretVault(string rootDir)
+    {
+        _rootDir = rootDir;
+        Directory.CreateDirectory(_rootDir);
+    }
+
     // ── Core read / write ─────────────────────────────────────────────────────
 
     public void Save(Guid deploymentId, string secretName, string plaintext)

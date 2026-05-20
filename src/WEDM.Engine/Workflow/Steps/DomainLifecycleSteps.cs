@@ -483,7 +483,7 @@ public sealed class ConfigureAdminServerStep : IStepExecutor
         {
             sw.Stop();
             _log.Error(
-                $"ConfigureAdminServer: exception while parsing config.xml '{cfgXml}': {ex}", "Domain");
+                $"ConfigureAdminServer: exception while parsing config.xml '{cfgXml}': {ex}", ex, category: "Domain");
             return Task.FromResult(StepExecutionResult.Fail(
                 $"Failed to parse config.xml '{cfgXml}': {ex.GetType().Name}: {ex.Message}", 1, ex));
         }

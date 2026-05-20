@@ -1008,12 +1008,12 @@ public sealed class DeploymentSessionState_SecretReferenceTests
 public sealed class DpapiFileSecretVaultTests : IDisposable
 {
     private readonly string _vaultDir = Path.Combine(Path.GetTempPath(), "wedm-vault-it", Guid.NewGuid().ToString("N"));
-    private readonly DpapiFileSecretVaultTestable _vault;
+    private readonly DpapiFileSecretVault _vault;
 
     public DpapiFileSecretVaultTests()
     {
         Directory.CreateDirectory(_vaultDir);
-        _vault = new DpapiFileSecretVaultTestable(_vaultDir);
+        _vault = new DpapiFileSecretVault(_vaultDir);
     }
 
     [Fact]
@@ -1110,26 +1110,3 @@ public sealed class DpapiFileSecretVaultTests : IDisposable
     }
 }
 
-/// <summary>
-/// Testable subclass that overrides the vault directory.
-/// Not production code — test-only.
-/// </summary>
-file sealed class DpapiFileSecretVaultTestable : DpapiFileSecretVault
-{
-    // The real DpapiFileSecretVault hardcodes its directory.
-    // For tests we need a temp directory — so we expose a constructor overload
-    // via a reflection-based path override. Here we use a protected field injection
-    // by creating a derived type that redirects file paths to the temp directory.
-
-    private readonly string _overrideDir;
-
-    public DpapiFileSecretVaultTestable(string tempDir) : base()
-    {
-        _overrideDir = tempDir;
-        Directory.CreateDirectory(_overrideDir);
-    }
-
-    // Shadow the internal FilePath method
-    internal string GetFilePath(Guid deploymentId)
-        => Path.Combine(_overrideDir, $"{deploymentId:N}.vault.json");
-}
