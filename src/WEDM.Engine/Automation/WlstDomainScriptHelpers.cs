@@ -56,8 +56,41 @@ internal static class WlstDomainScriptHelpers
         sb.AppendLine();
 
         // ── _wedm_ls() ─────────────────────────────────────────────────────────
+        //
+        // PARSER BUG FIXED HERE.
+        //
+        // Root cause: WLST ls() returns output lines formatted as:
+        //   "drw-    Security"
+        //   "-rw-    ListenPort    7001"
+        //
+        // The old implementation appended the WHOLE raw line to the result list:
+        //   result.append(s)   <- wrong: appends "drw-    Security"
+        //
+        // So 'Security' not in _root evaluated to True (the string "Security" is
+        // not the same object as "drw-    Security"), and the discovery aborted with:
+        //   [WLST-DIAG] /Security not found at root. ls=['drw-    Security', ...]
+        //
+        // Fix: split each line by whitespace and take parts[1] — the name token.
+        //   "drw-    Security"          parts[1] = "Security"
+        //   "-rw-    ListenPort    7001" parts[1] = "ListenPort"
+        //
+        // Fallback: if a line has no permission prefix (single token), use parts[0].
+        // This handles hypothetical plain-name output from older/future WLST builds.
+        //
+        // Compatible with Jython 2.2+: str.split() with no args, len(), list indexing.
+        // No regex, no f-strings, no ternary, no except-as.
         sb.AppendLine("def _wedm_ls():");
-        sb.AppendLine("    \"\"\"Return WLST ls() as a plain Python list; handles Java arrays and Jython lists.\"\"\"");
+        sb.AppendLine("    \"\"\"");
+        sb.AppendLine("    Return WLST ls() node/attribute names as a plain Python list.");
+        sb.AppendLine("    WLST ls() produces lines formatted as:");
+        sb.AppendLine("      'drw-    Security'              (directory / child MBean)");
+        sb.AppendLine("      '-rw-    ListenPort    7001'     (read-write attribute + value)");
+        sb.AppendLine("    This function extracts ONLY the name (second whitespace-separated token):");
+        sb.AppendLine("      'drw-    Security'         -> 'Security'");
+        sb.AppendLine("      '-rw-    ListenPort 7001'  -> 'ListenPort'");
+        sb.AppendLine("    Falls back to the first token for lines without a permission prefix.");
+        sb.AppendLine("    Compatible with Jython 2.2+ (no regex, no f-strings, no ternary).");
+        sb.AppendLine("    \"\"\"");
         sb.AppendLine("    try:");
         sb.AppendLine("        raw = ls()");
         sb.AppendLine("        if raw is None:");
@@ -65,8 +98,13 @@ internal static class WlstDomainScriptHelpers
         sb.AppendLine("        result = []");
         sb.AppendLine("        for i in raw:");
         sb.AppendLine("            s = str(i).strip()");
-        sb.AppendLine("            if s:");
-        sb.AppendLine("                result.append(s)");
+        sb.AppendLine("            if not s:");
+        sb.AppendLine("                continue");
+        sb.AppendLine("            parts = s.split()");
+        sb.AppendLine("            if len(parts) >= 2:");
+        sb.AppendLine("                result.append(parts[1])");
+        sb.AppendLine("            elif len(parts) == 1:");
+        sb.AppendLine("                result.append(parts[0])");
         sb.AppendLine("        return result");
         // Bare "except:" is Jython 2.2 compatible; we don't need the exception object here.
         sb.AppendLine("    except:");
