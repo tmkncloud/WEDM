@@ -723,4 +723,155 @@ public sealed class WlstDomainScriptGenerationTests
             "TemplateRealmName must not be a hardcoded value like 'base_domain' since " +
             "the actual realm name is determined by dynamic ls() at WLST runtime");
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 11. Validator false-positive regression — Python comment lines must not
+    //     trigger set('Password') violation
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // ROOT CAUSE OF THE FALSE POSITIVE (preserved here as documentation):
+    //
+    //   WlstDomainScriptHelpers.AppendAdminCredentialBlock emitted this Python comment:
+    //     # (cmo.setPassword is the correct API for 12c/14c — NOT set('Password',...)
+    //
+    //   WlstCompatibilityValidator.ContainsPasswordSetAttribute did:
+    //     script.Contains("set('Password'", StringComparison.Ordinal)
+    //
+    //   That substring appears in the comment text → FALSE POSITIVE VIOLATION.
+    //
+    //   The fix: StripCommentLines() removes all lines starting with '#' before any
+    //   Contains check, so validator decisions reflect executable code only.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// THE PRIMARY REGRESSION TEST.
+    ///
+    /// A script whose ONLY mention of set('Password' appears inside a Python comment
+    /// must pass the validator with zero violations.
+    ///
+    /// Before the fix: ContainsPasswordSetAttribute did a raw script.Contains() and
+    /// fired on the comment text, producing a false-positive VIOLATION and aborting
+    /// the deployment before WLST ever launched.
+    /// </summary>
+    [Fact]
+    public void Validator_comment_containing_setPassword_does_not_trigger_violation()
+    {
+        // Script that ONLY mentions set('Password' inside a comment — no actual call.
+        const string script = """
+            readTemplate(r'C:\mw\wlserver\common\templates\wls\wls.jar')
+            cd('/')
+            set('Name', 'wls_domain')
+            # Admin credentials: dynamic discovery + cmo.setPassword()
+            # (cmo.setPassword is the correct API for 12c/14c; the legacy
+            # set-Password attribute form is rejected by writeDomain in 12c+)
+            _admin_path = _wedm_discover_admin_path('weblogic')
+            cd(_admin_path)
+            cmo.setPassword('Welcome1')
+            cd('/')
+            setOption('OverwriteDomain', 'true')
+            writeDomain(r'C:\domains\wls_domain')
+            closeTemplate()
+            exit()
+            """;
+
+        var report = WlstCompatibilityValidator.Validate(script, WebLogicVersion.WLS_12c);
+
+        report.IsCompatible.Should().BeTrue(
+            "A Python comment that mentions 'set(Password' must NOT trigger a violation. " +
+            "The validator must strip comment lines before running pattern checks. " +
+            "Before the fix this produced a false-positive VIOLATION and aborted " +
+            "the deployment before WLST was ever launched.");
+
+        report.Violations.Should().BeEmpty(
+            "zero violations expected — the comment text is documentation, not executable code");
+    }
+
+    /// <summary>
+    /// Belt-and-suspenders: a script that ACTUALLY calls set('Password', ...) in executable
+    /// code must still be flagged — the comment-stripping must not suppress real violations.
+    /// </summary>
+    [Fact]
+    public void Validator_actual_setPassword_call_in_executable_code_is_still_a_violation()
+    {
+        // Real set('Password', ...) in executable code (not a comment).
+        const string script = """
+            readTemplate(r'C:\mw\wlserver\common\templates\wls\wls.jar')
+            cd('/Security/base_domain/User/weblogic')
+            set('Password', 'Welcome1')
+            cd('/')
+            writeDomain(r'C:\domains\wls_domain')
+            exit()
+            """;
+
+        var report = WlstCompatibilityValidator.Validate(script, WebLogicVersion.WLS_12c);
+
+        report.IsCompatible.Should().BeFalse(
+            "An actual set('Password', ...) call in executable code is a hard violation " +
+            "in 12c — writeDomain calls checkSecurityInfo which rejects it");
+        report.Violations.Should().Contain(v => v.Contains("set('Password'"),
+            "the violation message must call out the banned set-Password attribute");
+    }
+
+    /// <summary>
+    /// Validates that the EXACT comment text now emitted by AppendAdminCredentialBlock
+    /// (after fix 2 which removed the substring 'set('Password'' from the comment)
+    /// does not trigger a false positive.
+    ///
+    /// This test pins the FIXED comment text so that if someone inadvertently reverts
+    /// the comment back to a form containing set('Password', the test fails and the
+    /// regression is caught before it reaches production.
+    /// </summary>
+    [Fact]
+    public void AppendAdminCredentialBlock_comment_does_not_contain_triggering_substring()
+    {
+        // Generate a real script via the 12c provider.  The generated script contains
+        // the comment emitted by AppendAdminCredentialBlock.
+        var provider = new Wls12cDomainScriptProvider();
+        var ctx      = provider.BuildCreateDomainScript(Make12cConfig());
+
+        // The comment lines (lines starting with #) must not contain set('Password'
+        // as a substring.  If they do, the old false-positive is back.
+        var commentLines = ctx.ScriptContent
+            .Split(new char[] { '\r', '\n' })
+            .Where(l => l.TrimStart().StartsWith("#", StringComparison.Ordinal))
+            .ToList();
+
+        var triggeringComment = commentLines
+            .FirstOrDefault(l => l.Contains("set('Password'", StringComparison.Ordinal)
+                               || l.Contains("set(\"Password\"", StringComparison.Ordinal));
+
+        triggeringComment.Should().BeNull(
+            "No Python comment in the generated script may contain the literal substring " +
+            "set('Password' or set(\"Password\". " +
+            "If present, it will trigger a false-positive VIOLATION in environments where " +
+            "StripCommentLines() is not applied (e.g. a future refactor or external validator). " +
+            $"Offending comment: {triggeringComment ?? "(none)"}");
+    }
+
+    /// <summary>
+    /// End-to-end: the generated 12c script must pass WlstCompatibilityValidator cleanly.
+    /// This is the composite smoke test that would have caught the false-positive in production.
+    /// </summary>
+    [Theory]
+    [InlineData(WebLogicVersion.WLS_11g)]
+    [InlineData(WebLogicVersion.WLS_12c)]
+    [InlineData(WebLogicVersion.WLS_14c)]
+    [InlineData(WebLogicVersion.WLS_15c)]
+    public void Generated_script_passes_compatibility_validator_with_zero_violations(WebLogicVersion version)
+    {
+        var config   = version == WebLogicVersion.WLS_11g ? Make11gConfig() : Make12cConfig();
+        config.WebLogicVersion = version;
+        var provider = WlstDomainScriptProviderFactory.Create(version);
+        var ctx      = provider.BuildCreateDomainScript(config);
+
+        var report = WlstCompatibilityValidator.Validate(ctx.ScriptContent, version);
+
+        report.IsCompatible.Should().BeTrue(
+            $"The generated {version} script must pass WlstCompatibilityValidator with zero violations. " +
+            $"Violations found: {string.Join("; ", report.Violations)}");
+
+        report.Violations.Should().BeEmpty(
+            $"Every generated {version} script must have zero compatibility violations. " +
+            "A violation causes the step to fail before WLST launches and prevents artifact retention.");
+    }
 }

@@ -137,7 +137,8 @@ internal static class WlstDomainScriptHelpers
     public static void AppendAdminCredentialBlock(StringBuilder sb, string adminUser, string adminPwd)
     {
         sb.AppendLine("# Admin credentials: dynamic discovery + cmo.setPassword()");
-        sb.AppendLine("# (cmo.setPassword is the correct API for 12c/14c — NOT set('Password',...)");
+        sb.AppendLine("# (cmo.setPassword is the correct API for 12c/14c; the legacy");
+        sb.AppendLine("# set-Password attribute form is rejected by writeDomain in 12c+)");
         sb.AppendLine($"_admin_path = _wedm_discover_admin_path('{EscapePy(adminUser)}')");
         sb.AppendLine("print('[WLST-DIAG] Setting password at: ' + _admin_path)");
         sb.AppendLine("cd(_admin_path)");

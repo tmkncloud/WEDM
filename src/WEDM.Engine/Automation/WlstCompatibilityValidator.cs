@@ -30,14 +30,32 @@ public static class WlstCompatibilityValidator
         var violations = new List<string>();
         var warnings   = new List<string>();
 
-        CheckRequiredConstructs(script, violations, warnings);
+        // Strip Python comment lines before pattern matching.
+        //
+        // WHY THIS EXISTS: Generated scripts embed inline documentation comments that
+        // describe correct vs. incorrect API usage.  For example,
+        // AppendAdminCredentialBlock emits:
+        //
+        //   # (cmo.setPassword is the correct API for 12c/14c; the legacy
+        //   #  set-Password attribute is rejected by writeDomain in 12c+)
+        //
+        // A raw script.Contains("set('Password'") call fires on that comment text and
+        // produces a false-positive VIOLATION — flagging a perfectly valid script as
+        // broken before WLST is ever launched, and hiding the real script contents
+        // because RetainFailedArtifacts is never reached.
+        //
+        // Fix: strip comment lines first so every Contains check below reflects what
+        // the script actually *executes*, not what its documentation comments say.
+        var executable = StripCommentLines(script);
+
+        CheckRequiredConstructs(executable, violations, warnings);
 
         if (version >= WebLogicVersion.WLS_12c)
-            Check12cApiRules(script, violations, warnings);
+            Check12cApiRules(executable, violations, warnings);
         else
-            Check11gApiRules(script, warnings);
+            Check11gApiRules(executable, warnings);
 
-        CheckGeneralPatterns(script, warnings);
+        CheckGeneralPatterns(executable, warnings);
 
         return new WlstCompatibilityReport
         {
@@ -45,6 +63,20 @@ public static class WlstCompatibilityValidator
             Violations   = violations.AsReadOnly(),
             Warnings     = warnings.AsReadOnly(),
         };
+    }
+
+    /// <summary>
+    /// Returns the script with Python comment lines removed.
+    /// A comment line is any line whose first non-whitespace character is '#'.
+    /// Multi-line triple-quoted strings are not present in generated scripts so
+    /// this simple rule is sufficient and has zero false negatives.
+    /// </summary>
+    private static string StripCommentLines(string script)
+    {
+        var lines = script.Split(new char[] { '\r', '\n' });
+        var executable = lines
+            .Where(l => !l.TrimStart().StartsWith("#", StringComparison.Ordinal));
+        return string.Join("\n", executable);
     }
 
     // ── Check groups ──────────────────────────────────────────────────────────

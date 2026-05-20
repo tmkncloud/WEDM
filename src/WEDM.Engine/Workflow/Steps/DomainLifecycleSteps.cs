@@ -95,9 +95,48 @@ public sealed class CreateDomainStep : IStepExecutor
             $"PasswordMethod=cmo.setPassword()",
             "Domain");
 
-        // ── 4. Pre-execution compatibility validation (fail fast, no JVM) ───
+        // ── 4. Write script to disk BEFORE validation ───────────────────────
+        //   Script must be on disk before the validator runs so that RetainFailedArtifacts
+        //   can copy it when a validator rejects it.  Pre-validator write also enables
+        //   operators to inspect the exact generated Python when the deployment fails
+        //   before WLST is ever launched.
+        //
+        //   A permanent "last generated" debug copy is also written unconditionally so
+        //   operators can always find the most recently generated script regardless of
+        //   whether a deployment succeeded or failed.
+        var scriptPath = Path.Combine(
+            config.Paths.TempDirectory, $"wedm_create_domain_{config.Id:N}.py");
+        Directory.CreateDirectory(config.Paths.TempDirectory);
+        await File.WriteAllTextAsync(scriptPath, ctx.ScriptContent, cancellationToken)
+            .ConfigureAwait(false);
+        _log.Info($"[WLST] ScriptPath={scriptPath}", "Domain");
+
+        try
+        {
+            // Permanent debug copy — always overwritten, never cleaned up.
+            // Allows post-mortem inspection even for deployments that fail before
+            // WLST launches (e.g. when a validator rejects the script).
+            var reportsBase = !string.IsNullOrWhiteSpace(config.Paths.ReportsDirectory)
+                ? config.Paths.ReportsDirectory
+                : Path.Combine(config.Paths.TempDirectory, "reports");
+            Directory.CreateDirectory(reportsBase);
+            var debugCopy = Path.Combine(reportsBase, "debug-last-generated.py");
+            File.Copy(scriptPath, debugCopy, overwrite: true);
+            _log.Info($"[WLST] Debug script copy: {debugCopy}", "Domain");
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal: debug copy failure must not block the deployment.
+            _log.Warning($"[WLST] Debug script copy failed (non-fatal): {ex.Message}", "Domain");
+        }
+
+        // ── 5. Pre-execution compatibility validation (fail fast, no JVM) ───
         //   Catches set('Password',...) and other version-incompatible API usage
         //   before WLST starts, before any domain files are written.
+        //
+        //   NOTE: The validator operates on comment-stripped executable lines only —
+        //   Python documentation comments that mention banned patterns must not
+        //   trigger false-positive violations.  See WlstCompatibilityValidator.StripCommentLines.
         var compatibility = WlstCompatibilityValidator.Validate(
             ctx.ScriptContent, config.WebLogicVersion);
 
@@ -110,13 +149,18 @@ public sealed class CreateDomainStep : IStepExecutor
                 _log.Error($"[WLST] Compatibility VIOLATION: {violation}", category: "Domain");
 
             var violationSummary = string.Join(" | ", compatibility.Violations);
+
+            // Script is already on disk (written in step 4) — retain artifacts now.
+            RetainFailedArtifacts(config, ctx, scriptPath,
+                new ExternalProcessResult(), sw.Elapsed, "ApiCompatibilityValidationFailed");
+
             return StepExecutionResult.Fail(
                 $"WLST script failed compatibility check ({compatibility.Violations.Count} violation(s)). " +
                 $"No WLST process was launched. Violations: {violationSummary}",
                 retryRecommended: false);
         }
 
-        // ── 4b. Jython syntax pre-flight (fail fast, no JVM started) ───────
+        // ── 5b. Jython syntax pre-flight (fail fast, no JVM started) ────────
         //   Scans the generated Python for constructs that cause a top-level SyntaxError
         //   in Jython 2.2/2.5 (WLS 11g–12c).  The classic offender:
         //     "except Exception as _e:"  →  rejected by Jython with:
@@ -134,6 +178,10 @@ public sealed class CreateDomainStep : IStepExecutor
                 $"[WLST] Jython pre-flight FAILED — {jythonReport.Violations.Count} Python 3 " +
                 $"construct(s) found that will cause a SyntaxError at parse time:\n  {violationText}",
                 null, "Domain");
+
+            RetainFailedArtifacts(config, ctx, scriptPath,
+                new ExternalProcessResult(), sw.Elapsed, "JythonSyntaxValidationFailed");
+
             return StepExecutionResult.Fail(
                 $"Generated WLST script contains Jython-incompatible syntax " +
                 $"({jythonReport.Violations.Count} violation(s)):\n{violationText}",
@@ -142,14 +190,7 @@ public sealed class CreateDomainStep : IStepExecutor
 
         _log.Info($"[WLST] Jython pre-flight: {jythonReport.Summary}", "Domain");
 
-        // ── 5. Write script to temp directory ───────────────────────────────
-        //   The script is NOT deleted on failure — operators need it for post-mortem.
-        var scriptPath = Path.Combine(
-            config.Paths.TempDirectory, $"wedm_create_domain_{config.Id:N}.py");
-        Directory.CreateDirectory(config.Paths.TempDirectory);
-        await File.WriteAllTextAsync(scriptPath, ctx.ScriptContent, cancellationToken)
-            .ConfigureAwait(false);
-        _log.Info($"[WLST] ScriptPath={scriptPath}", "Domain");
+        // ── (script already written in step 4 — log path as confirmation) ────
 
         // ── 6. Build environment variables ──────────────────────────────────
         var env     = WlstPowerShellEnvironment.FromDeployment(config);
