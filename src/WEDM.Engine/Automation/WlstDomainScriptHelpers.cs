@@ -57,47 +57,75 @@ internal static class WlstDomainScriptHelpers
 
         // ── _wedm_ls() ─────────────────────────────────────────────────────────
         //
-        // PARSER BUG FIXED HERE.
+        // BUG HISTORY — TWO ITERATIONS, DOCUMENTED HERE FOR MAINTENANCE
         //
-        // Root cause: WLST ls() returns output lines formatted as:
-        //   "drw-    Security"
-        //   "-rw-    ListenPort    7001"
+        // Iteration 1 (original):
+        //   result.append(s)   ← appended full "drw-    Security" line
+        //   Fix: use s.split() and take parts[1] as the name token.
         //
-        // The old implementation appended the WHOLE raw line to the result list:
-        //   result.append(s)   <- wrong: appends "drw-    Security"
+        // Iteration 2 (previous fix — still broken):
+        //   for i in raw:      ← WRONG when raw is a string
+        //   When ls() returns a single multiline string (WLS 12c on this Jython build),
+        //   "for i in a_string" iterates CHARACTER BY CHARACTER:
+        //     i = 'd', 'r', 'w', '-', ' ', 'S', 'e', ...
+        //   parts[1] on a single character raises IndexError; elif appends 'd', 'r', ...
+        //   Result is a list of individual characters, never containing "Security".
         //
-        // So 'Security' not in _root evaluated to True (the string "Security" is
-        // not the same object as "drw-    Security"), and the discovery aborted with:
-        //   [WLST-DIAG] /Security not found at root. ls=['drw-    Security', ...]
+        // Iteration 3 (this fix):
+        //   NORMALISE raw into a list of lines BEFORE iterating:
+        //     (a) raw is None            → return []
+        //     (b) raw.splitlines() works → string (Python str or Java String)
+        //                                  splitlines() gives correct line list
+        //     (c) splitlines() absent    → iterate raw directly (Java array/collection)
+        //     (d) both fail              → str(raw).splitlines() as last resort
+        //   Then parse each line: s.split() → parts[1] (name after permission prefix).
         //
-        // Fix: split each line by whitespace and take parts[1] — the name token.
-        //   "drw-    Security"          parts[1] = "Security"
-        //   "-rw-    ListenPort    7001" parts[1] = "ListenPort"
+        // WLST ls() return type by version:
+        //   WLS 11g (Jython 2.2): may return None; ls prints to stdout, no return
+        //   WLS 12c (Jython 2.5): returns a single multiline string ← causes bug 2
+        //   WLS 14c (Jython 2.7): may return a Java array or collection
         //
-        // Fallback: if a line has no permission prefix (single token), use parts[0].
-        // This handles hypothetical plain-name output from older/future WLST builds.
-        //
-        // Compatible with Jython 2.2+: str.split() with no args, len(), list indexing.
-        // No regex, no f-strings, no ternary, no except-as.
+        // Jython 2.2 compatible: splitlines(), str(), list.append(), except-comma form.
+        // No regex, no f-strings, no ternary, no 'except X as e:'.
         sb.AppendLine("def _wedm_ls():");
         sb.AppendLine("    \"\"\"");
         sb.AppendLine("    Return WLST ls() node/attribute names as a plain Python list.");
-        sb.AppendLine("    WLST ls() produces lines formatted as:");
+        sb.AppendLine("    Handles all ls() return types across WLS versions:");
+        sb.AppendLine("      None          (WLS 11g: ls prints to stdout, returns nothing)");
+        sb.AppendLine("      multiline str (WLS 12c: entire ls() output as one string)");
+        sb.AppendLine("      Java array    (WLS 14c+: iterable of formatted line strings)");
+        sb.AppendLine("    Each ls() output line is formatted as:");
         sb.AppendLine("      'drw-    Security'              (directory / child MBean)");
         sb.AppendLine("      '-rw-    ListenPort    7001'     (read-write attribute + value)");
         sb.AppendLine("    This function extracts ONLY the name (second whitespace-separated token):");
         sb.AppendLine("      'drw-    Security'         -> 'Security'");
         sb.AppendLine("      '-rw-    ListenPort 7001'  -> 'ListenPort'");
-        sb.AppendLine("    Falls back to the first token for lines without a permission prefix.");
-        sb.AppendLine("    Compatible with Jython 2.2+ (no regex, no f-strings, no ternary).");
+        sb.AppendLine("    Jython 2.2 compatible: no regex, no f-strings, no ternary, no except-as.");
         sb.AppendLine("    \"\"\"");
         sb.AppendLine("    try:");
         sb.AppendLine("        raw = ls()");
         sb.AppendLine("        if raw is None:");
         sb.AppendLine("            return []");
+        sb.AppendLine("        print('[WLST-DIAG] ls() raw type: ' + str(type(raw)))");
+        sb.AppendLine("        print('[WLST-DIAG] ls() raw value: ' + str(raw)[:200])");
+        // Step 1: normalise raw into a list of line strings.
+        // Try splitlines() first: works for Python str and Java String (Jython wraps it).
+        // Fall back to iteration for Java arrays/collections.
+        // Last resort: str(raw).splitlines() for anything else.
+        sb.AppendLine("        _lines = []");
+        sb.AppendLine("        try:");
+        sb.AppendLine("            _lines = raw.splitlines()");
+        // Jython 2.2 form: except Exception, _var  (NOT the Python 3 'as' form)
+        sb.AppendLine("        except Exception, _ex1:");
+        sb.AppendLine("            try:");
+        sb.AppendLine("                for _item in raw:");
+        sb.AppendLine("                    _lines.append(str(_item))");
+        sb.AppendLine("            except Exception, _ex2:");
+        sb.AppendLine("                _lines = str(raw).splitlines()");
+        // Step 2: parse each line to extract the node/attribute name.
         sb.AppendLine("        result = []");
-        sb.AppendLine("        for i in raw:");
-        sb.AppendLine("            s = str(i).strip()");
+        sb.AppendLine("        for _line in _lines:");
+        sb.AppendLine("            s = str(_line).strip()");
         sb.AppendLine("            if not s:");
         sb.AppendLine("                continue");
         sb.AppendLine("            parts = s.split()");
@@ -105,8 +133,11 @@ internal static class WlstDomainScriptHelpers
         sb.AppendLine("                result.append(parts[1])");
         sb.AppendLine("            elif len(parts) == 1:");
         sb.AppendLine("                result.append(parts[0])");
+        sb.AppendLine("        print('[WLST-DIAG] Parsed ls: ' + str(result))");
         sb.AppendLine("        return result");
-        // Bare "except:" is Jython 2.2 compatible; we don't need the exception object here.
+        // Outer bare except: ensures _wedm_ls() never propagates an exception.
+        // If discovery diagnostics fail, the caller gets an empty list and reports
+        // [WLST-DIAG] /Security not found — still actionable.
         sb.AppendLine("    except:");
         sb.AppendLine("        return []");
         sb.AppendLine();
