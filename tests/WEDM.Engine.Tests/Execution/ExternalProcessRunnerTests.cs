@@ -552,7 +552,7 @@ public sealed class ExternalProcessRunner_EnvironmentTests
         var result = await _runner.RunAsync(options);
 
         result.ExitCode.Should().Be(0);
-        result.Output.Trim().Should().StartWith(tmp, StringComparison.OrdinalIgnoreCase);
+        result.Output.Trim().Should().StartWithEquivalentOf(tmp);
     }
 
     [Fact]

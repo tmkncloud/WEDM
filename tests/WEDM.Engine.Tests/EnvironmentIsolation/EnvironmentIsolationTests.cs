@@ -369,7 +369,7 @@ public sealed class EnvironmentDriftDetectorTests
             OracleHome = oracleHome,
             JavaHome   = javaHome,
             Path       = path,
-            PathSegments = path is null ? [] : PathSanitizer.Split(path).ToList().AsReadOnly(),
+            PathSegments = PathSanitizer.Split(path),
         };
 
     [Fact]

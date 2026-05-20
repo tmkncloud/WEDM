@@ -19,4 +19,8 @@
   <ItemGroup>
     <ProjectReference Include="..\WEDM.Domain\WEDM.Domain.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Grant test assembly access to internal members (DpapiFileSecretVault, AtomicFileWriter) -->
+    <InternalsVisibleTo Include="WEDM.Infrastructure.Tests" />
+  </ItemGroup>
 </Project>
