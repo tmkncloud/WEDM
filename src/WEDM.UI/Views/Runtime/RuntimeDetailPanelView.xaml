@@ -1,0 +1,396 @@
+<UserControl x:Class="WEDM.UI.Views.Runtime.RuntimeDetailPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:rvm="clr-namespace:WEDM.UI.ViewModels.Runtime"
+             xmlns:rv="clr-namespace:WEDM.UI.Views.Runtime"
+             xmlns:dom="clr-namespace:WEDM.Domain.Models;assembly=WEDM.Domain"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="340"
+             d:DataContext="{d:DesignInstance Type=rvm:RuntimeDetailPanelViewModel}">
+
+    <Border Background="{DynamicResource BackgroundSurfaceBrush}"
+            BorderBrush="{DynamicResource BorderSubtleBrush}"
+            BorderThickness="1,0,0,0">
+        <Grid>
+
+            <!-- ── Empty state ─────────────────────────────────────────────────── -->
+            <TextBlock Text="Select a component to view&#x0a;details, logs, and operations."
+                       Style="{DynamicResource RuntimeEmptyStateStyle}"
+                       TextAlignment="Center"
+                       Margin="24">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource RuntimeEmptyStateStyle}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasComponent}" Value="False">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <!-- ── Detail content ─────────────────────────────────────────────── -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasComponent}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>   <!-- Component header  -->
+                    <RowDefinition Height="Auto"/>   <!-- Quick actions     -->
+                    <RowDefinition Height="*"/>      <!-- Tab control       -->
+                </Grid.RowDefinitions>
+
+                <!-- ════════════════════════════════════════════════════════════
+                     COMPONENT HEADER
+                     ════════════════════════════════════════════════════════════ -->
+                <Border Grid.Row="0"
+                        Background="{DynamicResource BackgroundElevatedBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="14,12">
+                    <StackPanel>
+
+                        <!-- Name -->
+                        <TextBlock Text="{Binding ComponentName}"
+                                   FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   TextTrimming="CharacterEllipsis"/>
+
+                        <!-- Domain -->
+                        <TextBlock Text="{Binding DomainName}"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   Margin="0,2,0,8"
+                                   TextTrimming="CharacterEllipsis"/>
+
+                        <!-- Kind badge + State badge -->
+                        <StackPanel Orientation="Horizontal">
+
+                            <Border Style="{DynamicResource RuntimeKindBadgeStyle}" Margin="0,0,6,0">
+                                <TextBlock Text="{Binding KindDisplay}"
+                                           Style="{DynamicResource RuntimeKindBadgeTextStyle}"/>
+                            </Border>
+
+                            <Border Style="{DynamicResource RuntimeStateBadgeStyle}">
+                                <Border.Style>
+                                    <Style TargetType="Border" BasedOn="{StaticResource RuntimeStateBadgeStyle}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Running}">
+                                                <Setter Property="Background" Value="{DynamicResource SuccessSubtleBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Starting}">
+                                                <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Failed}">
+                                                <Setter Property="Background" Value="{DynamicResource DangerSubtleBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Unhealthy}">
+                                                <Setter Property="Background" Value="{DynamicResource DangerSubtleBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Stopping}">
+                                                <Setter Property="Background" Value="{DynamicResource WarningSubtleBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Recovering}">
+                                                <Setter Property="Background" Value="{DynamicResource WarningSubtleBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding Component.StateDisplay}"
+                                           FontSize="11" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Running}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Starting}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Failed}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Unhealthy}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Component.State}" Value="{x:Static dom:RuntimeState.Stopping}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
+
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ════════════════════════════════════════════════════════════
+                     QUICK ACTIONS
+                     ════════════════════════════════════════════════════════════ -->
+                <Border Grid.Row="1"
+                        Background="{DynamicResource BackgroundElevatedBrush}"
+                        BorderBrush="{DynamicResource BorderSubtleBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="14,8">
+                    <StackPanel Orientation="Horizontal">
+
+                        <Button Style="{DynamicResource RuntimeToolbarButtonStyle}"
+                                Command="{Binding StartLogTailCommand}"
+                                Content="⬡ Tail Log">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource RuntimeToolbarButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding LogViewer.IsTailing}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Style="{DynamicResource RuntimeToolbarButtonStyle}"
+                                Command="{Binding StopLogTailCommand}"
+                                Content="■ Stop Tail">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource RuntimeToolbarButtonStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding LogViewer.IsTailing}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Style="{DynamicResource RuntimeToolbarButtonStyle}"
+                                Command="{Binding OpenConsoleCommand}"
+                                Content="⬡ Console"
+                                ToolTip="{Binding ConsoleUrl}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource RuntimeToolbarButtonStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasConsoleUrl}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                    </StackPanel>
+                </Border>
+
+                <!-- ════════════════════════════════════════════════════════════
+                     TABCONTROL (Details / Logs / Operations)
+                     SelectedIndex two-way bound to SelectedTabIndex
+                     ════════════════════════════════════════════════════════════ -->
+                <TabControl Grid.Row="2"
+                            Style="{DynamicResource RuntimeTabControlStyle}"
+                            SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
+
+                    <!-- ── Details ──────────────────────────────────────────── -->
+                    <TabItem Header="Details" Style="{DynamicResource RuntimeTabItemStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="14,12">
+
+                                <TextBlock Text="RUNTIME" Style="{DynamicResource RuntimeSectionHeaderStyle}"/>
+
+                                <TextBlock Text="PID"       Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding Component.PidDisplay, FallbackValue='—'}"
+                                           Style="{DynamicResource RuntimeDetailValueStyle}"/>
+
+                                <TextBlock Text="Port"      Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Style="{DynamicResource RuntimeDetailValueStyle}">
+                                    <Run Text="{Binding Port, Mode=OneWay, FallbackValue='—'}"/>
+                                </TextBlock>
+
+                                <TextBlock Text="Uptime"    Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding Component.UptimeDisplay, FallbackValue='—'}"
+                                           Style="{DynamicResource RuntimeDetailValueStyle}"/>
+
+                                <TextBlock Text="Health"    Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding Component.HealthDisplay, FallbackValue='—'}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource RuntimeDetailValueStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Component.Health}" Value="{x:Static dom:HealthStatus.Healthy}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Component.Health}" Value="{x:Static dom:HealthStatus.Degraded}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Component.Health}" Value="{x:Static dom:HealthStatus.Unhealthy}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <TextBlock Text="Status"   Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding Component.StatusMessage, FallbackValue='—'}"
+                                           Style="{DynamicResource RuntimeDetailValueStyle}"/>
+
+                                <Separator Background="{DynamicResource BorderSubtleBrush}" Margin="0,4,0,12"/>
+
+                                <TextBlock Text="IDENTITY"  Style="{DynamicResource RuntimeSectionHeaderStyle}"/>
+
+                                <TextBlock Text="Host"      Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding Host, FallbackValue='—'}"
+                                           Style="{DynamicResource RuntimeDetailValueStyle}"/>
+
+                                <TextBlock Text="Domain"    Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding DomainName, FallbackValue='—'}"
+                                           Style="{DynamicResource RuntimeDetailValueStyle}"/>
+
+                                <Separator Background="{DynamicResource BorderSubtleBrush}" Margin="0,4,0,12"/>
+
+                                <TextBlock Text="PATHS"     Style="{DynamicResource RuntimeSectionHeaderStyle}"/>
+
+                                <TextBlock Text="Domain Home" Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding DomainHome, FallbackValue='—'}"
+                                           Style="{DynamicResource RuntimeDetailPathStyle}"/>
+
+                                <TextBlock Text="Log File"  Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding LogFile, FallbackValue='—'}"
+                                           Style="{DynamicResource RuntimeDetailPathStyle}"/>
+
+                                <TextBlock Text="Start Script" Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                <TextBlock Text="{Binding StartScript, FallbackValue='—'}"
+                                           Style="{DynamicResource RuntimeDetailPathStyle}"/>
+
+                                <!-- Admin Console URL -->
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasConsoleUrl}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="Admin Console" Style="{DynamicResource RuntimeDetailLabelStyle}"/>
+                                    <TextBlock Text="{Binding ConsoleUrl}"
+                                               Style="{DynamicResource RuntimeDetailPathStyle}"
+                                               Foreground="{DynamicResource TextLinkBrush}"
+                                               Cursor="Hand"
+                                               MouseLeftButtonDown="ConsoleUrl_Click"/>
+                                </StackPanel>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ── Logs ─────────────────────────────────────────────── -->
+                    <TabItem Header="Logs" Style="{DynamicResource RuntimeTabItemStyle}">
+                        <rv:RuntimeLogViewerView DataContext="{Binding LogViewer}"/>
+                    </TabItem>
+
+                    <!-- ── Operations ──────────────────────────────────────── -->
+                    <TabItem Header="Operations" Style="{DynamicResource RuntimeTabItemStyle}">
+                        <Grid>
+                            <TextBlock Text="No operations recorded yet."
+                                       Style="{DynamicResource RuntimeEmptyStateStyle}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource RuntimeEmptyStateStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding OperationHistory.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding OperationHistory}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type rvm:OperationHistoryEntry}">
+                                            <Border Style="{DynamicResource RuntimeHistoryItemStyle}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                                                        <TextBlock FontSize="11" FontWeight="SemiBold" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text"       Value="✔"/>
+                                                                    <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Succeeded}" Value="False">
+                                                                            <Setter Property="Text"       Value="✖"/>
+                                                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding Operation}"
+                                                                   FontSize="12" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                    </StackPanel>
+
+                                                    <TextBlock Grid.Row="0" Grid.Column="1"
+                                                               Text="{Binding Duration}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource TextMutedBrush}"
+                                                               VerticalAlignment="Center"/>
+
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                               Margin="16,2,0,0" FontSize="11"
+                                                               TextTrimming="CharacterEllipsis">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text"       Value="{Binding Error}"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Succeeded}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
+
+                </TabControl>
+
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,270 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         RUNTIME CONSOLE — STYLE DICTIONARY
+         Styles used by RuntimeDashboardView, RuntimeDetailPanelView, and
+         RuntimeLogViewerView. All colours via DynamicResource.
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── Spacing / sizing tokens ─────────────────────────────────────────── -->
+    <sys:Double x:Key="RuntimeToolbarHeight">40</sys:Double>
+    <sys:Double x:Key="RuntimeSummaryCardHeight">68</sys:Double>
+    <sys:Double x:Key="RuntimeDetailPanelWidth">340</sys:Double>
+    <sys:Double x:Key="RuntimeGridRowHeight">34</sys:Double>
+    <sys:Double x:Key="RuntimeLogLineHeight">20</sys:Double>
+    <GridLength x:Key="RuntimeDetailPanelWidthGL">340</GridLength>
+    <Thickness x:Key="RuntimeCardPadding">16,10</Thickness>
+    <Thickness x:Key="RuntimeDetailFieldMargin">0,0,0,8</Thickness>
+
+    <!-- ── Summary card ─────────────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeSummaryCardStyle" TargetType="Border">
+        <Setter Property="Background"   Value="{DynamicResource BackgroundElevatedBrush}"/>
+        <Setter Property="BorderBrush"  Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding"      Value="16,10"/>
+        <Setter Property="Margin"       Value="0,0,8,0"/>
+    </Style>
+
+    <Style x:Key="RuntimeSummaryCountStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"   Value="26"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontFamily" Value="{DynamicResource FontFamilyMono}"/>
+        <Setter Property="LineHeight" Value="30"/>
+    </Style>
+
+    <Style x:Key="RuntimeSummaryLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"   Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="Margin"     Value="0,2,0,0"/>
+    </Style>
+
+    <!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeToolbarStyle" TargetType="Border">
+        <Setter Property="Background"      Value="{DynamicResource BackgroundElevatedBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding"         Value="12,0"/>
+    </Style>
+
+    <Style x:Key="RuntimeToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Margin"  Value="0,0,4,0"/>
+    </Style>
+
+    <Style x:Key="RuntimeToolbarSeparatorStyle" TargetType="Separator">
+        <Setter Property="Width"      Value="1"/>
+        <Setter Property="Height"     Value="20"/>
+        <Setter Property="Margin"     Value="6,0"/>
+        <Setter Property="Background" Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Rectangle Width="{TemplateBinding Width}" Height="{TemplateBinding Height}"
+                               Fill="{TemplateBinding Background}"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ── Section panel header ─────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeSectionHeaderStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"   Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="Margin"     Value="0,0,0,8"/>
+    </Style>
+
+    <!-- ── Detail panel label/value pair ────────────────────────────────────── -->
+    <Style x:Key="RuntimeDetailLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"    Value="11"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="Margin"      Value="0,0,0,2"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="RuntimeDetailValueStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"       Value="12"/>
+        <Setter Property="Foreground"     Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Margin"         Value="0,0,0,10"/>
+        <Setter Property="TextWrapping"   Value="Wrap"/>
+        <Setter Property="TextTrimming"   Value="CharacterEllipsis"/>
+    </Style>
+
+    <Style x:Key="RuntimeDetailPathStyle" TargetType="TextBlock" BasedOn="{StaticResource RuntimeDetailValueStyle}">
+        <Setter Property="FontFamily"  Value="{DynamicResource FontFamilyMono}"/>
+        <Setter Property="FontSize"    Value="11"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+
+    <!-- ── Component kind badge ──────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeKindBadgeStyle" TargetType="Border">
+        <Setter Property="Background"      Value="{DynamicResource BackgroundOverlayBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius"    Value="3"/>
+        <Setter Property="Padding"         Value="6,2"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+
+    <Style x:Key="RuntimeKindBadgeTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"    Value="10"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+
+    <!-- ── State badge (used in detail panel header) ─────────────────────────── -->
+    <Style x:Key="RuntimeStateBadgeStyle" TargetType="Border">
+        <Setter Property="CornerRadius"    Value="4"/>
+        <Setter Property="Padding"         Value="8,3"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Background"      Value="{DynamicResource BackgroundOverlayBrush}"/>
+    </Style>
+
+    <!-- ── Notification bar item ─────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeNotificationItemStyle" TargetType="Border">
+        <Setter Property="CornerRadius"    Value="3"/>
+        <Setter Property="Padding"         Value="10,5"/>
+        <Setter Property="Margin"          Value="0,0,6,0"/>
+        <Setter Property="Background"      Value="{DynamicResource InfoSubtleBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource InfoBorderBrush}"/>
+    </Style>
+
+    <!-- ── Log viewer ─────────────────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeLogViewerListBoxStyle" TargetType="ListBox">
+        <Setter Property="Background"  Value="{DynamicResource BackgroundCanvasBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility"   Value="Auto"/>
+        <Setter Property="VirtualizingPanel.IsVirtualizing"           Value="True"/>
+        <Setter Property="VirtualizingPanel.VirtualizationMode"       Value="Recycling"/>
+        <Setter Property="VirtualizingPanel.ScrollUnit"               Value="Item"/>
+        <Setter Property="ScrollViewer.CanContentScroll"              Value="True"/>
+        <Setter Property="ItemContainerStyle">
+            <Setter.Value>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding"            Value="8,1"/>
+                    <Setter Property="Background"         Value="Transparent"/>
+                    <Setter Property="BorderThickness"    Value="0"/>
+                    <Setter Property="Height"             Value="{DynamicResource RuntimeLogLineHeight}"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="bd"
+                                        Background="{TemplateBinding Background}"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="bd" Property="Background"
+                                                Value="{DynamicResource BackgroundOverlayBrush}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Background"
+                                                Value="{DynamicResource BackgroundHoverBrush}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="RuntimeLogLineTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="{DynamicResource FontFamilyMono}"/>
+        <Setter Property="FontSize"    Value="11.5"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <Style x:Key="RuntimeLogTimestampStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="{DynamicResource FontFamilyMono}"/>
+        <Setter Property="FontSize"    Value="10"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="Width"       Value="80"/>
+        <Setter Property="Margin"      Value="0,0,8,0"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <!-- ── Tab control strip for detail panel ────────────────────────────────── -->
+    <Style x:Key="RuntimeTabControlStyle" TargetType="TabControl">
+        <Setter Property="Background"      Value="{DynamicResource BackgroundSurfaceBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding"         Value="0"/>
+    </Style>
+
+    <Style x:Key="RuntimeTabItemStyle" TargetType="TabItem">
+        <Setter Property="Background"      Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding"         Value="12,6"/>
+        <Setter Property="FontSize"        Value="12"/>
+        <Setter Property="Foreground"      Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="bd" Padding="{TemplateBinding Padding}"
+                            BorderThickness="0,0,0,2" BorderBrush="Transparent">
+                        <TextBlock Text="{TemplateBinding Header}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontSize="{TemplateBinding FontSize}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush"
+                                    Value="{DynamicResource AccentPrimaryBrush}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ── History entry row ─────────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeHistoryItemStyle" TargetType="Border">
+        <Setter Property="Background"      Value="{DynamicResource BackgroundElevatedBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding"         Value="10,6"/>
+    </Style>
+
+    <!-- ── Empty state placeholder ───────────────────────────────────────────── -->
+    <Style x:Key="RuntimeEmptyStateStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"   Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment"   Value="Center"/>
+        <Setter Property="TextAlignment"       Value="Center"/>
+    </Style>
+
+    <!-- ── Filter text box ───────────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeFilterBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="Height"       Value="28"/>
+        <Setter Property="FontSize"     Value="12"/>
+        <Setter Property="Padding"      Value="8,4"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <!-- ── Credentials area ──────────────────────────────────────────────────── -->
+    <Style x:Key="RuntimeCredentialsLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontSize"   Value="11"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin"     Value="0,0,6,0"/>
+    </Style>
+
+</ResourceDictionary>

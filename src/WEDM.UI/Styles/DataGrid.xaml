@@ -1,0 +1,107 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         WEDM DataGrid Style System
+         Compact rows (34px), full virtualization, hover + selection states.
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── Column Header ──────────────────────────────────────────────────── -->
+    <Style TargetType="DataGridColumnHeader">
+        <Setter Property="Background"          Value="{DynamicResource BackgroundElevatedBrush}"/>
+        <Setter Property="Foreground"          Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="FontFamily"          Value="Segoe UI"/>
+        <Setter Property="FontSize"            Value="11"/>
+        <Setter Property="FontWeight"          Value="SemiBold"/>
+        <Setter Property="Height"              Value="30"/>
+        <Setter Property="Padding"             Value="10,0"/>
+        <Setter Property="BorderBrush"         Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="BorderThickness"     Value="0,0,0,1"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="SeparatorBrush"      Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="SeparatorVisibility" Value="Visible"/>
+    </Style>
+
+    <!-- ── Row ────────────────────────────────────────────────────────────── -->
+    <Style TargetType="DataGridRow">
+        <Setter Property="Background"      Value="{DynamicResource BackgroundCanvasBrush}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="MinHeight"       Value="34"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource BackgroundHoverBrush}"/>
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+            </Trigger>
+            <Trigger Property="AlternationIndex" Value="1">
+                <Setter Property="Background" Value="{DynamicResource BackgroundElevatedBrush}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ── Cell ───────────────────────────────────────────────────────────── -->
+    <Style TargetType="DataGridCell">
+        <Setter Property="BorderThickness"     Value="0"/>
+        <Setter Property="Padding"             Value="10,0"/>
+        <Setter Property="Background"          Value="Transparent"/>
+        <Setter Property="FontFamily"          Value="Segoe UI"/>
+        <Setter Property="FontSize"            Value="12"/>
+        <Setter Property="Foreground"          Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                <Setter Property="Background" Value="Transparent"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ── Global DataGrid base style ─────────────────────────────────────── -->
+    <Style TargetType="DataGrid">
+        <Setter Property="Background"                Value="{DynamicResource BackgroundCanvasBrush}"/>
+        <Setter Property="Foreground"                Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="BorderBrush"               Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="BorderThickness"           Value="1"/>
+        <Setter Property="RowBackground"             Value="{DynamicResource BackgroundCanvasBrush}"/>
+        <Setter Property="AlternatingRowBackground"  Value="{DynamicResource BackgroundElevatedBrush}"/>
+        <Setter Property="HorizontalGridLinesBrush"  Value="{DynamicResource BorderSubtleBrush}"/>
+        <Setter Property="VerticalGridLinesBrush"    Value="Transparent"/>
+        <Setter Property="RowHeight"                 Value="34"/>
+        <Setter Property="SelectionUnit"             Value="FullRow"/>
+        <Setter Property="SelectionMode"             Value="Single"/>
+        <Setter Property="AutoGenerateColumns"       Value="False"/>
+        <Setter Property="CanUserResizeRows"         Value="False"/>
+        <Setter Property="CanUserAddRows"            Value="False"/>
+        <Setter Property="IsReadOnly"                Value="True"/>
+        <Setter Property="GridLinesVisibility"       Value="Horizontal"/>
+        <Setter Property="HeadersVisibility"         Value="Column"/>
+        <Setter Property="SnapsToDevicePixels"       Value="True"/>
+        <!-- Full virtualization — required for large data sets -->
+        <Setter Property="VirtualizingPanel.IsVirtualizing"        Value="True"/>
+        <Setter Property="VirtualizingPanel.VirtualizationMode"    Value="Recycling"/>
+        <Setter Property="VirtualizingPanel.ScrollUnit"            Value="Item"/>
+        <Setter Property="EnableRowVirtualization"                 Value="True"/>
+        <Setter Property="EnableColumnVirtualization"              Value="True"/>
+    </Style>
+
+    <!-- ── Named variant — compact (for toolbars / embedded grids) ────────── -->
+    <Style x:Key="DataGridCompact" TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+        <Setter Property="RowHeight"    Value="28"/>
+        <Setter Property="FontSize"     Value="11"/>
+    </Style>
+
+</ResourceDictionary>

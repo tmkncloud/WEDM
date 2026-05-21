@@ -1,0 +1,138 @@
+<UserControl x:Class="WEDM.UI.Views.Wizard.WizardShellView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:WEDM.UI.Converters"
+             Background="{DynamicResource BackgroundCanvasBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>          <!-- Step header strip -->
+            <RowDefinition Height="2"/>             <!-- Progress accent line -->
+            <RowDefinition Height="*"/>             <!-- Main step content -->
+            <RowDefinition Height="48"/>  <!-- Action bar -->
+        </Grid.RowDefinitions>
+
+        <!-- ── Step header strip ─────────────────────────────────────────────── -->
+        <Border Grid.Row="0"
+                Padding="20,10,20,10"
+                Background="{DynamicResource BackgroundSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,0,0,1">
+            <DockPanel>
+                <!-- Step counter badge -->
+                <Border DockPanel.Dock="Right"
+                        CornerRadius="4"
+                        Padding="8,3"
+                        Background="{DynamicResource BackgroundElevatedBrush}">
+                    <TextBlock Text="{Binding StepCounterText}"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextMutedBrush}"/>
+                </Border>
+                <!-- Title -->
+                <TextBlock Text="{Binding CurrentStep.StepTitle}"
+                           Style="{StaticResource TypePageTitle}"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+        <!-- ── Thin progress accent line ─────────────────────────────────────── -->
+        <Grid Grid.Row="1">
+            <Rectangle Fill="{DynamicResource BorderSubtleBrush}"/>
+            <Rectangle HorizontalAlignment="Left"
+                       Fill="{DynamicResource AccentPrimaryBrush}">
+                <Rectangle.Width>
+                    <MultiBinding>
+                        <MultiBinding.Converter>
+                            <conv:PercentToWidthMultiConverter/>
+                        </MultiBinding.Converter>
+                        <Binding Path="ProgressPercent"/>
+                        <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Grid}"/>
+                    </MultiBinding>
+                </Rectangle.Width>
+            </Rectangle>
+        </Grid>
+
+        <!-- ── Busy overlay ──────────────────────────────────────────────────── -->
+        <Grid Grid.Row="2"
+              Panel.ZIndex="20"
+              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Rectangle Fill="{DynamicResource BackgroundCanvasBrush}" Opacity="0.75"/>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <ProgressBar IsIndeterminate="True"
+                             Width="200" Height="2"
+                             Margin="0,0,0,10"
+                             Foreground="{DynamicResource AccentPrimaryBrush}"
+                             Background="{DynamicResource BorderSubtleBrush}"/>
+                <TextBlock Text="{Binding BusyMessage}"
+                           FontSize="13"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ── Main step content ─────────────────────────────────────────────── -->
+        <ScrollViewer Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <ContentControl Content="{Binding CurrentStep}" Margin="0"/>
+        </ScrollViewer>
+
+        <!-- ── Wizard action bar ─────────────────────────────────────────────── -->
+        <Border Grid.Row="3"
+                Background="{DynamicResource BackgroundSurfaceBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,1,0,0">
+            <DockPanel Margin="16,0">
+
+                <!-- Left: Back -->
+                <Button DockPanel.Dock="Left"
+                        Content="← Back"
+                        Command="{Binding BackCommand}"
+                        IsEnabled="{Binding CanGoBack}"
+                        Style="{StaticResource BtnSecondary}"
+                        Height="{DynamicResource ButtonHeight}"
+                        VerticalAlignment="Center"/>
+
+                <!-- Right: context-sensitive primary action -->
+                <Button DockPanel.Dock="Right"
+                        Command="{Binding NextCommand}"
+                        IsEnabled="{Binding CanGoNext}"
+                        Height="{DynamicResource ButtonHeight}"
+                        VerticalAlignment="Center">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
+                            <Setter Property="Content" Value="Next →"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDeploymentReadyStep}" Value="True">
+                                    <Setter Property="Content" Value="Deploy"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsMigrationReadyStep}" Value="True">
+                                    <Setter Property="Content" Value="Migrate"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsDecommissionReadyStep}" Value="True">
+                                    <Setter Property="Content" Value="Decommission"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsLastStep}" Value="True">
+                                    <Setter Property="Content" Value="Finish"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- Centre: step validation error -->
+                <TextBlock Text="{Binding CurrentStep.ErrorMessage}"
+                           Foreground="{DynamicResource DangerBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding CurrentStep.ErrorMessage,
+                                                Converter={StaticResource StringToVisibilityConverter}}"/>
+            </DockPanel>
+        </Border>
+
+    </Grid>
+</UserControl>

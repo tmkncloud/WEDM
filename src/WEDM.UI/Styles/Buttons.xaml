@@ -2,23 +2,18 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ═══════════════════════════════════════════════════════════════════════
-         WEDM Button Style System
-         Consistent enterprise button hierarchy:
-           Primary  — main CTAs (Next, Deploy, Confirm)
-           Secondary — cancel/back actions
-           Danger    — destructive actions (Rollback, Delete)
-           Ghost     — subtle text-only actions
-           Icon      — icon-only toolbar buttons
+         WEDM Button Style System v2
+         Height 32-36px. No hardcoded colors. All brushes DynamicResource.
          ═══════════════════════════════════════════════════════════════════════ -->
 
-    <!-- ── Base Button Template ─────────────────────────────────────────────── -->
+    <!-- ── Base Button Template ─────────────────────────────────────────── -->
     <Style x:Key="BtnBase" TargetType="Button">
         <Setter Property="Cursor"              Value="Hand"/>
         <Setter Property="FontFamily"          Value="Segoe UI"/>
         <Setter Property="FontSize"            Value="13"/>
         <Setter Property="FontWeight"          Value="SemiBold"/>
-        <Setter Property="Height"              Value="36"/>
-        <Setter Property="Padding"             Value="16,0"/>
+        <Setter Property="Height"              Value="32"/>
+        <Setter Property="Padding"             Value="14,0"/>
         <Setter Property="BorderThickness"     Value="1"/>
         <Setter Property="FocusVisualStyle"    Value="{x:Null}"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -29,7 +24,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
+                            CornerRadius="5"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -38,10 +33,10 @@
                             <Setter TargetName="border" Property="Opacity" Value="0.88"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Opacity" Value="0.72"/>
+                            <Setter TargetName="border" Property="Opacity" Value="0.70"/>
                             <Setter TargetName="border" Property="RenderTransform">
                                 <Setter.Value>
-                                    <ScaleTransform ScaleX="0.98" ScaleY="0.98" CenterX="50" CenterY="18"/>
+                                    <ScaleTransform ScaleX="0.98" ScaleY="0.98" CenterX="50" CenterY="16"/>
                                 </Setter.Value>
                             </Setter>
                         </Trigger>
@@ -55,64 +50,76 @@
         </Setter>
     </Style>
 
-    <!-- ── Primary Button ───────────────────────────────────────────────────── -->
+    <!-- ── Primary ──────────────────────────────────────────────────────── -->
     <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource BtnBase}">
         <Setter Property="Background"   Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="Foreground"   Value="White"/>
         <Setter Property="BorderBrush"  Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
-    <!-- ── Secondary Button ─────────────────────────────────────────────────── -->
+    <!-- ── Secondary ────────────────────────────────────────────────────── -->
     <Style x:Key="BtnSecondary" TargetType="Button" BasedOn="{StaticResource BtnBase}">
         <Setter Property="Background"   Value="{DynamicResource BackgroundElevatedBrush}"/>
         <Setter Property="Foreground"   Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush"  Value="{DynamicResource BorderDefaultBrush}"/>
     </Style>
 
-    <!-- ── Danger Button ────────────────────────────────────────────────────── -->
+    <!-- ── Danger (FIXED: no hardcoded #2D0F0E — DynamicResource) ────── -->
     <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-        <Setter Property="Background"   Value="#2D0F0E"/>
-        <Setter Property="Foreground"   Value="{StaticResource DangerBrush}"/>
-        <Setter Property="BorderBrush"  Value="{StaticResource DangerBrush}"/>
+        <Setter Property="Background"   Value="{DynamicResource DangerSubtleBrush}"/>
+        <Setter Property="Foreground"   Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="BorderBrush"  Value="{DynamicResource DangerBorderBrush}"/>
     </Style>
 
-    <!-- ── Success Button ───────────────────────────────────────────────────── -->
+    <!-- ── Success ──────────────────────────────────────────────────────── -->
     <Style x:Key="BtnSuccess" TargetType="Button" BasedOn="{StaticResource BtnBase}">
-        <Setter Property="Background"   Value="{StaticResource SuccessSubtleBrush}"/>
-        <Setter Property="Foreground"   Value="{StaticResource SuccessBrush}"/>
-        <Setter Property="BorderBrush"  Value="{StaticResource SuccessBrush}"/>
+        <Setter Property="Background"   Value="{DynamicResource SuccessSubtleBrush}"/>
+        <Setter Property="Foreground"   Value="{DynamicResource SuccessBrush}"/>
+        <Setter Property="BorderBrush"  Value="{DynamicResource SuccessBorderBrush}"/>
     </Style>
 
-    <!-- ── Ghost Button ─────────────────────────────────────────────────────── -->
+    <!-- ── Ghost ────────────────────────────────────────────────────────── -->
     <Style x:Key="BtnGhost" TargetType="Button" BasedOn="{StaticResource BtnBase}">
         <Setter Property="Background"   Value="Transparent"/>
         <Setter Property="Foreground"   Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="BorderBrush"  Value="Transparent"/>
     </Style>
 
-    <!-- ── Large Primary (Deploy CTA) ───────────────────────────────────────── -->
+    <!-- ── Large Primary (Deploy CTA) ──────────────────────────────────── -->
     <Style x:Key="BtnPrimaryLarge" TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
-        <Setter Property="Height"    Value="48"/>
-        <Setter Property="FontSize"  Value="15"/>
-        <Setter Property="Padding"   Value="28,0"/>
+        <Setter Property="Height"    Value="40"/>
+        <Setter Property="FontSize"  Value="14"/>
+        <Setter Property="Padding"   Value="24,0"/>
     </Style>
 
-    <!-- ── Icon Button ──────────────────────────────────────────────────────── -->
+    <!-- ── Icon (square, no bg) ─────────────────────────────────────────── -->
     <Style x:Key="BtnIcon" TargetType="Button" BasedOn="{StaticResource BtnBase}">
         <Setter Property="Background"  Value="Transparent"/>
         <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
-        <Setter Property="Width"       Value="36"/>
+        <Setter Property="Width"       Value="32"/>
+        <Setter Property="Height"      Value="32"/>
         <Setter Property="Padding"     Value="0"/>
     </Style>
 
-    <!-- ── Version Card Button (toggle) ─────────────────────────────────────── -->
+    <!-- ── Navigation item (compact ghost) ─────────────────────────────── -->
+    <Style x:Key="BtnNav" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+        <Setter Property="Background"           Value="Transparent"/>
+        <Setter Property="Foreground"           Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="BorderBrush"          Value="Transparent"/>
+        <Setter Property="Height"               Value="32"/>
+        <Setter Property="Padding"              Value="8,0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="FontWeight"           Value="Normal"/>
+    </Style>
+
+    <!-- ── Version Card Button (toggle, used on OperationSelectionView) ── -->
     <Style x:Key="BtnVersionCard" TargetType="ToggleButton">
         <Setter Property="Cursor"          Value="Hand"/>
-        <Setter Property="Background"      Value="{DynamicResource BackgroundCardBrush}"/>
+        <Setter Property="Background"      Value="{DynamicResource BackgroundElevatedBrush}"/>
         <Setter Property="BorderBrush"     Value="{DynamicResource BorderDefaultBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding"         Value="20,16"/>
+        <Setter Property="Padding"         Value="14,12"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -121,7 +128,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="8"
+                            CornerRadius="6"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Top"/>
                     </Border>
@@ -138,4 +145,5 @@
             </Setter.Value>
         </Setter>
     </Style>
+
 </ResourceDictionary>

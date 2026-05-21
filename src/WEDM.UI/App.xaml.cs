@@ -30,9 +30,12 @@ using WEDM.Infrastructure.Patching;
 using WEDM.Infrastructure.Packaging;
 using WEDM.Infrastructure.Registry;
 using WEDM.Infrastructure.Security;
+using WEDM.UI.Models;
 using WEDM.UI.Services;
+using WEDM.Engine.Runtime;
 using WEDM.UI.ViewModels;
 using WEDM.UI.ViewModels.Migration;
+using WEDM.UI.ViewModels.Runtime;
 using WEDM.UI.ViewModels.Wizard;
 using DeploymentOrchestrator = WEDM.Application.Services.DeploymentOrchestrator;
 
@@ -381,11 +384,23 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<IWorkflowOrchestrator, DeploymentWorkflowEngine>();
 
+        // ── Runtime Management (middleware control plane) ─────────────────────
+        // Discovery, health checking, log tailing, and Start/Stop/Restart operations.
+        // These are singletons: one shared service instance tracks all live components.
+        services.AddSingleton<MiddlewareRuntimeDiscovery>();
+        services.AddSingleton<HealthCheckService>();
+        services.AddSingleton<LogTailService>();
+        services.AddSingleton<AdminServerController>();
+        services.AddSingleton<IMiddlewareRuntimeService, MiddlewareRuntimeService>();
+        services.AddSingleton<RuntimeDashboardViewModel>();
+
         // ── Application Layer ─────────────────────────────────────────────────
         services.AddSingleton<DeploymentOrchestrator>();
 
         // ── UI ────────────────────────────────────────────────────────────────
         services.AddSingleton<MainWindowViewModel>();
+        services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<AppShellViewModel>();
         services.AddTransient<OperationSelectionViewModel>();
         services.AddTransient<WelcomeViewModel>();
         services.AddTransient<VersionSelectionViewModel>();

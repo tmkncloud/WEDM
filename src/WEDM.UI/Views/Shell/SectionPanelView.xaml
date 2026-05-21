@@ -1,0 +1,144 @@
+<UserControl x:Class="WEDM.UI.Views.Shell.SectionPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WEDM.UI.ViewModels"
+             xmlns:wvm="clr-namespace:WEDM.UI.ViewModels.Wizard"
+             Width="{DynamicResource SectionPanelWidth}"
+             Background="{DynamicResource BackgroundSurfaceBrush}"
+             BorderBrush="{DynamicResource BorderSubtleBrush}"
+             BorderThickness="0,0,1,0">
+
+    <DockPanel LastChildFill="True">
+
+        <!-- Panel header -->
+        <Border DockPanel.Dock="Top"
+                Height="36"
+                Padding="12,0,8,0"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
+                BorderThickness="0,0,0,1">
+            <DockPanel>
+                <TextBlock Text="{Binding SectionPanelTitle}"
+                           Style="{StaticResource TypeLabel}"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           VerticalAlignment="Center"
+                           DockPanel.Dock="Left"/>
+                <!-- Collapse button -->
+                <Button Command="{Binding ToggleSectionPanelCommand}"
+                        Style="{StaticResource BtnIcon}"
+                        ToolTip="Collapse panel"
+                        DockPanel.Dock="Right"
+                        Width="24" Height="24">
+                    <TextBlock Text="&#xE76B;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextMutedBrush}"/>
+                </Button>
+            </DockPanel>
+        </Border>
+
+        <!-- Wizard step list (Install section) -->
+        <ScrollViewer DockPanel.Dock="Top"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding IsSectionWizardMode, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ItemsControl ItemsSource="{Binding WizardVm.Steps}"
+                          Focusable="False"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type wvm:WizardStepViewModel}">
+                        <Button Height="{DynamicResource NavItemHeight}"
+                                Padding="12,0,8,0"
+                                HorizontalContentAlignment="Left"
+                                Command="{Binding DataContext.WizardVm.NavigateToCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource BtnNav}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource BackgroundHoverBrush}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <DockPanel>
+                                <!-- Step status indicator -->
+                                <Ellipse Width="6" Height="6"
+                                         Margin="0,0,8,0"
+                                         VerticalAlignment="Center"
+                                         DockPanel.Dock="Left">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="{DynamicResource BorderDefaultBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                    <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                    <Setter Property="Fill" Value="{DynamicResource AccentPrimaryBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                    <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock Text="{Binding StepTitle}"
+                                           VerticalAlignment="Center"
+                                           FontSize="13"
+                                           TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                                    <Setter Property="FontWeight" Value="Medium"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DockPanel>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Runtime section nav -->
+        <StackPanel DockPanel.Dock="Top"
+                    Visibility="{Binding IsRuntimeSection, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="COMPONENTS"
+                       Style="{StaticResource TypeLabel}"
+                       Foreground="{DynamicResource TextMutedBrush}"
+                       Margin="12,10,8,4"
+                       FontWeight="SemiBold"/>
+            <Button Content="Domains"          Style="{StaticResource BtnNav}" Height="{DynamicResource NavItemHeight}" Padding="12,0,8,0"/>
+            <Button Content="Admin Servers"    Style="{StaticResource BtnNav}" Height="{DynamicResource NavItemHeight}" Padding="12,0,8,0"/>
+            <Button Content="Managed Servers"  Style="{StaticResource BtnNav}" Height="{DynamicResource NavItemHeight}" Padding="12,0,8,0"/>
+            <Button Content="Node Manager"     Style="{StaticResource BtnNav}" Height="{DynamicResource NavItemHeight}" Padding="12,0,8,0"/>
+            <Button Content="OHS"              Style="{StaticResource BtnNav}" Height="{DynamicResource NavItemHeight}" Padding="12,0,8,0"/>
+            <TextBlock Text="OPERATIONS"
+                       Style="{StaticResource TypeLabel}"
+                       Foreground="{DynamicResource TextMutedBrush}"
+                       Margin="12,12,8,4"
+                       FontWeight="SemiBold"/>
+            <Button Content="Health Monitor"   Style="{StaticResource BtnNav}" Height="{DynamicResource NavItemHeight}" Padding="12,0,8,0"/>
+            <Button Content="Log Tail"         Style="{StaticResource BtnNav}" Height="{DynamicResource NavItemHeight}" Padding="12,0,8,0"/>
+        </StackPanel>
+
+        <!-- Placeholder: other section navs added in Phase 2 -->
+
+    </DockPanel>
+</UserControl>

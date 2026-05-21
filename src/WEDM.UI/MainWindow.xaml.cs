@@ -5,13 +5,13 @@ using WEDM.UI.ViewModels;
 namespace WEDM.UI;
 
 /// <summary>
-/// MainWindow code-behind — minimal, following MVVM discipline.
-/// Only window chrome interactions are handled here (drag, resize, close).
-/// All business logic lives in MainWindowViewModel.
+/// MainWindow code-behind — minimal per MVVM discipline.
+/// Only window chrome interactions (drag, resize, close guard) live here.
+/// All navigation and business logic lives in AppShellViewModel / MainWindowViewModel.
 /// </summary>
 public partial class MainWindow : Window
 {
-    public MainWindow(MainWindowViewModel viewModel)
+    public MainWindow(AppShellViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
@@ -35,8 +35,8 @@ public partial class MainWindow : Window
 
     private void CloseWindow_Click(object sender, RoutedEventArgs e)
     {
-        // Prompt if deployment is in progress
-        var vm = DataContext as MainWindowViewModel;
+        // Guard against closing mid-deployment
+        var vm = DataContext as AppShellViewModel;
         if (vm?.DeploymentInProgress == true)
         {
             var result = MessageBox.Show(

@@ -1,0 +1,419 @@
+<UserControl x:Class="WEDM.UI.Views.Runtime.RuntimeDashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:rvm="clr-namespace:WEDM.UI.ViewModels.Runtime"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="1040"
+             d:DataContext="{d:DesignInstance Type=rvm:RuntimeDashboardViewModel}"
+             Background="{StaticResource BackgroundDeepBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Toolbar -->
+            <RowDefinition Height="*"/>     <!-- Grid + detail pane -->
+            <RowDefinition Height="Auto"/>  <!-- Operation result bar -->
+        </Grid.RowDefinitions>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             TOOLBAR
+             ══════════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Background="{StaticResource BackgroundPanelBrush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Title + status -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Runtime Management"
+                               Style="{StaticResource TypeH2}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,16,0"/>
+                    <TextBlock Text="{Binding StatusLine, Mode=OneWay}"
+                               Style="{StaticResource TypeCaption}"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Action buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+
+                    <!-- Discover -->
+                    <Button Style="{StaticResource BtnSecondary}"
+                            Command="{Binding DiscoverCommand}"
+                            Width="100" Height="32" Margin="0,0,6,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⊕ " FontSize="12"/>
+                            <TextBlock Text="Discover"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Refresh -->
+                    <Button Style="{StaticResource BtnSecondary}"
+                            Command="{Binding RefreshCommand}"
+                            Width="90" Height="32" Margin="0,0,6,0"
+                            IsEnabled="{Binding IsRefreshing, Mode=OneWay,
+                                        Converter={StaticResource InverseBoolConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="↻ " FontSize="13"/>
+                            <TextBlock Text="Refresh"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                               Width="1" Height="24" Margin="4,0" Background="{StaticResource BorderSubtleBrush}"/>
+
+                    <!-- Start -->
+                    <Button Command="{Binding StartComponentCommand}"
+                            Width="72" Height="32" Margin="0,0,4,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
+                                <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}"/>
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="▶ Start" FontSize="12"/>
+                    </Button>
+
+                    <!-- Stop -->
+                    <Button Command="{Binding StopComponentCommand}"
+                            Width="68" Height="32" Margin="0,0,4,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource BtnDanger}">
+                            </Style>
+                        </Button.Style>
+                        <TextBlock Text="■ Stop" FontSize="12"/>
+                    </Button>
+
+                    <!-- Restart -->
+                    <Button Style="{StaticResource BtnSecondary}"
+                            Command="{Binding RestartComponentCommand}"
+                            Width="80" Height="32" Margin="0,0,4,0">
+                        <TextBlock Text="↺ Restart" FontSize="12"/>
+                    </Button>
+
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                               Width="1" Height="24" Margin="4,0" Background="{StaticResource BorderSubtleBrush}"/>
+
+                    <!-- Auto-refresh toggle -->
+                    <Button Style="{StaticResource BtnGhost}"
+                            Command="{Binding ToggleAutoRefreshCommand}"
+                            Height="32" Margin="0,0,0,0"
+                            ToolTip="Toggle 10-second auto-refresh">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource TextMutedBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding AutoRefreshEnabled}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource SuccessBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="Auto" FontSize="12"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             CONTENT: DATA GRID + DETAIL PANE
+             ══════════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>     <!-- Component grid -->
+                <RowDefinition Height="Auto"/>  <!-- Credentials row -->
+            </Grid.RowDefinitions>
+
+            <!-- ── Component DataGrid ───────────────────────────────────────── -->
+            <DataGrid Grid.Row="0"
+                      ItemsSource="{Binding Components}"
+                      SelectedItem="{Binding SelectedComponent}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      CanUserSortColumns="True"
+                      CanUserResizeColumns="True"
+                      CanUserReorderColumns="False"
+                      Background="{StaticResource BackgroundDeepBrush}"
+                      RowBackground="{StaticResource BackgroundPanelBrush}"
+                      AlternatingRowBackground="{StaticResource BackgroundCardBrush}"
+                      HorizontalGridLinesBrush="{StaticResource BorderSubtleBrush}"
+                      BorderBrush="{StaticResource BorderSubtleBrush}"
+                      BorderThickness="0"
+                      FontSize="13"
+                      RowHeight="38"
+                      Margin="0">
+
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="{StaticResource BackgroundElevatedBrush}"/>
+                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                        <Setter Property="FontSize" Value="11"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Padding" Value="12,6"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+
+                <DataGrid.CellStyle>
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                        <Setter Property="Padding" Value="12,0"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="DataGridCell">
+                                    <Border Padding="{TemplateBinding Padding}"
+                                            Background="{TemplateBinding Background}">
+                                        <ContentPresenter VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </DataGrid.CellStyle>
+
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource BackgroundPanelBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsFailed}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource DangerSubtleBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+
+                <DataGrid.Columns>
+
+                    <!-- Domain -->
+                    <DataGridTextColumn Header="DOMAIN"
+                                        Binding="{Binding DomainName}"
+                                        Width="160"
+                                        ElementStyle="{StaticResource TypeBody}"/>
+
+                    <!-- Component -->
+                    <DataGridTextColumn Header="COMPONENT"
+                                        Binding="{Binding Name}"
+                                        Width="160"
+                                        ElementStyle="{StaticResource TypeBody}"/>
+
+                    <!-- Type -->
+                    <DataGridTextColumn Header="TYPE"
+                                        Binding="{Binding KindDisplay}"
+                                        Width="120"
+                                        ElementStyle="{StaticResource TypeCaption}"/>
+
+                    <!-- State — coloured badge -->
+                    <DataGridTemplateColumn Header="STATE" Width="110" CanUserSort="True" SortMemberPath="StateDisplay">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="4" Padding="8,3" HorizontalAlignment="Left" Margin="4,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{StaticResource BackgroundElevatedBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding State}" Value="Running">
+                                                    <Setter Property="Background" Value="{StaticResource SuccessSubtleBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Starting">
+                                                    <Setter Property="Background" Value="{StaticResource AccentSubtleBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Stopping">
+                                                    <Setter Property="Background" Value="{StaticResource WarningSubtleBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Failed">
+                                                    <Setter Property="Background" Value="{StaticResource DangerSubtleBrush}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding State}" Value="Unhealthy">
+                                                    <Setter Property="Background" Value="{StaticResource DangerSubtleBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding StateDisplay}" FontSize="11" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding State}" Value="Running">
+                                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding State}" Value="Failed">
+                                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding State}" Value="Unhealthy">
+                                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding State}" Value="Starting">
+                                                        <Setter Property="Foreground" Value="{StaticResource AccentPrimaryBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- PID -->
+                    <DataGridTextColumn Header="PID"
+                                        Binding="{Binding PidDisplay}"
+                                        Width="80"
+                                        ElementStyle="{StaticResource TypeCaption}"/>
+
+                    <!-- Port -->
+                    <DataGridTextColumn Header="PORT"
+                                        Binding="{Binding Port}"
+                                        Width="70"
+                                        ElementStyle="{StaticResource TypeCaption}"/>
+
+                    <!-- Uptime -->
+                    <DataGridTextColumn Header="UPTIME"
+                                        Binding="{Binding UptimeDisplay}"
+                                        Width="90"
+                                        ElementStyle="{StaticResource TypeCaption}"/>
+
+                    <!-- Health -->
+                    <DataGridTextColumn Header="HEALTH"
+                                        Binding="{Binding HealthDisplay}"
+                                        Width="120">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource TypeCaption}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Health}" Value="Healthy">
+                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Health}" Value="Degraded">
+                                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Health}" Value="Unhealthy">
+                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- Status message -->
+                    <DataGridTextColumn Header="STATUS"
+                                        Binding="{Binding StatusMessage}"
+                                        Width="*"
+                                        ElementStyle="{StaticResource TypeCaption}"/>
+
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- ── Credentials row (collapsible, shown when an admin component is selected) ── -->
+            <Border Grid.Row="1"
+                    Background="{StaticResource BackgroundElevatedBrush}"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="0,1,0,0"
+                    Padding="16,10">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Admin credentials (optional — for WLST graceful stop):"
+                               Style="{StaticResource TypeCaption}"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,16,0"/>
+                    <TextBlock Text="User:" Style="{StaticResource TypeCaption}"
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox Text="{Binding AdminUser, UpdateSourceTrigger=PropertyChanged}"
+                             Width="120" Height="28"
+                             Style="{StaticResource {x:Type TextBox}}"
+                             VerticalContentAlignment="Center"
+                             Margin="0,0,12,0"/>
+                    <TextBlock Text="Password:" Style="{StaticResource TypeCaption}"
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <PasswordBox x:Name="PasswordBox"
+                                 Width="140" Height="28"
+                                 PasswordChanged="PasswordBox_PasswordChanged"
+                                 VerticalContentAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             OPERATION RESULT BAR
+             ══════════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="2"
+                Padding="16,8"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="0,1,0,0">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="{StaticResource BackgroundPanelBrush}"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding LastOperationSucceeded}" Value="True">
+                            <Setter Property="Background" Value="{StaticResource SuccessSubtleBrush}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsOperationRunning}" Value="True">
+                            <Setter Property="Background" Value="{StaticResource AccentSubtleBrush}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel Orientation="Horizontal">
+                <!-- Spinner when operation running -->
+                <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value=""/>
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOperationRunning}" Value="True">
+                                    <Setter Property="Text" Value="⟳"/>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Setter Property="Foreground" Value="{StaticResource AccentPrimaryBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding LastOperationSucceeded}" Value="True">
+                                    <Setter Property="Text" Value="✔"/>
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="{Binding LastOperationMessage, Mode=OneWay}"
+                           Style="{StaticResource TypeCaption}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Busy overlay while operation runs -->
+        <Border Grid.RowSpan="3"
+                Background="#60000000"
+                Visibility="{Binding IsOperationRunning, Mode=OneWay,
+                             Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="⟳" FontSize="48"
+                           Foreground="{StaticResource AccentPrimaryBrush}"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding LastOperationMessage, Mode=OneWay}"
+                           Style="{StaticResource TypeBody}"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           Margin="0,12,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

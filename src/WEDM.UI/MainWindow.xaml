@@ -6,24 +6,41 @@
         xmlns:vm="clr-namespace:WEDM.UI.ViewModels"
         xmlns:wvm="clr-namespace:WEDM.UI.ViewModels.Wizard"
         xmlns:mvm="clr-namespace:WEDM.UI.ViewModels.Migration"
+        xmlns:dvm="clr-namespace:WEDM.UI.ViewModels.Decommission"
+        xmlns:rvm="clr-namespace:WEDM.UI.ViewModels.Runtime"
         xmlns:wviews="clr-namespace:WEDM.UI.Views.Wizard"
         xmlns:mviews="clr-namespace:WEDM.UI.Views.Migration"
-        xmlns:dvm="clr-namespace:WEDM.UI.ViewModels.Decommission"
         xmlns:dviews="clr-namespace:WEDM.UI.Views.Decommission"
-        xmlns:converters="clr-namespace:WEDM.UI.Converters"
+        xmlns:rviews="clr-namespace:WEDM.UI.Views.Runtime"
+        xmlns:shell="clr-namespace:WEDM.UI.Views.Shell"
         mc:Ignorable="d"
         Title="WebLogic Enterprise Deployment Manager"
-        Height="780" Width="1280"
-        MinHeight="680" MinWidth="1100"
+        Height="800" Width="1340"
+        MinHeight="600" MinWidth="900"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BackgroundDeepBrush}"
+        Background="{DynamicResource BackgroundCanvasBrush}"
         WindowStyle="None"
         AllowsTransparency="False"
         ResizeMode="CanResizeWithGrip"
-        d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}">
+        d:DataContext="{d:DesignInstance Type=vm:AppShellViewModel}">
 
     <Window.Resources>
-        <!-- DataTemplate selectors for wizard steps -->
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             SHELL CONTENT ROUTING
+             MainWindowViewModel   → WizardShellView
+             RuntimeDashboardViewModel → RuntimeDashboardView
+             ══════════════════════════════════════════════════════════════════ -->
+        <DataTemplate DataType="{x:Type vm:MainWindowViewModel}">
+            <wviews:WizardShellView DataContext="{Binding}"/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type rvm:RuntimeDashboardViewModel}">
+            <rviews:RuntimeDashboardView DataContext="{Binding}"/>
+        </DataTemplate>
+
+        <!-- ══════════════════════════════════════════════════════════════════
+             WIZARD STEP DataTemplates  (all 25 steps preserved)
+             ══════════════════════════════════════════════════════════════════ -->
         <DataTemplate DataType="{x:Type wvm:OperationSelectionViewModel}">
             <wviews:OperationSelectionView/>
         </DataTemplate>
@@ -102,418 +119,219 @@
         <DataTemplate DataType="{x:Type dvm:DecommissionProgressViewModel}">
             <dviews:DecommissionProgressView/>
         </DataTemplate>
+
     </Window.Resources>
 
+    <!-- ══════════════════════════════════════════════════════════════════════
+         ROOT LAYOUT: 3 rows — TitleBar / Shell body / StatusBar
+         ══════════════════════════════════════════════════════════════════════ -->
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="48"/>    <!-- Title bar -->
-            <RowDefinition Height="*"/>     <!-- Content -->
-            <RowDefinition Height="44"/>    <!-- Footer nav bar -->
+            <RowDefinition Height="36"/>   <!-- [0] Title bar  -->
+            <RowDefinition Height="*"/>                                   <!-- [1] Shell body -->
+            <RowDefinition Height="24"/>  <!-- [2] Status bar -->
         </Grid.RowDefinitions>
 
-        <!-- ═══════════════════════════════════════════════════════════════════
-             TITLE BAR (custom, draggable)
-             ═══════════════════════════════════════════════════════════════════ -->
+        <!-- ══════════════════════════════════════════════════════════════════
+             [0] TITLE BAR — 36px compact chrome
+             ══════════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"
-                Background="{StaticResource HeaderGradientBrush}"
-                BorderBrush="{StaticResource BorderSubtleBrush}"
+                Background="{DynamicResource BackgroundElevatedBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="0,0,0,1"
                 MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>  <!-- Logo + name -->
+                    <ColumnDefinition Width="*"/>      <!-- Drag region -->
+                    <ColumnDefinition Width="Auto"/>  <!-- Controls -->
                 </Grid.ColumnDefinitions>
 
-                <!-- Logo + Title -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal"
-                            VerticalAlignment="Center" Margin="16,0">
-                    <!-- Oracle/WebLogic logo mark -->
-                    <Border Width="28" Height="28" CornerRadius="6"
-                            Background="{StaticResource AccentPrimaryBrush}"
-                            Margin="0,0,10,0">
-                        <TextBlock Text="W" Foreground="White"
-                                   FontFamily="Segoe UI Semibold" FontSize="16"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <!-- Logo badge + product name -->
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="10,0,0,0">
+                    <Border Width="22" Height="22"
+                            CornerRadius="4"
+                            Background="{DynamicResource AccentPrimaryBrush}"
+                            Margin="0,0,8,0">
+                        <TextBlock Text="W"
+                                   Foreground="White"
+                                   FontWeight="Bold"
+                                   FontSize="13"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Text="WebLogic Enterprise Deployment Manager"
-                               Style="{StaticResource TypeH3}"
-                               Foreground="{StaticResource TextPrimaryBrush}"
+                    <TextBlock Text="WEDM"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
                                VerticalAlignment="Center"/>
-                    <Border Background="{StaticResource AccentSubtleBrush}"
-                            BorderBrush="{StaticResource AccentPrimaryBrush}"
-                            BorderThickness="1" CornerRadius="4"
-                            Padding="6,2" Margin="10,0,0,0">
-                        <TextBlock Text="{Binding AppVersion, Mode=OneWay}"
-                                   Style="{StaticResource TypeBadge}"
-                                   Foreground="{StaticResource AccentPrimaryBrush}"/>
+                    <Border CornerRadius="3"
+                            Padding="5,1"
+                            Margin="6,0,0,0"
+                            Background="{DynamicResource AccentSubtleBrush}"
+                            BorderBrush="{DynamicResource AccentBorderBrush}"
+                            BorderThickness="1"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding AppVersion}"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource AccentPrimaryBrush}"/>
                     </Border>
                 </StackPanel>
 
-                <!-- Environment badge (center) -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="ENTERPRISE MIDDLEWARE AUTOMATION"
-                               Style="{StaticResource TypeCaption}"
-                               Foreground="{StaticResource TextMutedBrush}"
-                               VerticalAlignment="Center"/>
-                    <Border Background="{StaticResource BackgroundElevatedBrush}"
-                            BorderBrush="{StaticResource BorderSubtleBrush}"
-                            BorderThickness="1" CornerRadius="4"
-                            Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource TypeCaption}"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   Text="{Binding ReleaseChannelLabel, Mode=OneWay}"/>
-                    </Border>
-                </StackPanel>
+                <!-- Centre drag region (double-click to maximise) -->
+                <Rectangle Grid.Column="1"
+                            Fill="Transparent"
+                            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
 
-                <!-- Theme + window controls -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal"
-                            VerticalAlignment="Center" Margin="0,0,8,0">
-                    <Button Style="{StaticResource BtnGhost}"
-                            Command="{Binding ToggleThemeCommand}"
-                            Content="{Binding ThemeToggleLabel, Mode=OneWay}"
-                            Height="32" Margin="0,0,4,0" ToolTip="Switch light / dark theme"/>
-                    <Button Style="{StaticResource BtnIcon}"
+                <!-- Window controls + actions -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="0,0,4,0">
+
+                    <!-- Section label -->
+                    <TextBlock Text="{Binding SectionPanelTitle}"
+                               FontSize="11"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0"/>
+
+                    <!-- Help -->
+                    <Button Command="{Binding OpenHelpCommand}"
+                            Style="{StaticResource WindowChromeBtn}"
+                            ToolTip="Oracle Documentation"
+                            Width="32" Height="32">
+                        <TextBlock Text="&#xE897;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                    </Button>
+
+                    <!-- About -->
+                    <Button Command="{Binding ShowAboutCommand}"
+                            Style="{StaticResource WindowChromeBtn}"
+                            ToolTip="About WEDM"
+                            Width="32" Height="32">
+                        <TextBlock Text="&#xE946;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource TextMutedBrush}"/>
+                    </Button>
+
+                    <Rectangle Width="1" Height="14"
+                               Fill="{DynamicResource BorderSubtleBrush}"
+                               Margin="4,0"/>
+
+                    <!-- Minimize -->
+                    <Button Style="{StaticResource WindowChromeBtn}"
                             Click="MinimizeWindow_Click"
-                            ToolTip="Minimize">
-                        <TextBlock Text="─" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"/>
+                            ToolTip="Minimize"
+                            Width="36" Height="{DynamicResource TitleBarHeight}">
+                        <TextBlock Text="&#xE921;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
-                    <Button Style="{StaticResource BtnIcon}"
+                    <!-- Maximise / restore -->
+                    <Button Style="{StaticResource WindowChromeBtn}"
                             Click="MaximizeWindow_Click"
-                            ToolTip="Maximize/Restore">
-                        <TextBlock Text="□" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"/>
+                            ToolTip="Maximize"
+                            Width="36" Height="{DynamicResource TitleBarHeight}">
+                        <TextBlock Text="&#xE922;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
-                    <Button Style="{StaticResource BtnIcon}"
+                    <!-- Close -->
+                    <Button Style="{StaticResource WindowCloseChromeBtn}"
                             Click="CloseWindow_Click"
-                            ToolTip="Close">
-                        <TextBlock Text="✕" Foreground="{StaticResource DangerBrush}" FontSize="13"/>
+                            ToolTip="Close"
+                            Width="36" Height="{DynamicResource TitleBarHeight}">
+                        <TextBlock Text="&#xE8BB;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- ═══════════════════════════════════════════════════════════════════
-             MAIN CONTENT AREA
-             ═══════════════════════════════════════════════════════════════════ -->
+        <!-- ══════════════════════════════════════════════════════════════════
+             [1] SHELL BODY — ActivityBar | SectionPanel | ContentHost
+             ══════════════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="240"/>  <!-- Sidebar -->
-                <ColumnDefinition Width="*"/>    <!-- Content panel -->
+                <!-- [0] ActivityBar — fixed 48px -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- [1] SectionPanel — 220px or collapsed -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- [2] Content host — fills remainder -->
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ─── SIDEBAR ──────────────────────────────────────────────────── -->
-            <Border Grid.Column="0"
-                    Background="{StaticResource SidebarGradientBrush}"
-                    BorderBrush="{StaticResource BorderSubtleBrush}"
-                    BorderThickness="0,0,1,0">
-                <DockPanel>
+            <!-- ── ActivityBar ──────────────────────────────────────────── -->
+            <shell:ActivityBarView Grid.Column="0"
+                                   DataContext="{Binding}"/>
 
-                    <!-- Sidebar Header -->
-                    <Border DockPanel.Dock="Top"
-                            Padding="20,20,20,12"
-                            BorderBrush="{StaticResource BorderSubtleBrush}"
-                            BorderThickness="0,0,0,1">
-                        <StackPanel>
-                            <TextBlock Text="INSTALLATION STEPS"
-                                       Style="{StaticResource TypeH3}"
-                                       Margin="0,0,0,4"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding StepCounterText, Mode=OneWay}"
-                                           Style="{StaticResource TypeCaption}"/>
-                                <TextBlock Text=" steps" Style="{StaticResource TypeCaption}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
+            <!-- ── SectionPanel (collapsible) ───────────────────────────── -->
+            <shell:SectionPanelView Grid.Column="1"
+                                    DataContext="{Binding}">
+                <shell:SectionPanelView.Style>
+                    <Style TargetType="shell:SectionPanelView">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSectionPanelVisible}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </shell:SectionPanelView.Style>
+            </shell:SectionPanelView>
 
-                    <!-- Step List -->
-                    <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding Steps, Mode=OneWay}" Margin="0,8">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Command="{Binding DataContext.NavigateToCommand,
-                                                              RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding StepIndex}"
-                                            Style="{StaticResource BtnGhost}"
-                                            HorizontalContentAlignment="Stretch"
-                                            Height="Auto" Padding="0">
-                                        <Border x:Name="stepBorder"
-                                                Padding="16,10" Margin="8,2"
-                                                CornerRadius="6">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="Transparent"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                            <Setter Property="Background" Value="{StaticResource BackgroundHoverBrush}"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="32"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
+            <!-- ── Content host ─────────────────────────────────────────── -->
+            <Grid Grid.Column="2">
 
-                                                <!-- Step indicator circle -->
-                                                <Border Grid.Column="0"
-                                                        Width="24" Height="24"
-                                                        CornerRadius="12"
-                                                        HorizontalAlignment="Center">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="Background" Value="{StaticResource BackgroundElevatedBrush}"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                                    <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsCompleted}" Value="True">
-                                                                    <Setter Property="Background" Value="{StaticResource SuccessSubtleBrush}"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding HasStepValidationError}" Value="True">
-                                                                    <Setter Property="Background" Value="{StaticResource DangerSubtleBrush}"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
-                                                    <TextBlock x:Name="stepIcon"
-                                                               Text="{Binding StepIndex, Mode=OneWay, StringFormat={}{0}}"
-                                                               FontSize="11" FontWeight="Bold"
-                                                               HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                                        <Setter Property="Foreground" Value="White"/>
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding IsCompleted}" Value="True">
-                                                                        <Setter Property="Text" Value="✔"/>
-                                                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding HasStepValidationError}" Value="True">
-                                                                        <Setter Property="Text" Value="!"/>
-                                                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                </Border>
-
-                                                <!-- Step text -->
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding StepTitle, Mode=OneWay}"
-                                                               FontSize="13" FontWeight="SemiBold">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                    <TextBlock Text="{Binding StepDescription, Mode=OneWay}"
-                                                               FontSize="10.5"
-                                                               Foreground="{StaticResource TextMutedBrush}"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               MaxWidth="160"/>
-                                                </StackPanel>
-                                            </Grid>
-                                        </Border>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-
-                    <!-- Sidebar Footer -->
-                    <Border DockPanel.Dock="Bottom"
-                            Padding="16,12"
-                            BorderBrush="{StaticResource BorderSubtleBrush}"
-                            BorderThickness="0,1,0,0">
-                        <StackPanel>
-                            <TextBlock Text="Oracle Middleware" Style="{StaticResource TypeCaption}"/>
-                            <TextBlock Text="Enterprise Deployment Suite" Style="{StaticResource TypeCaption}"/>
-                        </StackPanel>
-                    </Border>
-                </DockPanel>
-            </Border>
-
-            <!-- ─── CONTENT PANEL ─────────────────────────────────────────────── -->
-            <Grid Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>    <!-- Step header -->
-                    <RowDefinition Height="*"/>       <!-- Step content -->
-                    <RowDefinition Height="Auto"/>    <!-- Overall progress bar -->
-                </Grid.RowDefinitions>
-
-                <!-- Step header banner -->
-                <Border Grid.Row="0"
-                        Background="{StaticResource BackgroundPanelBrush}"
-                        BorderBrush="{StaticResource BorderSubtleBrush}"
-                        BorderThickness="0,0,0,1"
-                        Padding="20,12,20,12">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding CurrentStep.StepTitle, Mode=OneWay}"
-                                       Style="{StaticResource TypeH1}"/>
-                            <TextBlock Text="{Binding CurrentStep.StepDescription, Mode=OneWay}"
-                                       Style="{StaticResource TypeBody}"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Margin="0,4,0,0"/>
-                        </StackPanel>
-                        <!-- Step icon -->
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding CurrentStep.StepIcon, Mode=OneWay}"
-                                   FontSize="24"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,4,0"/>
-                    </Grid>
+                <!-- Section placeholder for Dashboard / Discovery / etc.
+                     Shown when no routed content is set (null ActiveContent). -->
+                <Border Background="{DynamicResource BackgroundCanvasBrush}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActiveContent}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding SectionPanelTitle}"
+                                   FontSize="22"
+                                   FontWeight="Light"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Section coming soon"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
                 </Border>
 
-                <!-- Step content (data-template driven) -->
-                <ScrollViewer Grid.Row="1"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled"
-                              Padding="20,12,20,16">
-                    <ContentControl Content="{Binding CurrentStep, Mode=OneWay}">
-                        <ContentControl.RenderTransform>
-                            <TranslateTransform x:Name="ContentTranslate"/>
-                        </ContentControl.RenderTransform>
-                    </ContentControl>
-                </ScrollViewer>
+                <!-- Active routed content (wizard or runtime) -->
+                <ContentPresenter Content="{Binding ActiveContent}"/>
 
-                <!-- Overall progress indicator -->
-                <Border Grid.Row="2"
-                        Background="{StaticResource BackgroundElevatedBrush}"
-                        BorderBrush="{StaticResource BorderSubtleBrush}"
-                        BorderThickness="0,1,0,0"
-                        Height="4">
-                    <Grid>
-                        <Rectangle Fill="{StaticResource AccentPrimaryBrush}" HorizontalAlignment="Left">
-                            <Rectangle.Width>
-                                <MultiBinding>
-                                    <MultiBinding.Converter>
-                                        <converters:PercentToWidthMultiConverter/>
-                                    </MultiBinding.Converter>
-                                    <Binding Path="ProgressPercent" Mode="OneWay"/>
-                                    <Binding RelativeSource="{RelativeSource AncestorType=Grid}" Path="ActualWidth" Mode="OneWay"/>
-                                </MultiBinding>
-                            </Rectangle.Width>
-                        </Rectangle>
-                    </Grid>
-                </Border>
             </Grid>
         </Grid>
 
-        <!-- ═══════════════════════════════════════════════════════════════════
-             FOOTER NAVIGATION BAR
-             ═══════════════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="2"
-                Background="{StaticResource BackgroundPanelBrush}"
-                BorderBrush="{StaticResource BorderSubtleBrush}"
-                BorderThickness="0,1,0,0"
-                Padding="24,0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+        <!-- ══════════════════════════════════════════════════════════════════
+             [2] STATUS BAR — 24px operational bar
+             ══════════════════════════════════════════════════════════════════ -->
+        <shell:StatusBarView Grid.Row="2"
+                             DataContext="{Binding}"/>
 
-                <!-- Left: Help link -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource BtnGhost}"
-                            Command="{Binding OpenHelpCommand}"
-                            Content="📘  Oracle Documentation"
-                            Height="32" Margin="0,0,8,0"/>
-                    <Button Style="{StaticResource BtnGhost}"
-                            Command="{Binding ShowAboutCommand}"
-                            Content="About WEDM"
-                            Height="32"/>
-                </StackPanel>
-
-                <!-- Right: Back / Next navigation -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal"
-                            VerticalAlignment="Center">
-                    <Button Style="{StaticResource BtnSecondary}"
-                            Command="{Binding BackCommand}"
-                            Content="← Back"
-                            Width="100"
-                            Margin="0,0,8,0"/>
-                    <Button Command="{Binding NextCommand}"
-                            Width="140"
-                            Height="36">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
-                                <Setter Property="Content" Value="Next →"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsDeploymentReadyStep}" Value="True">
-                                        <Setter Property="Content" Value="🚀  Deploy"/>
-                                        <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
-                                        <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsMigrationReadyStep}" Value="True">
-                                        <Setter Property="Content" Value="📋  Review &amp; Plan"/>
-                                        <Setter Property="Background" Value="{StaticResource AccentPrimaryBrush}"/>
-                                        <Setter Property="BorderBrush" Value="{StaticResource AccentPrimaryBrush}"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsLastStep}" Value="True">
-                                        <Setter Property="Content" Value="Finish"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- ── Global Busy Overlay ──────────────────────────────────────────── -->
-        <Grid Grid.RowSpan="3"
-              Visibility="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-              Background="#80000000">
-            <Border Background="{StaticResource BackgroundCardBrush}"
-                    BorderBrush="{StaticResource BorderDefaultBrush}"
-                    BorderThickness="1" CornerRadius="12"
-                    Padding="40,32"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                    MinWidth="320">
-                <StackPanel HorizontalAlignment="Center">
-                    <TextBlock Text="⟳" FontSize="36"
-                               Foreground="{StaticResource AccentPrimaryBrush}"
-                               HorizontalAlignment="Center">
-                        <TextBlock.RenderTransform>
-                            <RotateTransform x:Name="SpinnerRotate" CenterX="18" CenterY="18"/>
-                        </TextBlock.RenderTransform>
-                        <TextBlock.Triggers>
-                            <EventTrigger RoutedEvent="Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard RepeatBehavior="Forever">
-                                        <DoubleAnimation Storyboard.TargetName="SpinnerRotate"
-                                                         Storyboard.TargetProperty="Angle"
-                                                         From="0" To="360" Duration="0:0:1"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </TextBlock.Triggers>
-                    </TextBlock>
-                    <TextBlock Text="{Binding BusyMessage, Mode=OneWay}"
-                               Style="{StaticResource TypeBody}"
-                               HorizontalAlignment="Center"
-                               Margin="0,16,0,0"/>
-                </StackPanel>
-            </Border>
-        </Grid>
     </Grid>
 </Window>

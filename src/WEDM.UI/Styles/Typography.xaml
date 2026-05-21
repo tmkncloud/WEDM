@@ -2,21 +2,20 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ═══════════════════════════════════════════════════════════════════════
-         WEDM Typography System
-         Font: Segoe UI (universal Windows — enterprise readable)
-         Scale follows Material Design-inspired type scale
+         WEDM Typography System v2
+         Font: Segoe UI  |  Scale: 11–22px  |  All brushes DynamicResource
          ═══════════════════════════════════════════════════════════════════════ -->
 
-    <!-- Global text override -->
+    <!-- Global text default -->
     <Style TargetType="TextBlock">
-        <Setter Property="FontFamily"    Value="Segoe UI"/>
-        <Setter Property="FontSize"      Value="13"/>
-        <Setter Property="Foreground"    Value="{DynamicResource TextPrimaryBrush}"/>
-        <Setter Property="TextWrapping"  Value="NoWrap"/>
+        <Setter Property="FontFamily"   Value="Segoe UI"/>
+        <Setter Property="FontSize"     Value="13"/>
+        <Setter Property="Foreground"   Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="TextWrapping" Value="NoWrap"/>
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
     </Style>
 
-    <!-- Display — large hero/splash text -->
+    <!-- Page / section title — large hero text -->
     <Style x:Key="TypeDisplay" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI Semibold"/>
         <Setter Property="FontSize"    Value="22"/>
@@ -25,80 +24,109 @@
         <Setter Property="LineHeight"  Value="28"/>
     </Style>
 
+    <!-- H1 — step / screen title -->
     <Style x:Key="TypeH1" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI Semibold"/>
-        <Setter Property="FontSize"    Value="18"/>
+        <Setter Property="FontSize"    Value="16"/>
         <Setter Property="FontWeight"  Value="SemiBold"/>
         <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
+    <!-- H2 — section headers -->
     <Style x:Key="TypeH2" TargetType="TextBlock">
-        <Setter Property="FontFamily"  Value="Segoe UI"/>
-        <Setter Property="FontSize"    Value="15"/>
-        <Setter Property="FontWeight"  Value="SemiBold"/>
-        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
-    </Style>
-
-    <!-- Heading 3 — card headers -->
-    <Style x:Key="TypeH3" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI"/>
         <Setter Property="FontSize"    Value="14"/>
         <Setter Property="FontWeight"  Value="SemiBold"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
+    <!-- H3 — card headers (FIXED: use TextPrimary, not TextSecondary) -->
+    <Style x:Key="TypeH3" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="Segoe UI"/>
+        <Setter Property="FontSize"    Value="13"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
     <!-- Body — standard content text -->
     <Style x:Key="TypeBody" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI"/>
         <Setter Property="FontSize"    Value="13"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="LineHeight"  Value="20"/>
     </Style>
 
-    <!-- Caption — small helper text, labels -->
+    <!-- Caption — helper text, timestamps, metadata -->
     <Style x:Key="TypeCaption" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI"/>
         <Setter Property="FontSize"    Value="11"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
 
-    <!-- Inline caption for Run/Span inside TextBlock (do not apply TextBlock styles to Run) -->
+    <!-- Inline caption for Run/Span inside TextBlock -->
     <Style x:Key="TypeCaptionRun" TargetType="Run">
         <Setter Property="FontFamily"  Value="Segoe UI"/>
         <Setter Property="FontSize"    Value="11"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
 
     <!-- Mono — log output, paths, commands -->
     <Style x:Key="TypeMono" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Cascadia Code, Consolas, Courier New"/>
         <Setter Property="FontSize"    Value="12"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="LineHeight"  Value="18"/>
     </Style>
 
     <!-- Label — form field labels -->
     <Style x:Key="TypeLabel" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI"/>
-        <Setter Property="FontSize"    Value="12"/>
+        <Setter Property="FontSize"    Value="11"/>
         <Setter Property="FontWeight"  Value="SemiBold"/>
-        <Setter Property="Foreground"  Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="Margin"      Value="0,0,0,4"/>
     </Style>
 
-    <!-- Accent — highlighted/branded text -->
+    <!-- Accent — highlighted / branded text -->
     <Style x:Key="TypeAccent" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI"/>
         <Setter Property="FontSize"    Value="13"/>
         <Setter Property="FontWeight"  Value="SemiBold"/>
-        <Setter Property="Foreground"  Value="{StaticResource AccentPrimaryBrush}"/>
+        <Setter Property="Foreground"  Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
-    <!-- Version badge text -->
+    <!-- Badge — version and state badges -->
     <Style x:Key="TypeBadge" TargetType="TextBlock">
         <Setter Property="FontFamily"  Value="Segoe UI Semibold"/>
         <Setter Property="FontSize"    Value="11"/>
         <Setter Property="FontWeight"  Value="Bold"/>
         <Setter Property="Padding"     Value="6,2"/>
     </Style>
+
+    <!-- Metric — large dashboard stat numbers -->
+    <Style x:Key="TypeMetric" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="Segoe UI Semibold"/>
+        <Setter Property="FontSize"    Value="28"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="LineHeight"  Value="34"/>
+    </Style>
+
+    <!-- NavItem — section panel navigation items -->
+    <Style x:Key="TypeNavItem" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="Segoe UI"/>
+        <Setter Property="FontSize"    Value="12"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <!-- PageTitle — compact title for content headers -->
+    <Style x:Key="TypePageTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily"  Value="Segoe UI Semibold"/>
+        <Setter Property="FontSize"    Value="15"/>
+        <Setter Property="FontWeight"  Value="SemiBold"/>
+        <Setter Property="Foreground"  Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
 </ResourceDictionary>

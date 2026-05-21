@@ -7,21 +7,31 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- [0] Active theme — ThemeManager swaps this slot at runtime -->
                 <ResourceDictionary Source="Styles/Theme.Light.xaml"/>
+                <!-- Typography tokens (must precede component styles) -->
                 <ResourceDictionary Source="Styles/Typography.xaml"/>
+                <!-- Spacing / layout constants -->
+                <ResourceDictionary Source="Styles/Spacing.xaml"/>
+                <!-- Component styles -->
                 <ResourceDictionary Source="Styles/Buttons.xaml"/>
                 <ResourceDictionary Source="Styles/Inputs.xaml"/>
+                <ResourceDictionary Source="Styles/DataGrid.xaml"/>
+                <!-- Shell chrome styles (ActivityBar, SectionPanel, StatusBar, cards) -->
+                <ResourceDictionary Source="Styles/Shell.xaml"/>
+                <!-- Wizard-specific styles -->
                 <ResourceDictionary Source="Styles/WizardValidation.xaml"/>
                 <ResourceDictionary Source="Styles/Animations.xaml"/>
                 <ResourceDictionary Source="Styles/MigrationDashboard.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-            <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+            <!-- Converters (StaticResource — non-theme, never swapped) -->
+            <converters:BoolToVisibilityConverter  x:Key="BoolToVisibilityConverter"/>
+            <converters:InverseBoolConverter       x:Key="InverseBoolConverter"/>
             <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
             <converters:StringToVisibilityConverter x:Key="StringToVis"/>
-            <converters:StringToBoolConverter x:Key="StringToBoolConverter"/>
-            <converters:StringToBoolConverter x:Key="StringToBool"/>
+            <converters:StringToBoolConverter      x:Key="StringToBoolConverter"/>
+            <converters:StringToBoolConverter      x:Key="StringToBool"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -10,6 +10,7 @@ using WedmTheme = WEDM.UI.Services.WedmTheme;
 using WEDM.UI.ViewModels.Base;
 using WEDM.UI.ViewModels.Decommission;
 using WEDM.UI.ViewModels.Migration;
+using WEDM.UI.ViewModels.Runtime;
 using WEDM.UI.ViewModels.Wizard;
 
 namespace WEDM.UI.ViewModels;
@@ -61,6 +62,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _deploymentInProgress;
+
+    [ObservableProperty]
+    private bool _showRuntimeDashboard;
+
+    /// <summary>Runtime Management dashboard — controls the middleware control plane panel.</summary>
+    public RuntimeDashboardViewModel RuntimeDashboard { get; }
 
     public DeploymentConfiguration Configuration { get; } = new()
     {
@@ -134,10 +141,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         DecommissionDiscoveryViewModel    decommissionDiscovery,
         DecommissionPreviewViewModel      decommissionPreview,
         DecommissionSummaryViewModel      decommissionSummary,
-        DecommissionProgressViewModel     decommissionProgress)
+        DecommissionProgressViewModel     decommissionProgress,
+        RuntimeDashboardViewModel         runtimeDashboard)
     {
-        _aboutDialog       = aboutDialog;
+        _aboutDialog        = aboutDialog;
         _operationSelection = operationSelection;
+        RuntimeDashboard    = runtimeDashboard;
 
         var snap = productInfo.GetSnapshot();
         AppVersion            = snap.DisplayVersion;
@@ -504,6 +513,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         await EnterCurrentStepAsync();
         NotifyNavigationStateChanged();
     }
+
+    [RelayCommand]
+    private void ToggleRuntimeDashboard()
+        => ShowRuntimeDashboard = !ShowRuntimeDashboard;
 
     [RelayCommand]
     private void ShowAbout() => _aboutDialog.ShowAbout();
